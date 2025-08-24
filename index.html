@@ -3,705 +3,1661 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team123 - Project Tracker V2 </title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>Team123 Advanced Bonus Calculator (IndexedDB)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://unpkg.com/shapefile@0.6.6/dist/shapefile.js"></script>
     <style>
-        /* ====================================================== */
-        /* START: NEW LOGIN UI STYLES                             */
-        /* ====================================================== */
-        body.login-view-active {
-        font-family: 'Inter', Arial, sans-serif;
-        background: linear-gradient(135deg, #f0f2f5, #e6e9ee);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        padding: 20px;
-        box-sizing: border-box;
-        margin: 0;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark Gray-Blue */
+            color: #d1d5db; /* Light Gray */
         }
-        /* Hide original containers when login is active */
-        body.login-view-active .container,
-        body.login-view-active #loading-auth-message {
-        display: none;
+        .card {
+            background-color: #1f2937; /* Lighter Dark Gray-Blue */
+            border: 1px solid #374151; /* Subtle Border */
         }
-        body.login-view-active #auth-wrapper {
-        display: block;
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
         }
-        #auth-wrapper {
-        width: 100%;
-        max-width: 420px;
+        .info-icon {
+            cursor: pointer;
+            display: inline-block;
+            margin-left: 4px;
+            color: #9ca3af; /* Medium Gray */
+            vertical-align: middle;
         }
-        #auth-wrapper .login-card {
-        background-color: #ffffff;
-        padding: 40px 50px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        text-align: center;
-        transition: all 0.3s ease-out;
+        .info-icon:hover {
+            color: #60a5fa; /* Light Blue */
         }
-        #auth-wrapper .login-card h2 {
-        font-family: 'Inter', Arial, sans-serif;
-        font-size: 1.8em;
-        margin-bottom: 8px;
-        color: #2c3e50;
-        font-weight: 600;
-        }
-        #auth-wrapper .login-card p {
-        color: #6c757d;
-        margin-bottom: 30px;
-        font-size: 1.1em;
-        }
-        #auth-wrapper #signInBtn { /* CHANGED ID */
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 15px;
-        background-color: #ffffff;
-        color: #333;
-        border: 1px solid #ccc;
-        font-size: 1.05em;
-        font-family: 'Inter', Arial, sans-serif;
-        font-weight: 500;
-        padding: 12px 24px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        width: 100%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        #auth-wrapper #signInBtn:hover { /* CHANGED ID */
-        border-color: #b3b3b3;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
-        }
-        #auth-wrapper .google-icon {
-        width: 22px;
-        height: 22px;
-        }
-
-
-    /* ====================================================== */
-    /* START: TL SUMMARY MODAL & CARD UI STYLES (UPDATED)     */
-    /* ====================================================== */
-    #tlSummaryModal .modal-content {
-        max-width: 80%; /* Increased max-width for a wider layout */
-        width: 900px;
-        padding: 25px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
-        border-radius: 12px;
-    }
-
-    .summary-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
-    }
-
-    .summary-title {
-        text-align: left;
-        color: #2c3e50;
-        font-size: 1.8em;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .summary-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 25px;
-    }
-
-    .project-summary-card {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .project-name-header {
-        color: #0056b3;
-        font-size: 1.3em;
-        margin: 0 0 15px 0;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e9ecef;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .fix-categories-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        flex-grow: 1;
-    }
-
-    .fix-category-item {
-        padding: 12px;
-        border-radius: 6px;
-        font-size: 1em;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: 500;
-        color: #333;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .fix-category-name {
-        font-weight: 600;
-    }
-
-    .fix-category-data {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .fix-category-minutes {
-        font-weight: 500;
-    }
-
-    .fix-category-hours {
-        font-size: 0.9em;
-        color: #555;
-    }
-    
-    .tech-info-section {
-        margin-top: 25px;
-        padding-top: 20px;
-        border-top: 2px solid #e9ecef;
-    }
-
-    .tech-info-header {
-        font-size: 1.4em;
-        color: #2c3e50;
-        margin-bottom: 15px;
-    }
-
-    .tech-info-list {
-        list-style: none;
-        padding: 0;
-    }
-
-    .tech-info-list li {
-        background-color: #f8f9fa;
-        padding: 10px 15px;
-        border-radius: 6px;
-        margin-bottom: 8px;
-        font-size: 1em;
-    }
-
-    /* ====================================================== */
-    /* END: TL SUMMARY MODAL & CARD UI STYLES                 */
-    /* ====================================================== */
-/* START: TL DASHBOARD UI ENHANCEMENTS */
-    /* START: TL DASHBOARD UI ENHANCEMENTS (Smaller Containers) */
-    .dashboard-batch-item {
-        background-color: #f9f9f9;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 15px; /* Reduced padding */
-        margin-bottom: 15px; /* Reduced margin between batch items */
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-        display: flex;
-        flex-direction: column;
-        gap: 12px; /* Reduced space between main sections in a batch item */
-    }
-
-    .dashboard-batch-item h4 {
-        color: #0056b3;
-        margin-top: 0;
-        margin-bottom: 8px; /* Slightly reduced margin */
-        font-size: 1.3em; /* Slightly smaller font size */
-        border-bottom: 1px solid #eee;
-        padding-bottom: 6px; /* Slightly reduced padding */
-    }
-
-    .dashboard-actions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Adjusted min-width for columns */
-        gap: 15px; /* Reduced gap between action groups */
-        width: 100%;
-    }
-
-    .dashboard-actions-group {
-        border: 1px solid #dcdcdc;
-        border-radius: 6px;
-        padding: 12px; /* Reduced padding */
-        background-color: #ffffff;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        display: flex;
-        flex-direction: column;
-        gap: 8px; /* Reduced space between header and buttons */
-    }
-
-    .dashboard-actions-group h6 {
-        font-size: 1em; /* Slightly smaller font size */
-        color: #333;
-        margin-top: 0;
-        margin-bottom: 4px; /* Reduced margin below heading */
-        border-bottom: 1px dashed #e9ecef;
-        padding-bottom: 4px;
-    }
-
-    .dashboard-action-buttons {
-        display: flex;
-        flex-wrap: wrap; /* Allow buttons to wrap */
-        gap: 6px; /* Reduced space between buttons */
-        margin-top: 4px; /* Small margin after title */
-    }
-
-    .dashboard-action-buttons .btn {
-        padding: 6px 12px; /* Reduced padding for buttons */
-        font-size: 0.85em; /* Slightly smaller font size */
-        min-width: 100px; /* Reduced minimum width for buttons */
-    }
-
-    @media (max-width: 768px) {
-        .dashboard-actions-grid {
-            grid-template-columns: 1fr; /* Stack groups vertically on small screens */
-        }
-        .dashboard-action-buttons .btn {
-            width: 100%; /* Full width buttons on small screens */
-            margin-right: 0;
-        }
-    }
-    /* END: TL DASHBOARD UI ENHANCEMENTS */
-        /* ====================================================== */
-        /* START: YOUR ORIGINAL CODE STYLES (UNCHANGED)           */
-        /* ====================================================== */
-        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f7f6; color: #333; line-height: 1.4; }
-        .container { width: 98%; max-width: 1900px; margin: 10px auto; padding: 10px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; }
-        /* Styles for Auth Section */
-        #auth-container {
-        padding: 10px 15px;
-        min-height: 60px;
-        text-align: center;
-        border-bottom: 1px solid #eee;
-        margin-bottom: 15px;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        }
-        #auth-container h2 {
-        font-size: 1.1em;
-        margin-bottom: 8px;
-        color: #333;
-        }
-        #user-info-display {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 5px;
-        }
-        #user-info-display img {
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        border: 2px solid #ddd;
-        object-fit: cover;
-        }
-        #user-info-display .user-details p {
-        margin: 0;
-        font-size: 0.9em;
-        }
-        #user-info-display .user-details p:first-child {
-        font-weight: bold;
-        }
-        /* Hiding original signInBtn to avoid duplication */
-        #auth-container #signInBtn, #signOutBtn, #clearDataBtn {
-        padding: 8px 18px;
-        font-size: 1em;
-        cursor: pointer;
-        border: none;
-        border-radius: 4px;
-        transition: background-color 0.3s ease;
-        margin-top: 8px;
-        }
-        #signOutBtn { background-color: #e74c3c; color: white; } #signOutBtn:hover { background-color: #c0392b; }
-        #clearDataBtn { background-color: #6c757d; color: white; } #clearDataBtn:hover { background-color: #5a6268; }
-        /* Initially hide app content and show loading/auth message */
-        #app-content { display: none; }
-        #loading-auth-message { text-align: center; padding: 20px; font-size: 1.1em; color: #555; margin-top: 50px;}
-        h1, h2, h3 { color: #2c3e50; text-align: center; margin-bottom: 12px; font-size: 1.5em; }
-        h2 { font-size: 1.3em; }
-        h3 { font-size: 1.1em; text-align: left; margin-top: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
-        .table-scroll-wrapper {
-        width: 100%;
-        max-height: 60vh;
-        overflow-y: auto;
-        overflow-x: scroll;
-        }
-        .action-bar {
-        margin-bottom: 15px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: flex-start;
-        }
-        .btn { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 0.8em; transition: background-color 0.3s ease; margin: 2px; min-width: 60px; text-align: center; vertical-align: middle;}
-        .btn-lg { padding: 7px 12px; font-size: 0.9em; }
-        .btn-group-toggle { min-width: 25px; padding: 2px 6px; font-size: 0.9em; margin-left: 10px; background-color: #7f8c8d; color:white; }
-        .btn-group-toggle:hover { background-color: #95a5a6;}
-        .btn-danger { background-color: #e74c3c; color: white; } .btn-danger:hover { background-color: #c0392b; }
-        .btn-primary { background-color: #3498db; color: white; } .btn-primary:hover { background-color: #2980b9; }
-        .btn-success { background-color: #2ecc71; color: white; } .btn-success:hover { background-color: #27ae60; }
-        .btn-mark-done { background-color: #1abc9c; color: white; } .btn-mark-done:hover { background-color: #16a085; }
-        .btn-day-start { background-color: #007bff; color: white; }
-        .btn-day-start:hover { background-color: #0056b3; }
-        .btn-day-end { background-color: #fd7e14; color: white; }
-        .btn-day-end:hover { background-color: #c85e08; }
-        .btn-warning { background-color: #f39c12; color: white; }
-        .btn-warning:hover { background-color: #e67e22; }
-        .btn-info { background-color: #17a2b8; color: white; }
-        .btn-info:hover { background-color: #138496; }
-        .btn:disabled { background-color: #bdc3c7 !important; color: #7f8c8d !important; cursor: not-allowed; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 15px; border: 1px solid #888; width: 90%; border-radius: 5px; position: relative; }
-        #projectFormModal .modal-content { max-width: 480px; }
-        #tlDashboardModal .modal-content { max-width: 750px; max-height: 85vh; overflow-y: auto;}
-        #settingsModal .modal-content { max-width: 700px; max-height: 85vh; overflow-y: auto;} /* MODIFIED: Increased width for new layout */
-        #importCsvModal .modal-content { max-width: 500px; } /* Added for Import CSV Modal */
-        .close-button { color: #aaa; float: right; font-size: 24px; font-weight: bold; } .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
-        #newProjectForm label { display: block; margin-top: 8px; font-weight: bold; font-size: 0.85em;}
-        #newProjectForm input[type="text"], #newProjectForm input[type="number"], #newProjectForm select, .form-control { width: calc(100% - 18px); padding: 7px; margin-top: 3px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 0.85em; }
-        #newProjectForm button[type="submit"] { margin-top: 12px; }
-        .form-group { margin-bottom: 1rem; }
-        #projectTable { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8em; }
-        #projectTable th, #projectTable td { border: 1px solid #ddd; padding: 3px 5px; text-align: left; vertical-align: middle; white-space: nowrap; }
-        #projectTable thead th { background-color: #34495e; color: white; font-weight: bold; position: sticky; top: 0; z-index: 10;}
-        #projectTable td.wrap-text { white-space: normal; }
-        #projectTable select.assigned-to-select,
-        #projectTable select.break-select,
-        #projectTable input[type="time"],
-        #projectTable textarea.tech-notes-input,
-        #projectTable input[type="number"].additional-minutes-input {
-        width: calc(100% - 6px); padding: 2px; border: 1px solid #ccc; border-radius: 2px; box-sizing: border-box; font-size: 1em; background-color: #fff;
-        }
-        .batch-header-row td { background-color: #6c757d !important; color: white; font-size: 1.1em; font-weight: bold; text-align: left; padding: 6px 8px; }
-        .fix-group-header td { background-color: #adb5bd !important; color: #212529; font-size: 1.0em; font-weight: bold; text-align: left; padding: 4px 8px; cursor:pointer; padding-left: 30px; }
-        .hidden-group-row { display: none; }
-        #projectTable td.total-duration-column { font-weight: bold; background-color: #c0392b; color: white; }
-        .reassigned-task-highlight { background-color: #FFF9C4 !important; }
-        #projectTable tbody tr:not(.fix-group-header):not(.batch-header-row):hover { background-color: #d0e0f0 !important; }
-        .status { padding: 2px 5px; border-radius: 3px; color: white; font-weight: bold; text-align: center; display: inline-block; font-size:0.95em; }
-        .status-available { background-color: #3498db; }
-        .status-inprogressday1, .status-day1ended_awaitingnext, .status-inprogressday2, .status-day2ended_awaitingnext { background-color: #f39c12; }
-        .status-inprogressday3 { background-color: #e9630e; }
-        .status-completed { background-color: #2ecc71; }
-        .status-reassigned_techabsent { background-color: #B0BEC5; color: #263238; }
-        #tlDashboardContent { margin-top:15px; }
-        .dashboard-batch-item { border: 1px solid #bdc3c7; padding: 10px; margin-bottom: 10px; background-color: #fff; border-radius: 4px; }
-        #allowedEmailsList { list-style-type: none; padding: 0; max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; margin-bottom: 10px;}
-        #allowedEmailsList li { padding: 8px; border-bottom: 1px dashed #eee; display: flex; justify-content: space-between; align-items: center;}
-        #allowedEmailsList li:last-child { border-bottom: none; }
-        #addEmailInput { flex-grow: 1; padding: 7px; margin-right: 5px; border: 1px solid #ddd; border-radius: 3px; box-sizing: border-box; font-size: 0.9em;}
-        .settings-input-group { display: flex; margin-bottom: 10px; align-items: center;}
-        .group-selector-controls { display: flex; justify-content: center; align-items: center; margin-top: 15px; gap: 10px; flex-wrap: wrap; }
-        .group-selector-controls label { font-size: 0.9em; font-weight: bold; color: #555; }
-        .group-selector-controls select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; min-width: 150px; }
-        #loadingOverlay {
-        display: none; position: fixed; z-index: 9999; width: 100%; height: 100%; top: 0; left: 0; background-color: rgba(0,0,0,0.5); cursor: wait;
-        justify-content: center; align-items: center; flex-direction: column; color: white; font-size: 1.2em; font-weight: bold;
-        }
-        .spinner {
-        border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid #fff;
-        width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 10px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .column-hidden {
-            display: none;
-        }
-
-        /* === START: NEW STYLES FOR USER MANAGEMENT === */
-        .user-management-header {
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(17, 24, 39, 0.8); /* Dark Transparent BG */
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            margin-right: 20px; /* MODIFIED: Added margin to avoid close button */
+            justify-content: center;
+            z-index: 50;
+            transition: opacity 0.3s ease;
         }
-        #userManagementForm {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
-            gap: 10px;
-            align-items: flex-end;
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-        }
-        #userManagementForm .form-group {
-            margin-bottom: 0;
-        }
-        #userManagementForm label {
-            font-weight: bold;
-            font-size: 0.85em;
-            margin-bottom: 4px;
-            display: block;
-        }
-        #userManagementTable {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        #userManagementTable th, #userManagementTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #userManagementTable th {
-            background-color: #e9ecef;
-        }
-        #userManagementTable .btn-danger, #userManagementTable .btn-secondary {
-            padding: 4px 8px;
-            margin-right: 5px;
-        }
-        #userFormButtons {
+        .modal-content {
+            background-color: #1f2937;
+            color: #d1d5db;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            border: 1px solid #374151;
         }
-        /* === END: NEW STYLES FOR USER MANAGEMENT === */
+        #modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 1rem; /* For scrollbar spacing */
+        }
+        .modal-overlay:not(.hidden) .modal-content {
+            transform: scale(1);
+        }
+        /* Scrollbar styles for dark theme */
+        #modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar, #team-management-modal .modal-content::-webkit-scrollbar, #workload-chart-container::-webkit-scrollbar { width: 8px; }
+        #modal-body::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track, #team-management-modal .modal-content::-webkit-scrollbar-track, #workload-chart-container::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
+        #modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb, #team-management-modal .modal-content::-webkit-scrollbar-thumb, #workload-chart-container::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        #modal-body::-webkit-scrollbar-thumb:hover, .table-container::-webkit-scrollbar-thumb:hover, #team-management-modal .modal-content::-webkit-scrollbar-thumb:hover, #workload-chart-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        textarea, select, input {
+            background-color: #374151;
+            color: #d1d5db;
+            border-color: #4b5563;
+        }
+        textarea:focus, select:focus, input:focus {
+            --tw-ring-color: #3b82f6; /* Blue-500 */
+            border-color: #3b82f6;
+        }
+        textarea:read-only {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        #update-notification {
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        #reorder-list .project-list-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            cursor: grab;
+            margin-bottom: 0.25rem;
+            background-color: #374151;
+            border: 1px solid #4b5563;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #4b5563;
+        }
+        select[multiple] {
+            height: 10rem;
+            background-color: #374151;
+            padding: 0.5rem;
+        }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::before {
+            content: '►';
+            margin-right: 0.5rem;
+            font-size: 0.8em;
+            transition: transform 0.2s;
+        }
+        details[open] > summary::before {
+            transform: rotate(90deg);
+        }
+        #drop-zone {
+            border: 2px dashed #4b5563;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            color: #9ca3af;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        #drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #1e3a8a;
+        }
+        #tech-results-container, #admin-dashboard, #tl-summary-card, #project-progress-card {
+             max-height: 0;
+             overflow: hidden;
+             opacity: 0;
+             transition: all 0.5s ease-in-out;
+        }
+        #tech-results-container.visible, #admin-dashboard.visible, #tl-summary-card.visible, #project-progress-card.visible {
+            max-height: 1500px;
+            opacity: 1;
+        }
+        .progress-bar {
+            background-color: #374151;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 100%;
+            border-radius: 0.5rem;
+            transition: width 0.5s ease-in-out;
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+        }
+        /* New styles for workload chart */
+        #workload-chart-container {
+            space-y: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        .workload-bar-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .workload-label {
+            flex-shrink: 0;
+            width: 5rem; /* 80px */
+            text-align: right;
+            font-size: 0.75rem; /* 12px */
+            color: #9ca3af; /* gray-400 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .workload-bar {
+            flex-grow: 1;
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.25rem; /* rounded */
+        }
+        .workload-bar-inner {
+            background-color: #2563eb; /* blue-600 */
+            height: 0.75rem; /* h-3 */
+            border-radius: 0.25rem; /* rounded */
+            transition: width 0.5s ease-in-out;
+            text-align: right;
+            padding-right: 0.25rem;
+            color: white;
+            font-size: 0.625rem; /* 10px */
+            line-height: 0.75rem; /* leading-3 */
+        }
     </style>
-    <link rel="icon" type="image/png" href="icon.png">
 </head>
-<body class="login-view-active">
-    <div id="auth-wrapper">
-        <div class="login-card">
-            <h2>Project Tracker V2</h2>
-            <p>Sign in to continue to Team123</p>
-            <button id="signInBtn">
-                <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    <path d="M1 1h22v22H1z" fill="none"/>
-                </svg>
-                <span>Sign in with Google</span>
-            </button>
-            <button id="clearDataBtn" style="display: block; width: 100%; padding: 12px 24px; margin-top: 15px; background-color: #6c757d; color: white; border: none; border-radius: 8px; font-family: 'Inter', Arial, sans-serif; font-size: 1.05em; font-weight: 500; cursor: pointer; transition: background-color 0.3s ease;" onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">
-            Clear Login Session
-            </button>
-        </div>
-    </div>
-    <div class="container">
-        <div id="auth-container">
-            <h2>Project Tracker Login</h2>
-            <button id="clearDataBtn" class="btn btn-secondary" style="display: none; margin-top: 10px;">Clear Login Data</button>
-            <div id="user-info-display" style="display: none;">
-                <img id="userPhoto" src="" alt="User Photo">
-                <div class="user-details">
-                    <p id="userName"></p>
-                    <p id="userEmail"></p>
-                </div>
-                <button id="signOutBtn" class="btn btn-danger">Sign Out</button>
-            </div>
-            <button id="clearDataBtn" style="display: none;">Clear Local App Data</button>
-        </div>
-        <div id="loading-auth-message">
-            <p>Please sign in to access the Project Tracker.</p>
-        </div>
-        <div id="app-content">
-            <h1>Team123 - Project Tracker</h1>
-            <div class="action-bar">
-                <button id="openAddNewProjectBtn" class="btn btn-success btn-lg">➕ Add New Tracker</button>
-                <button id="openTlDashboardBtn" class="btn btn-primary btn-lg">👑 Project Settings</button>
-                <button id="openSettingsBtn" class="btn btn-info btn-lg" style="display:none;">⚙️ User Settings</button>
-                <button id="openTlSummaryBtn" class="btn btn-info btn-lg">📝 TL Summary</button>
-                <button id="exportCsvBtn" class="btn btn-info btn-lg" style="margin-left: 10px;">📊 Export to CSV</button>
-                <button id="openImportCsvBtn" class="btn btn-secondary btn-lg" style="margin-left: 10px;">📥 Import CSV</button> 
-            </div>
-            <div id="projectFormModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="closeProjectFormBtn">&times;</span>
-                    <h2>Add New Tracker</h2>
-                    <form id="newProjectForm">
-                        <label for="numRows">Number of Area:</label>
-                        <input type="number" id="numRows" value="1" min="1" required>
-                        <label for="baseProjectName">Project Name:</label>
-                        <input type="text" id="baseProjectName" value="PROJ_ID_XYZ" required>
-                        <label for="gsd">GSD:</label>
-                        <select id="gsd" required>
-                            <option value="3in">3in</option>
-                            <option value="4in">4in</option>
-                            <option value="6in">6in</option>
-                            <option value="9in">9in</option>
-                        </select>
-                        <button type="submit" class="btn btn-success">Add Project(s)</button>
-                    </form>
-                </div>
-            </div>
-            <div id="tlDashboardModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="closeTlDashboardBtn">&times;</span>
-                    <h2>👑 Project Settings</h2>
-                    <div id="tlDashboardContent"></div>
-                </div>
-            </div>
-            <!-- === START: MODIFIED USER SETTINGS MODAL === -->
-            <div id="settingsModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="closeSettingsBtn">&times;</span>
-                    <div class="user-management-header">
-                        <h2>⚙️ User Management</h2>
-                        <div>
-                            <button id="importUsersBtn" class="btn btn-info">Import Users</button>
-                            <button id="exportUsersBtn" class="btn btn-primary">Export Users</button>
-                            <input type="file" id="userCsvInput" accept=".csv" style="display: none;">
-                        </div>
-                    </div>
-                    <p style="font-size: 0.9em; color: #666; margin-top: -8px; margin-bottom: 20px;">Add, edit, and remove authorized users. The Tech ID will appear in dropdowns, and the Full Name will show on hover.</p>
-                    
-                    <form id="userManagementForm">
-                        <div class="form-group">
-                            <label for="newUserName">Full Name</label>
-                            <input type="text" id="newUserName" placeholder="e.g., John Doe" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newUserEmail">Email Address</label>
-                            <input type="email" id="newUserEmail" placeholder="e.g., user@example.com" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newUserTechId">Tech ID</label>
-                            <input type="text" id="newUserTechId" placeholder="e.g., 1234JD" class="form-control" required>
-                        </div>
-                        <div id="userFormButtons">
-                             <button type="submit" class="btn btn-success">Add User</button>
-                        </div>
-                    </form>
+<body class="bg-gray-900 text-gray-300">
 
-                    <table id="userManagementTable">
-                        <thead>
-                            <tr>
-                                <th>Full Name</th>
-                                <th>Email</th>
-                                <th>Tech ID</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="userManagementTableBody">
-                            <!-- User rows will be inserted here by the script -->
-                        </tbody>
+    <div id="update-notification" class="hidden fixed top-5 right-5 bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 transform translate-y-2">
+        Project list updated.
+    </div>
+
+    <div class="w-full max-w-screen-xl mx-auto p-4 md:p-8">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
+            <div class="p-6 md:p-8 bg-gray-900/50 text-white flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-white">Team123 Advanced Bonus Calculator</h1>
+                    <p class="mt-2 text-gray-400">Save, load, and calculate bonuses for multiple projects locally.</p>
+                </div>
+                 <div class="flex gap-4">
+                    <button id="how-it-works-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">How It Works</button>
+                    <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
+                </div>
+            </div>
+            
+            <div class="px-6 md:px-8 pt-6">
+                <div class="border-t border-gray-700 pt-6">
+                    <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Local Database Status</h2>
+                    <p id="db-status" class="text-sm text-gray-400 mb-4">Initializing database...</p>
+                </div>
+            </div>
+
+            <div id="main-grid" class="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+                <div class="lg:col-span-2 space-y-6">
+                     <div class="card p-6 rounded-xl">
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+                            <h2 class="text-xl font-semibold text-gray-100">Project Management</h2>
+                            <div class="flex gap-2">
+                                <button id="reorder-projects-btn" class="bg-gray-600 text-gray-200 font-bold py-1 px-3 rounded-lg hover:bg-gray-500 transition-colors text-sm">Reorder</button>
+                                <button id="refresh-projects-btn" title="Refresh Project List" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                         <div class="flex items-center gap-2">
+                            <select id="project-select" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300">
+                                <option value="">Click Refresh to load projects...</option>
+                            </select>
+                             <button id="delete-project-btn" title="Delete Selected Project" class="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-800 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                             </button>
+                        </div>
+                        <div class="mt-4">
+                            <button id="calculateCurrentBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">
+                                Calculate Selected Project
+                            </button>
+                        </div>
+                         <div class="mt-4 border-t border-gray-700 pt-4">
+                             <div class="flex items-center">
+                                <input id="customize-calc-all-cb" type="checkbox" class="h-4 w-4 text-indigo-500 focus:ring-indigo-600 bg-gray-700 border-gray-600 rounded">
+                                <label for="customize-calc-all-cb" class="ml-3 block text-sm font-medium text-gray-300">Select specific projects to calculate</label>
+                            </div>
+                            <button id="calculate-all-btn" class="mt-2 w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors duration-300 shadow-md">Calculate All Projects</button>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-xl">
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Calculation Settings</h2>
+                        <div>
+                            <label for="bonusMultiplierDirect" class="block text-sm font-medium text-gray-400 mb-1">
+                                Bonus Multiplier (PHP)
+                                <span class="info-icon" data-key="bonusMultiplier">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.083.082.38-2.29.287-.082-.38.45-.083a.89.89 0 0 1 .352-.176c.24-.11.24-.216.06-.563l-.738-3.468c-.18-.84.48-1.133 1.17-1.133H8l.084.38zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                                </span>
+                            </label>
+                            <input type="number" id="bonusMultiplierDirect" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Default: 1 (No multiplier)">
+                        </div>
+                    </div>
+
+                    <div id="performance-metrics-card" class="card p-6 rounded-xl">
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Team & Technician Performance Metrics</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <div>
+                                        <h3 class="font-semibold text-gray-200">Task Leaderboard</h3>
+                                        <p class="text-xs text-gray-400">Ranking based on calculated tasks for the selected project(s).</p>
+                                    </div>
+                                    <select id="leaderboard-sort-select" class="text-xs p-1 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                        <option value="totalTasks">Rank by Total Tasks</option>
+                                        <option value="totalPoints">Rank by Total Points</option>
+                                        <option value="fixQuality">Rank by Fix Quality %</option>
+                                    </select>
+                                </div>
+                                <div class="table-container border border-gray-700 rounded-lg text-sm" style="max-height: 200px;">
+                                    <table class="min-w-full divide-y divide-gray-700">
+                                        <thead class="bg-gray-900/50">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left font-medium text-gray-300">Rank</th>
+                                                <th class="px-4 py-2 text-left font-medium text-gray-300">Technician</th>
+                                                <th id="leaderboard-metric-header" class="px-4 py-2 text-left font-medium text-gray-300">Total Tasks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="leaderboard-body" class="divide-y divide-gray-700">
+                                            <tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>Calculate a project to see data...</i></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                             <div>
+                                <h3 class="font-semibold text-gray-200">Workload Distribution</h3>
+                                 <p class="text-xs text-gray-400 mb-2">Visualize task assignments across the team.</p>
+                                 <div id="workload-chart-container" class="space-y-2 pr-2 overflow-y-auto border border-gray-700 rounded-lg p-2" style="max-height: 200px;">
+                                    <p class="text-gray-500 italic text-sm text-center">Calculate a project to see chart...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="project-data-entry" class="lg:col-span-3 space-y-6">
+                    <div class="card p-6 rounded-xl">
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+                            <h2 class="text-xl font-semibold text-gray-100">Project Data Entry</h2>
+                            <button id="edit-data-btn" title="Edit Project Data" class="p-2 bg-gray-600 text-gray-200 rounded-lg hover:bg-gray-500 hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="bg-yellow-900/30 border border-yellow-700/50 p-3 rounded-lg mb-4">
+                             <div class="flex items-center mb-2">
+                                <input id="is-ir-project-checkbox" type="checkbox" class="h-4 w-4 text-indigo-500 focus:ring-indigo-600 bg-gray-700 border-gray-600 rounded">
+                                <label for="is-ir-project-checkbox" class="ml-3 block text-sm font-medium text-yellow-300">
+                                    Mark Project as IR (for Fix Tasks)
+                                    <span class="block text-xs text-yellow-400">Applies 1.5x points multiplier to the sum of all categories in a Fix Task row.</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <label for="gsd-value-select" class="block text-sm font-medium text-gray-300 mr-2">GSD Point Value:</label>
+                                <select id="gsd-value-select" class="w-1/2 px-3 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                                    <option value="3in">3in Value</option>
+                                    <option value="4in">4in Value</option>
+                                    <option value="6in">6in Value</option>
+                                    <option value="9in">9in Value</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="drop-zone">
+                            <label for="techData" class="block text-sm font-medium text-gray-400 mb-2">Paste your raw, tab-separated project data here, or drag & drop all shapefile parts (.shp, .dbf, etc.)</label>
+                            <textarea id="techData" rows="10" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm mb-4" placeholder="Paste data or drop files..."></textarea>
+                        </div>
+
+                        <div class="flex gap-4 mt-4">
+                            <input type="text" id="project-name" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Enter Project Name to Save/Update">
+                            <button id="save-project-btn" class="bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors duration-300 shadow-md whitespace-nowrap">Save Project</button>
+                        </div>
+                        <div class="mt-4">
+                            <button id="calculatePastedDataBtn" class="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors duration-300 shadow-md">
+                                Calculate Pasted Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="project-progress-card" class="card p-6 rounded-xl">
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Overall Project Progress</h2>
+                        <div id="project-progress-content" class="space-y-4">
+                             <p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>
+                        </div>
+                    </div>
+
+                    <div id="tl-summary-card" class="card p-6 rounded-xl">
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">TL Summary</h2>
+                        <div id="tl-summary-content" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tech-results-container" class="px-6 md:px-8 pb-8">
+                 <h2 id="results-title" class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Technician Bonus Results</h2>
+                 <div class="mb-4">
+                    <label for="search-tech-id" class="block text-sm font-medium text-gray-400">Search by Tech ID</label>
+                    <input type="text" id="search-tech-id" class="w-full md:w-1/3 mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Search by Tech ID...">
+
+                    <div id="team-filter-container" class="mt-3 flex flex-wrap gap-x-6 gap-y-2 items-center border-t border-gray-700 pt-3">
+                         <span class="text-sm font-medium text-gray-300">Filter by Team:</span>
+                         <button id="refresh-teams-btn" title="Refresh Team List" class="p-1 bg-gray-600 text-gray-300 rounded-md hover:bg-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                        </button>
+                    </div>
+                 </div>
+                 <div id="results-summary" class="text-sm text-gray-400 bg-blue-900/30 p-3 rounded-md mb-4 border border-blue-700/50"></div>
+                 <div class="table-container border border-gray-700 rounded-lg card">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead id="results-thead" class="bg-gray-900/50 sticky top-0">
+                            </thead>
+                        <tbody id="tech-results-body" class="divide-y divide-gray-700">
+                            </tbody>
                     </table>
-                </div>
+                 </div>
             </div>
-            <!-- === END: MODIFIED USER SETTINGS MODAL === -->
-            <div id="tlSummaryModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="closeTlSummaryBtn">&times;</span>
-                    <div class="summary-header">
-                        <h2 class="summary-title">TL Summary</h2>
-                    </div>
-                    <div id="tlSummaryContent">
-                        <p>Loading summary...</p>
-                    </div>
-                </div>
+        </div>
+        <p class="text-center text-xs text-gray-500 mt-4 px-4">Disclaimer: This calculator is based on the formulas and tables in the "Phili IC Fixpoints App Documentation v1.0".</p>
+    </div>
+
+    <div id="team-management-modal" class="modal-overlay hidden">
+        <div class="modal-content overflow-y-auto max-h-[90vh]">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Team Management</h3>
+            <p class="text-sm text-gray-400 mb-4">Define teams and assign Tech IDs. Paste a comma-separated list of IDs for each team. The settings are saved locally.</p>
+            <div id="team-list-container" class="space-y-4"></div>
+            <div class="mt-4 flex gap-4">
+                <input type="text" id="new-team-name" placeholder="New Team Name" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <button id="add-team-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 whitespace-nowrap">Add Team</button>
             </div>
-            <div id="importCsvModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-button" id="closeImportCsvBtn">&times;</span>
-                    <h2>📥 Import Projects from CSV</h2>
-                    <p>Upload a CSV file. The file should have headers matching the export format.</p>
-                    <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom: 15px;">
-                    <button id="processCsvBtn" class="btn btn-primary" disabled>Process CSV</button>
-                    <div id="csvImportStatus" style="margin-top: 10px; font-size: 0.9em; color: #555;"></div>
-                </div>
-            </div>
-            <h3>Project Overview</h3>
-            <div class="group-selector-controls">
-                <label for="monthFilter">Month:</label>
-                <select id="monthFilter">
-                    <option value="">All Months</option>
-                </select>
-                <label for="batchIdSelect">Project:</label>
-                <select id="batchIdSelect">
-                    <option value="">All Projects</option>
-                </select>
-                <label for="fixCategoryFilter">Fix Category:</label>
-                <select id="fixCategoryFilter">
-                    <option value="">All</option>
-                    <option value="Fix1">Fix1</option>
-                    <option value="Fix2">Fix2</option>
-                    <option value="Fix3">Fix3</option>
-                    <option value="Fix4">Fix4</option>
-                    <option value="Fix5">Fix5</option>
-                    <option value="Fix6">Fix6</option>
-                </select>
-                <div style="margin-left: 20px;">
-                    <input type="checkbox" id="toggleTitleCheckbox" checked>
-                    <label for="toggleTitleCheckbox">Show Title</label>
-                </div>
-                <div>
-                    <input type="checkbox" id="toggleDay2Checkbox" checked>
-                    <label for="toggleDay2Checkbox">Show Day 2</label>
-                </div>
-                <div>
-                    <input type="checkbox" id="toggleDay3Checkbox" checked>
-                    <label for="toggleDay3Checkbox">Show Day 3</label>
-                </div>
-            </div>
-            <div class="table-scroll-wrapper">
-                <table id="projectTable">
-                    <thead>
-                        <tr>
-                            <th>Fix Cat</th>
-                            <th class="column-project-name">Project Name</th>
-                            <th>Area/Task</th>
-                            <th>GSD</th>
-                            <th>Assigned To</th>
-                            <th>Status</th>
-                            <th>Day 1 Start</th>
-                            <th>Day 1 Finish</th>
-                            <th>Day 1 Break</th>
-                            <th class="column-day2">Day 2 Start</th>
-                            <th class="column-day2">Day 2 Finish</th>
-                            <th class="column-day2">Day 2 Break</th>
-                            <th class="column-day3">Day 3 Start</th>
-                            <th class="column-day3">Day 3 Finish</th>
-                            <th class="column-day3">Day 3 Break</th>
-                            <th>Progress</th>
-                            <th>Total (min)</th>
-                            <th>Tech Notes</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="projectTableBody"></tbody>
-                </table>
-                <div id="paginationControls" style="display: none; text-align: center; padding: 15px;">
-                    <button id="prevPageBtn" class="btn">« Previous</button>
-                    <span id="pageInfo" style="margin: 0 15px; font-weight: bold;"></span>
-                    <button id="nextPageBtn" class="btn">Next »</button>
-                </div>
+            <div class="mt-6 flex justify-end gap-4 border-t border-gray-700 pt-4">
+                <button id="close-teams-modal-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
+                <button id="save-teams-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Save Team Settings</button>
             </div>
         </div>
     </div>
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-        <p>Loading...</p>
+
+    <div id="reorder-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Reorder Projects</h3>
+            <p class="text-sm text-gray-400 mb-4">Drag and drop the projects to change their display order. Newest projects appear at the top by default.</p>
+            <div id="reorder-list" class="space-y-2 h-64 overflow-y-auto p-2 border border-gray-600 rounded-md">
+                </div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button id="reorder-cancel-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                <button id="reorder-save-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Save Order</button>
+            </div>
+        </div>
     </div>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="script.js"></script>
+
+    <div id="info-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-100 mb-4"></h3>
+            <div id="modal-body" class="text-gray-300 space-y-2"></div>
+            <button id="modal-close" class="mt-6 w-full bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL VARIABLES ---
+        let db;
+        let projectListCache = [];
+        let fullProjectDataCache = {};
+        let currentTechStats = {};
+        let lastUsedBonusMultiplier = 1;
+        let lastCalculationUsedMultiplier = false;
+        let lastFilterValue = "";
+        let isEditMode = false;
+        let teamSettings = {};
+        let reorderSortable = null;
+        let lastUsedGsdValue = '3in';
+
+        // --- DATA FROM DOCUMENTATION ---
+        const categoryValues = {
+            1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99, "IR": 1.5 },
+            2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07, "IR": 1.5 },
+            3: { "3in": 7.44, "4in": 7.44, "6in": 7.44, "9in": 2.78, "IR": 1.5 },
+            4: { "3in": 2.29, "4in": 2.29, "6in": 2.29, "9in": 1.57, "IR": 1.5 },
+            5: { "3in": 1.55, "4in": 1.55, "6in": 1.55, "9in": 0.6, "IR": 1.5 },
+            6: { "3in": 1.84, "4in": 1.84, "6in": 1.84, "9in": 0.78, "IR": 1.5 },
+            7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1, "IR": 1.5 },
+            8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74, "IR": 1.5 },
+            9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73, "IR": 1.5 }
+        };
+
+        const irModifierValue = 1.5;
+        const calculationInfo = {
+            howItWorks: {
+                title: 'How It Works & How to Use',
+                body: `<div class="space-y-6 text-sm">
+                        <div>
+                            <h4 class="text-lg font-bold text-gray-100 mb-2">How to Use This Site</h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <li><strong>Local Storage:</strong> All data is stored locally in your browser using IndexedDB. It won't be shared with anyone else, and you can use the app offline.</li>
+                                <li><strong>Load Projects:</strong> Click the "Refresh Projects" button (the circular arrow) to load the projects saved in your browser.</li>
+                                <li><strong>Filtering:</strong> Use the search bar and the team checkboxes to filter the results table.</li>
+                                <li><strong>Multi-Select:</strong> Check the "Select specific projects to calculate" box to choose several projects at once for a combined calculation.</li>
+                                <li><strong>Manage Teams:</strong> Click "Manage Teams" to define your own teams. This information is also stored locally.</li>
+                            </ol>
+                        </div>
+                        <hr class="border-gray-600">
+                        <div>
+                            <h4 class="text-lg font-bold text-gray-100 mb-2">How The Calculation Works</h4>
+                            <p>The calculation logic is based on the data from the selected project(s) and follows the "Phili IC Fixpoints App Documentation v1.0".</p>
+
+                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Primary Fix Category Counts</h5>
+                            <p>This is a count of all categories handled by a technician. It is calculated by checking the following columns in your raw data:</p>
+                            <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
+                                <li><code>category</code></li>
+                                <li><code>rv1_cat</code></li>
+                                <li><code>rv2_cat</code></li>
+                                <li><code>afp1_cat</code> (only if <code>afp1_stat</code> is "AA")</li>
+                                <li><code>afp2_cat</code> (only if <code>afp2_stat</code> is "AA")</li>
+                            </ul>
+
+                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Points from Fix Tasks Calculation</h5>
+                            <p>This is the sum of points a technician earns from all fix-related tasks. Points are calculated based on the categories found in these columns:</p>
+                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
+                                <li><code>category</code>, <code>rv1_cat</code>, <code>rv2_cat</code> (These are always included for the main technician)</li>
+                                <li><code>afp1_cat</code>, <code>afp2_cat</code> (Points are only added if the corresponding <code>_stat</code> column is "AA" - Approved by RQA)</li>
+                                <li><code>rv1_cat</code>, <code>rv2_cat</code>, etc. (Points are also added if the corresponding <code>_label</code> column contains an "M" for Miss, credited to the technician who performed that fix)</li>
+                            </ul>
+                            
+                             <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Other Points</h5>
+                             <p>Points for other task types are calculated as follows:</p>
+                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
+                                <li><strong>QC Tasks:</strong> 5 points per task.</li>
+                                <li><strong>i3qa Tasks:</strong> 5 points per task.</li>
+                                <li><strong>RV Tasks:</strong> 5 points per task.</li>
+                             </ul>
+                             <p class="mt-2">Points are also awarded for missed tasks that are credited back to a technician. For example, if a technician missed a category in a Fix task and it was caught by a QC, the QC tech gets the QC points and the original Fix tech gets the points back for the missed category.</p>
+
+                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Bonus Calculation</h5>
+                             <p>The total bonus is the sum of all points multiplied by the **Bonus Multiplier** and the **% of Bonus Earned**, which is based on the technician's **Fix Quality %**.</p>
+                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
+                                <li><code>Final Bonus = Total Points * Bonus Multiplier * (% of Bonus Earned)</code></li>
+                             </ul>
+                             <p class="mt-2 text-xs text-gray-500 italic">Disclaimer: The specific point values and quality tiers are based on the "Phili IC Fixpoints App Documentation v1.0".</p>
+                        </div>
+                    </div>`
+            },
+            bonusMultiplier: {
+                title: 'Bonus Multiplier (PHP)',
+                body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>`
+            },
+            totalPoints: {
+                title: 'Total Points Calculation',
+                body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician.</p><p>For Fix tasks, points are derived from a table of category values. The GSD setting can change the points for certain categories. An "IR" project applies a 1.5x multiplier to the sum of all fix categories in a single task row.</p>`
+            },
+            fixQuality: {
+                title: 'Fix Quality % Calculation',
+                body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`
+            },
+            bonusEarned: {
+                title: '% of Bonus Earned Calculation',
+                body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. For example, a quality of 100% earns 120% of the bonus, while 82.5% earns 55%, and so on. Below 77.5%, no bonus is earned.</p>`
+            },
+            totalBonus: {
+                title: 'Final Payout (PHP) Calculation',
+                body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`
+            }
+        };
+
+        // Point tables from documentation
+        const qcPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
+        const i3qaPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
+        const rvPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
+        
+        // Quality tiers from documentation
+        const bonusTiers = [
+            { min: 95.1, max: 100, multiplier: 1.2 },
+            { min: 90.1, max: 95, multiplier: 1.1 },
+            { min: 87.6, max: 90, multiplier: 1.0 },
+            { min: 85.1, max: 87.5, multiplier: 0.9 },
+            { min: 82.6, max: 85, multiplier: 0.8 },
+            { min: 80.1, max: 82.5, multiplier: 0.55 },
+            { min: 77.5, max: 80, multiplier: 0.25 },
+            { min: 0, max: 77.4, multiplier: 0 }
+        ];
+
+        // --- IndexedDB Helper Functions ---
+        async function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('BonusCalculatorDB', 1);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('projects')) {
+                        db.createObjectStore('projects', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('teams')) {
+                        db.createObjectStore('teams', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('settings')) {
+                        db.createObjectStore('settings', { keyPath: 'id' });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+        
+        async function getFromDB(storeName, key) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function putToDB(storeName, data) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(data);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function deleteFromDB(storeName, key) {
+             return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(key);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getAllFromDB(storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // --- CORE LOGIC FUNCTIONS ---
+        function createNewTechStat() {
+            return {
+                id: '',
+                points: 0,
+                fixTasks: 0,
+                refixTasks: 0,
+                warnings: [],
+                refixDetails: [],
+                missedCategories: [],
+                approvedByRQA: [],
+                approvedByRQACategoryCounts: {
+                    1: 0,
+                    2: 0,
+                    3: 0,
+                    4: 0,
+                    5: 0,
+                    6: 0,
+                    7: 0,
+                    8: 0,
+                    9: 0
+                },
+                categoryCounts: {
+                    1: 0,
+                    2: 0,
+                    3: 0,
+                    4: 0,
+                    5: 0,
+                    6: 0,
+                    7: 0,
+                    8: 0,
+                    9: 0
+                },
+                pointsBreakdown: {
+                    fix: 0,
+                    qc: 0,
+                    i3qa: 0,
+                    rv: 0
+                }
+            };
+        }
+
+        async function loadTeamSettings() {
+            try {
+                const teamsData = await getFromDB('teams', 'teams');
+                teamSettings = teamsData ? teamsData.settings : {};
+            } catch (error) {
+                console.error("Error loading team settings:", error);
+                teamSettings = {};
+            }
+            populateTeamFilters();
+            populateAdminTeamManagement();
+        }
+
+        async function saveTeamSettings(settings) {
+            try {
+                await putToDB('teams', { id: 'teams', settings: settings });
+                showNotification("Team settings saved successfully.");
+                teamSettings = settings;
+                populateTeamFilters();
+            } catch (error) {
+                console.error("Error saving team settings: ", error);
+                alert("Failed to save team settings.");
+            }
+        }
+
+        async function saveProjectToIndexedDB(projectData) {
+            try {
+                const textEncoder = new TextEncoder();
+                const dataAsUint8Array = textEncoder.encode(projectData.rawData);
+                const compressed = pako.deflate(dataAsUint8Array);
+                const base64String = btoa(String.fromCharCode.apply(null, compressed));
+
+                const fullDataToSave = {
+                    ...projectData,
+                    rawData: base64String,
+                    projectOrder: Date.now() // Use timestamp for default order
+                };
+                
+                await putToDB('projects', fullDataToSave);
+                
+                // Update project list in settings
+                await fetchProjectListSummary();
+
+                showNotification("Project saved/updated successfully!");
+            } catch (err) {
+                console.error("Error saving project:", err);
+                alert("Failed to save project. Check console for details.");
+            }
+        }
+
+        async function fetchProjectListSummary() {
+            try {
+                const projects = await getAllFromDB('projects');
+                projectListCache = projects.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    projectOrder: p.projectOrder || 0
+                }));
+                projectListCache.sort((a, b) => b.projectOrder - a.projectOrder);
+                populateProjectSelect();
+            } catch (err) {
+                console.error("Failed to fetch project list summary:", err);
+            }
+        }
+
+        async function fetchFullProjectData(projectId) {
+            if (fullProjectDataCache[projectId]) {
+                return fullProjectDataCache[projectId];
+            }
+            try {
+                const data = await getFromDB('projects', projectId);
+                if (data) {
+                    const compressedData = atob(data.rawData);
+                    const pakoData = new Uint8Array(compressedData.split('').map(c => c.charCodeAt(0)));
+                    const decompressed = pako.inflate(pakoData, { to: 'string' });
+                    data.rawData = decompressed;
+                    fullProjectDataCache[projectId] = data;
+                    return data;
+                }
+            } catch (err) {
+                console.error("Error fetching project data:", err);
+            }
+            return null;
+        }
+
+        async function deleteProjectFromIndexedDB(projectId) {
+            if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+                return;
+            }
+
+            try {
+                await deleteFromDB('projects', projectId);
+                delete fullProjectDataCache[projectId];
+                await fetchProjectListSummary();
+                showNotification("Project deleted successfully.");
+            } catch (err) {
+                console.error("Failed to delete project:", err);
+                alert("Error deleting project. Check console for details.");
+            }
+        }
+
+        async function calculateBonuses(techData, isIRProject, gsdValue) {
+            const lines = techData.trim().split('\n');
+            const headers = lines[0].split('\t').map(h => h.trim().toLowerCase());
+            const dataRows = lines.slice(1);
+            const techStats = {};
+            
+            const getPointsForCategory = (category) => {
+                const cat = parseInt(category, 10);
+                if (!isNaN(cat) && categoryValues[cat] && categoryValues[cat][gsdValue]) {
+                    return categoryValues[cat][gsdValue];
+                }
+                return 0;
+            };
+
+            const getTechStat = (id) => {
+                if (!techStats[id]) {
+                    techStats[id] = createNewTechStat();
+                    techStats[id].id = id;
+                }
+                return techStats[id];
+            };
+
+            for (const row of dataRows) {
+                const cols = row.split('\t').map(c => c.trim());
+                const rowData = {};
+                headers.forEach((header, i) => {
+                    rowData[header] = cols[i];
+                });
+
+                const techId = rowData['tech_id'];
+                if (!techId) continue;
+                const techStat = getTechStat(techId);
+
+                const taskType = rowData['tasktype'];
+                const taskResult = rowData['task_result'];
+
+                let fixCategories = [];
+                let fixPoints = 0;
+
+                if (taskType === 'Fix') {
+                    techStat.fixTasks++;
+                    let hasMissedCategories = false;
+                    let hasApprovedCategories = false;
+
+                    let currentFixPoints = getPointsForCategory(rowData['category']);
+                    fixCategories.push(rowData['category']);
+
+                    const checkMissAndPoints = (catKey, labelKey, pointsAcc) => {
+                        const category = rowData[catKey];
+                        const label = rowData[labelKey];
+                        if (category) {
+                            if (label && label.includes('M')) {
+                                hasMissedCategories = true;
+                                techStat.missedCategories.push({
+                                    id: rowData['task_id'],
+                                    category: category,
+                                    fromTech: techId
+                                });
+                            } else {
+                                pointsAcc += getPointsForCategory(category);
+                                fixCategories.push(category);
+                            }
+                        }
+                        return pointsAcc;
+                    };
+                    
+                    const checkApprovedAndPoints = (catKey, statKey, pointsAcc) => {
+                        const category = rowData[catKey];
+                        const status = rowData[statKey];
+                        if (category && status === 'AA') {
+                            hasApprovedCategories = true;
+                            pointsAcc += getPointsForCategory(category);
+                            techStat.approvedByRQA.push({
+                                id: rowData['task_id'],
+                                category: category,
+                                tech: techId
+                            });
+                            fixCategories.push(category);
+                            techStat.approvedByRQACategoryCounts[category]++;
+                        }
+                        return pointsAcc;
+                    };
+
+                    currentFixPoints = checkMissAndPoints('rv1_cat', 'rv1_label', currentFixPoints);
+                    currentFixPoints = checkMissAndPoints('rv2_cat', 'rv2_label', currentFixPoints);
+                    currentFixPoints = checkApprovedAndPoints('afp1_cat', 'afp1_stat', currentFixPoints);
+                    currentFixPoints = checkApprovedAndPoints('afp2_cat', 'afp2_stat', currentFixPoints);
+
+                    if (isIRProject) {
+                        currentFixPoints = currentFixPoints * irModifierValue;
+                    }
+
+                    techStat.points += currentFixPoints;
+                    techStat.pointsBreakdown.fix += currentFixPoints;
+                    fixPoints = currentFixPoints;
+                    
+                    for (const cat of fixCategories) {
+                        const catNum = parseInt(cat, 10);
+                        if (!isNaN(catNum)) {
+                            techStat.categoryCounts[catNum]++;
+                        }
+                    }
+
+                    const refixTechId = rowData['refix_tech_id'];
+                    const warningTechId = rowData['warning_tech_id'];
+
+                    if (taskResult === 'Refix') {
+                        techStat.refixTasks++;
+                    }
+
+                    if (refixTechId) {
+                        const refixTechStat = getTechStat(refixTechId);
+                        refixTechStat.refixDetails.push({
+                            id: rowData['task_id'],
+                            tech: techId
+                        });
+                    }
+
+                    if (warningTechId && warningTechId !== techId) {
+                        techStat.warnings.push({
+                            id: rowData['task_id'],
+                            tech: techId,
+                            warningTech: warningTechId
+                        });
+                    }
+
+                } else if (taskType === 'QC') {
+                    const qcTechId = rowData['qc_tech_id'];
+                    if (qcTechId) {
+                        const qcTechStat = getTechStat(qcTechId);
+                        const qcPointsEarned = qcPoints[gsdValue] || 0;
+                        qcTechStat.points += qcPointsEarned;
+                        qcTechStat.pointsBreakdown.qc += qcPointsEarned;
+                    }
+                } else if (taskType === 'i3qa') {
+                    const i3qaTechId = rowData['i3qa_tech_id'];
+                    if (i3qaTechId) {
+                        const i3qaTechStat = getTechStat(i3qaTechId);
+                        const i3qaPointsEarned = i3qaPoints[gsdValue] || 0;
+                        i3qaTechStat.points += i3qaPointsEarned;
+                        i3qaTechStat.pointsBreakdown.i3qa += i3qaPointsEarned;
+                    }
+                } else if (taskType === 'RV') {
+                    const rvTechId = rowData['rv_tech_id'];
+                    if (rvTechId) {
+                        const rvTechStat = getTechStat(rvTechId);
+                        const rvPointsEarned = rvPoints[gsdValue] || 0;
+                        rvTechStat.points += rvPointsEarned;
+                        rvTechStat.pointsBreakdown.rv += rvPointsEarned;
+                    }
+                }
+
+                if (rowData['rv1_label'] && rowData['rv1_label'].includes('M')) {
+                    const missedCat = rowData['rv1_cat'];
+                    const originalTech = rowData['tech_id'];
+                    const originalTechStat = getTechStat(originalTech);
+                    const pointsToCredit = getPointsForCategory(missedCat);
+                    originalTechStat.points += pointsToCredit;
+                    originalTechStat.pointsBreakdown.fix += pointsToCredit;
+                }
+                if (rowData['rv2_label'] && rowData['rv2_label'].includes('M')) {
+                    const missedCat = rowData['rv2_cat'];
+                    const originalTech = rowData['tech_id'];
+                    const originalTechStat = getTechStat(originalTech);
+                    const pointsToCredit = getPointsForCategory(missedCat);
+                    originalTechStat.points += pointsToCredit;
+                    originalTechStat.pointsBreakdown.fix += pointsToCredit;
+                }
+            }
+
+            for (const techId in techStats) {
+                const stat = techStats[techId];
+                const totalFixAndRefix = stat.fixTasks + stat.refixTasks;
+                const totalQualityDenom = totalFixAndRefix + stat.warnings.length;
+                
+                stat.fixQuality = (totalQualityDenom > 0) ? (stat.fixTasks / totalQualityDenom) * 100 : 0;
+                
+                const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
+                const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier || 0;
+                
+                stat.totalBonus = stat.points * bonusMultiplier * bonusEarnedMultiplier;
+            }
+
+            currentTechStats = techStats;
+            return techStats;
+        }
+        
+        // --- UI MANIPULATION FUNCTIONS ---
+        function displayResults(techStats, usedMultiplier, isCombinedCalc) {
+            lastUsedBonusMultiplier = usedMultiplier;
+            lastCalculationUsedMultiplier = usedMultiplier !== 1;
+            document.getElementById('tech-results-container').classList.add('visible');
+            const tbody = document.getElementById('tech-results-body');
+            const thead = document.getElementById('results-thead');
+            tbody.innerHTML = '';
+            
+            const projectsHeader = isCombinedCalc ? `<th class="px-4 py-2 text-left font-medium text-gray-300">Projects</th>` : '';
+            const techHeader = `
+                <tr>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Tech ID</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Team</th>
+                    ${projectsHeader}
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Total Points</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Fix Tasks</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Refix Tasks</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Warnings</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Fix Quality %</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Bonus Earned %</th>
+                    <th class="px-4 py-2 text-left font-medium text-gray-300">Final Payout (PHP)</th>
+                </tr>
+            `;
+            thead.innerHTML = techHeader;
+            
+            const sortedTechIds = Object.keys(techStats).sort((a, b) => {
+                const statA = techStats[a];
+                const statB = techStats[b];
+                return statB.totalBonus - statA.totalBonus;
+            });
+            
+            const getTeamName = (techId) => {
+                for (const team in teamSettings) {
+                    if (teamSettings[team].includes(techId)) {
+                        return team;
+                    }
+                }
+                return 'N/A';
+            };
+
+            const summaryEl = document.getElementById('results-summary');
+            let totalProjects = isCombinedCalc ? new Set() : new Set();
+            let totalPoints = 0;
+            let totalFixTasks = 0;
+            let totalRefixTasks = 0;
+            let totalWarnings = 0;
+
+            sortedTechIds.forEach(techId => {
+                const stat = techStats[techId];
+                if (stat.projectIds) {
+                    stat.projectIds.forEach(id => totalProjects.add(id));
+                } else {
+                    totalProjects.add(document.getElementById('project-select').value);
+                }
+                totalPoints += stat.points;
+                totalFixTasks += stat.fixTasks;
+                totalRefixTasks += stat.refixTasks;
+                totalWarnings += stat.warnings.length;
+                
+                const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier * 100 || 0;
+
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-gray-700/50', 'transition-colors');
+                row.innerHTML = `
+                    <td class="px-4 py-2 font-bold">${techId}</td>
+                    <td class="px-4 py-2 text-gray-400">${getTeamName(techId)}</td>
+                    ${isCombinedCalc ? `<td class="px-4 py-2 text-gray-400 text-xs">${stat.projectIds.join(', ')}</td>` : ''}
+                    <td class="px-4 py-2 text-blue-400 font-bold">${stat.points.toFixed(2)}</td>
+                    <td class="px-4 py-2">${stat.fixTasks}</td>
+                    <td class="px-4 py-2">${stat.refixTasks}</td>
+                    <td class="px-4 py-2">${stat.warnings.length}</td>
+                    <td class="px-4 py-2">${stat.fixQuality.toFixed(2)}%</td>
+                    <td class="px-4 py-2 text-yellow-300">${bonusEarnedMultiplier}%</td>
+                    <td class="px-4 py-2 text-green-400 font-bold">₱${stat.totalBonus.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            summaryEl.innerHTML = `
+                <p><strong>Total Projects:</strong> ${totalProjects.size}</p>
+                <p><strong>Total Tasks:</strong> ${totalFixTasks + totalRefixTasks} (Fix: ${totalFixTasks}, Refix: ${totalRefixTasks})</p>
+                <p><strong>Total Warnings:</strong> ${totalWarnings}</p>
+            `;
+            
+            document.getElementById('search-tech-id').addEventListener('input', applyFilters);
+            document.getElementById('team-filter-container').addEventListener('change', applyFilters);
+
+            updateLeaderboard(techStats);
+            updateWorkloadChart(techStats);
+        }
+        
+        function populateProjectSelect() {
+            const select = document.getElementById('project-select');
+            select.innerHTML = '<option value="">Select a project...</option>';
+            projectListCache.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                select.appendChild(option);
+            });
+            document.getElementById('refresh-projects-btn').disabled = false;
+        }
+
+        function populateAdminProjectReorder() {
+            const list = document.getElementById('reorder-list');
+            list.innerHTML = '';
+            projectListCache.forEach(project => {
+                const item = document.createElement('div');
+                item.className = 'project-list-item bg-gray-700 hover:bg-gray-600 transition-colors duration-200';
+                item.textContent = project.name;
+                item.setAttribute('data-id', project.id);
+                list.appendChild(item);
+            });
+            if (!reorderSortable) {
+                reorderSortable = Sortable.create(list, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost'
+                });
+            }
+        }
+
+        function populateAdminTeamManagement() {
+            const container = document.getElementById('team-list-container');
+            container.innerHTML = '';
+            for (const team in teamSettings) {
+                const teamDiv = document.createElement('div');
+                teamDiv.className = 'card p-4 rounded-lg space-y-2';
+                teamDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-gray-100">${team}</h4>
+                        <button class="delete-team-btn text-red-400 hover:text-red-500 transition-colors" data-team="${team}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>
+                        </button>
+                    </div>
+                    <label class="block text-xs text-gray-400">Comma-separated Tech IDs:</label>
+                    <textarea class="team-ids-input w-full p-2 border rounded-lg text-sm bg-gray-700 text-gray-200" rows="3" data-team="${team}">${teamSettings[team].join(', ')}</textarea>
+                `;
+                container.appendChild(teamDiv);
+            }
+        }
+        
+        function populateTeamFilters() {
+            const container = document.getElementById('team-filter-container');
+            const existingRefreshButton = document.getElementById('refresh-teams-btn');
+            container.innerHTML = '';
+            container.appendChild(document.createElement('span')).className = "text-sm font-medium text-gray-300";
+            container.lastChild.textContent = "Filter by Team:";
+            container.appendChild(existingRefreshButton);
+            
+            const allTeams = Object.keys(teamSettings);
+            allTeams.forEach(team => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center';
+                div.innerHTML = `
+                    <input id="team-filter-${team}" type="checkbox" data-team="${team}" class="team-filter-cb h-4 w-4 text-indigo-500 focus:ring-indigo-600 bg-gray-700 border-gray-600 rounded">
+                    <label for="team-filter-${team}" class="ml-2 block text-sm font-medium text-gray-300">${team}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function updateLeaderboard(techStats) {
+            const tbody = document.getElementById('leaderboard-body');
+            const sortSelect = document.getElementById('leaderboard-sort-select');
+            const metricHeader = document.getElementById('leaderboard-metric-header');
+            const sortBy = sortSelect.value;
+            tbody.innerHTML = '';
+
+            const sorted = Object.values(techStats).sort((a, b) => {
+                if (sortBy === 'totalTasks') return b.fixTasks - a.fixTasks;
+                if (sortBy === 'totalPoints') return b.points - a.points;
+                if (sortBy === 'fixQuality') return b.fixQuality - a.fixQuality;
+                return 0;
+            });
+            
+            metricHeader.textContent = sortBy === 'totalTasks' ? 'Total Tasks' : (sortBy === 'totalPoints' ? 'Total Points' : 'Fix Quality %');
+            
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>No data to display...</i></td></tr>`;
+                return;
+            }
+
+            sorted.forEach((stat, index) => {
+                const row = document.createElement('tr');
+                let value;
+                if (sortBy === 'totalTasks') {
+                    value = stat.fixTasks;
+                } else if (sortBy === 'totalPoints') {
+                    value = stat.points.toFixed(2);
+                } else if (sortBy === 'fixQuality') {
+                    value = `${stat.fixQuality.toFixed(2)}%`;
+                }
+
+                row.innerHTML = `
+                    <td class="px-4 py-2">${index + 1}</td>
+                    <td class="px-4 py-2">${stat.id}</td>
+                    <td class="px-4 py-2">${value}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function updateWorkloadChart(techStats) {
+            const container = document.getElementById('workload-chart-container');
+            container.innerHTML = '';
+            
+            const totalTasks = Object.values(techStats).reduce((sum, stat) => sum + stat.fixTasks, 0);
+            if (totalTasks === 0) {
+                 container.innerHTML = `<p class="text-gray-500 italic text-sm text-center">No tasks found for workload chart.</p>`;
+                 return;
+            }
+            
+            const sortedTechs = Object.values(techStats).sort((a, b) => b.fixTasks - a.fixTasks);
+            
+            sortedTechs.forEach(stat => {
+                const percentage = (stat.fixTasks / totalTasks) * 100;
+                const barWrapper = document.createElement('div');
+                barWrapper.className = 'workload-bar-wrapper';
+                barWrapper.innerHTML = `
+                    <div class="workload-label" title="${stat.id}">${stat.id}</div>
+                    <div class="workload-bar">
+                        <div class="workload-bar-inner" style="width: ${percentage.toFixed(2)}%;">
+                            ${stat.fixTasks > 0 ? stat.fixTasks : ''}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(barWrapper);
+            });
+        }
+        
+        function updateProjectProgress(techStats) {
+            const container = document.getElementById('project-progress-content');
+            container.innerHTML = '';
+
+            const statsArray = Object.values(techStats);
+            if (statsArray.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>`;
+                return;
+            }
+
+            const totalFixTasks = statsArray.reduce((sum, stat) => sum + stat.fixTasks, 0);
+            const totalRefixTasks = statsArray.reduce((sum, stat) => sum + stat.refixTasks, 0);
+            const totalWarnings = statsArray.reduce((sum, stat) => sum + stat.warnings.length, 0);
+            const totalTasks = totalFixTasks + totalRefixTasks;
+
+            const totalFixQuality = (totalFixTasks / (totalTasks + totalWarnings)) * 100;
+
+            container.innerHTML = `
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-300">Total Fix Tasks: <span class="text-white">${totalFixTasks}</span></p>
+                    <p class="text-sm font-medium text-gray-300">Total Refix Tasks: <span class="text-white">${totalRefixTasks}</span></p>
+                    <p class="text-sm font-medium text-gray-300">Total Warnings: <span class="text-white">${totalWarnings}</span></p>
+                </div>
+                <div class="mt-4">
+                    <p class="text-sm font-medium text-gray-300 mb-2">Overall Project Quality: <span class="font-bold text-lg text-green-400">${totalFixQuality.toFixed(2)}%</span></p>
+                    <div class="progress-bar h-2.5">
+                        <div class="progress-bar-inner h-full" style="width: ${totalFixQuality.toFixed(2)}%; background-color: #34d399;"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('project-progress-card').classList.add('visible');
+        }
+
+        function updateTlSummary(techStats, isCombinedCalc) {
+            const container = document.getElementById('tl-summary-content');
+            container.innerHTML = '';
+            
+            const tlSummary = {};
+            const allProjects = isCombinedCalc ? [...new Set(Object.values(techStats).flatMap(s => s.projectIds || []))] : [document.getElementById('project-select').value];
+            
+            const getTeamName = (techId) => {
+                for (const team in teamSettings) {
+                    if (teamSettings[team].includes(techId)) {
+                        return team;
+                    }
+                }
+                return null;
+            };
+
+            for (const techId in techStats) {
+                const team = getTeamName(techId);
+                if (team) {
+                    if (!tlSummary[team]) {
+                        tlSummary[team] = {
+                            members: [],
+                            totalPoints: 0,
+                            totalFixTasks: 0,
+                            totalRefixTasks: 0,
+                            totalWarnings: 0,
+                            fixQuality: 0,
+                            totalBonus: 0,
+                            projects: new Set()
+                        };
+                    }
+                    const stat = techStats[techId];
+                    tlSummary[team].members.push(techId);
+                    tlSummary[team].totalPoints += stat.points;
+                    tlSummary[team].totalFixTasks += stat.fixTasks;
+                    tlSummary[team].totalRefixTasks += stat.refixTasks;
+                    tlSummary[team].totalWarnings += stat.warnings.length;
+                    tlSummary[team].totalBonus += stat.totalBonus;
+                    if (stat.projectIds) {
+                         stat.projectIds.forEach(id => tlSummary[team].projects.add(id));
+                    } else {
+                         tlSummary[team].projects.add(allProjects[0]);
+                    }
+                }
+            }
+
+            const sortedTeams = Object.keys(tlSummary).sort((a, b) => tlSummary[b].totalBonus - tlSummary[a].totalBonus);
+
+            if (sortedTeams.length === 0) {
+                 container.innerHTML = `<p class="text-xs text-gray-500 italic">TL Summary will be shown here after calculation.</p>`;
+                 return;
+            }
+
+            sortedTeams.forEach(team => {
+                const teamStats = tlSummary[team];
+                const totalQualityDenom = teamStats.totalFixTasks + teamStats.totalRefixTasks + teamStats.totalWarnings;
+                const teamFixQuality = (totalQualityDenom > 0) ? (teamStats.totalFixTasks / totalQualityDenom) * 100 : 0;
+                
+                const teamDiv = document.createElement('details');
+                teamDiv.className = 'border border-gray-700 rounded-lg p-4 space-y-2';
+                teamDiv.innerHTML = `
+                    <summary class="flex items-center justify-between cursor-pointer font-bold text-gray-200">
+                        <span>${team}</span>
+                        <span class="text-green-400">₱${teamStats.totalBonus.toFixed(2)}</span>
+                    </summary>
+                    <div class="text-sm space-y-2 pl-4 pt-2 border-t border-gray-700">
+                        <p><strong>Total Points:</strong> ${teamStats.totalPoints.toFixed(2)}</p>
+                        <p><strong>Fix Quality:</strong> ${teamFixQuality.toFixed(2)}%</p>
+                        <p><strong>Member Count:</strong> ${teamStats.members.length}</p>
+                        <p><strong>Members:</strong> ${teamStats.members.join(', ')}</p>
+                        <p><strong>Projects:</strong> ${[...teamStats.projects].join(', ')}</p>
+                    </div>
+                `;
+                container.appendChild(teamDiv);
+            });
+            document.getElementById('tl-summary-card').classList.add('visible');
+        }
+        
+        function applyFilters() {
+            const searchInput = document.getElementById('search-tech-id');
+            const filterCheckboxes = document.querySelectorAll('.team-filter-cb');
+            const tableRows = document.querySelectorAll('#tech-results-body tr');
+            
+            const searchValue = searchInput.value.toLowerCase();
+            const selectedTeams = Array.from(filterCheckboxes).filter(cb => cb.checked).map(cb => cb.dataset.team);
+            
+            tableRows.forEach(row => {
+                const techId = row.querySelector('td:first-child').textContent.toLowerCase();
+                const team = row.querySelector('td:nth-child(2)').textContent;
+                
+                const searchMatch = techId.includes(searchValue);
+                const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(team);
+                
+                if (searchMatch && teamMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        function showNotification(message) {
+            const notification = document.getElementById('update-notification');
+            notification.textContent = message;
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('opacity-0', 'translate-y-2');
+                notification.classList.remove('translate-y-0');
+                setTimeout(() => notification.classList.add('hidden'), 500);
+            }, 3000);
+            notification.classList.remove('opacity-0', 'translate-y-2');
+            notification.classList.add('translate-y-0');
+        }
+        
+        function showModal(key) {
+            const modalOverlay = document.getElementById('info-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+
+            const info = calculationInfo[key];
+            if (info) {
+                modalTitle.textContent = info.title;
+                modalBody.innerHTML = info.body;
+                modalOverlay.classList.remove('hidden');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('info-modal').classList.add('hidden');
+        }
+        
+        function closeTeamManagementModal() {
+            document.getElementById('team-management-modal').classList.add('hidden');
+        }
+        
+        function openTeamManagementModal() {
+            populateAdminTeamManagement();
+            document.getElementById('team-management-modal').classList.remove('hidden');
+        }
+        
+        function closeReorderModal() {
+            if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; }
+            document.getElementById('reorder-modal').classList.add('hidden');
+        }
+
+        async function saveReorderModal() {
+            if (!reorderSortable) return;
+            const newOrderIds = reorderSortable.toArray();
+            try {
+                const projects = await getAllFromDB('projects');
+                const projectMap = new Map(projects.map(p => [p.id, p]));
+                const reorderedList = newOrderIds.map((id, index) => {
+                    const project = projectMap.get(id);
+                    if (project) {
+                        project.projectOrder = index;
+                        return project;
+                    }
+                }).filter(Boolean);
+                
+                const tx = db.transaction(['projects'], 'readwrite');
+                const store = tx.objectStore('projects');
+                await Promise.all(reorderedList.map(project => putToDB('projects', project)));
+                
+                alert("Project order saved!");
+                await fetchProjectListSummary();
+                closeReorderModal();
+            } catch (err) {
+                console.error("Failed to save reorder:", err);
+                alert("Error saving order.");
+            }
+        }
+
+        function setupEventListeners() {
+            const howItWorksBtn = document.getElementById('how-it-works-btn');
+            const manageTeamsBtn = document.getElementById('manage-teams-btn');
+            const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
+            const projectSelect = document.getElementById('project-select');
+            const deleteProjectBtn = document.getElementById('delete-project-btn');
+            const calculateCurrentBtn = document.getElementById('calculateCurrentBtn');
+            const calculatePastedDataBtn = document.getElementById('calculatePastedDataBtn');
+            const saveProjectBtn = document.getElementById('save-project-btn');
+            const customizeCalcAllCb = document.getElementById('customize-calc-all-cb');
+            const calculateAllBtn = document.getElementById('calculate-all-btn');
+            const leaderboardSortSelect = document.getElementById('leaderboard-sort-select');
+            const reorderProjectsBtn = document.getElementById('reorder-projects-btn');
+            const reorderSaveBtn = document.getElementById('reorder-save-btn');
+            const reorderCancelBtn = document.getElementById('reorder-cancel-btn');
+            const closeTeamsModalBtn = document.getElementById('close-teams-modal-btn');
+            const addTeamBtn = document.getElementById('add-team-btn');
+            const saveTeamsBtn = document.getElementById('save-teams-btn');
+            const dropZone = document.getElementById('drop-zone');
+            const techDataTextarea = document.getElementById('techData');
+
+            howItWorksBtn.addEventListener('click', () => showModal('howItWorks'));
+            document.getElementById('modal-close').addEventListener('click', closeModal);
+
+            document.querySelectorAll('.info-icon').forEach(icon => {
+                icon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showModal(icon.dataset.key);
+                });
+            });
+
+            manageTeamsBtn.addEventListener('click', openTeamManagementModal);
+            closeTeamsModalBtn.addEventListener('click', closeTeamManagementModal);
+            
+            reorderProjectsBtn.addEventListener('click', () => {
+                populateAdminProjectReorder();
+                document.getElementById('reorder-modal').classList.remove('hidden');
+            });
+            reorderSaveBtn.addEventListener('click', saveReorderModal);
+            reorderCancelBtn.addEventListener('click', closeReorderModal);
+
+            addTeamBtn.addEventListener('click', () => {
+                const newTeamName = document.getElementById('new-team-name').value.trim();
+                if (newTeamName && !teamSettings[newTeamName]) {
+                    teamSettings[newTeamName] = [];
+                    populateAdminTeamManagement();
+                    document.getElementById('new-team-name').value = '';
+                }
+            });
+
+            document.getElementById('team-list-container').addEventListener('click', (e) => {
+                if (e.target.closest('.delete-team-btn')) {
+                    const team = e.target.closest('.delete-team-btn').dataset.team;
+                    if (window.confirm(`Are you sure you want to delete the team "${team}"?`)) {
+                        delete teamSettings[team];
+                        populateAdminTeamManagement();
+                    }
+                }
+            });
+
+            saveTeamsBtn.addEventListener('click', () => {
+                const newSettings = {};
+                document.querySelectorAll('.team-ids-input').forEach(input => {
+                    const teamName = input.dataset.team;
+                    const ids = input.value.split(',').map(id => id.trim()).filter(id => id !== '');
+                    newSettings[teamName] = ids;
+                });
+                saveTeamSettings(newSettings);
+            });
+            
+            refreshProjectsBtn.addEventListener('click', fetchProjectListSummary);
+
+            projectSelect.addEventListener('change', async (e) => {
+                const projectId = e.target.value;
+                if (projectId) {
+                    const projectData = await fetchFullProjectData(projectId);
+                    if (projectData) {
+                        techDataTextarea.value = projectData.rawData;
+                        techDataTextarea.readOnly = true;
+                        document.getElementById('project-name').value = projectData.name;
+                        document.getElementById('project-name').readOnly = true;
+                        document.getElementById('is-ir-project-checkbox').checked = projectData.isIRProject;
+                        document.getElementById('is-ir-project-checkbox').disabled = true;
+                        document.getElementById('gsd-value-select').value = projectData.gsdValue;
+                        document.getElementById('gsd-value-select').disabled = true;
+                        document.getElementById('edit-data-btn').classList.remove('hidden');
+                        document.getElementById('save-project-btn').disabled = true;
+                        isEditMode = true;
+                    }
+                } else {
+                    techDataTextarea.value = '';
+                    techDataTextarea.readOnly = false;
+                    document.getElementById('project-name').value = '';
+                    document.getElementById('project-name').readOnly = false;
+                    document.getElementById('is-ir-project-checkbox').checked = false;
+                    document.getElementById('is-ir-project-checkbox').disabled = false;
+                    document.getElementById('gsd-value-select').value = '3in';
+                    document.getElementById('gsd-value-select').disabled = false;
+                    document.getElementById('edit-data-btn').classList.add('hidden');
+                    document.getElementById('save-project-btn').disabled = false;
+                    isEditMode = false;
+                }
+            });
+
+            deleteProjectBtn.addEventListener('click', async () => {
+                const projectId = projectSelect.value;
+                if (projectId) {
+                    await deleteProjectFromIndexedDB(projectId);
+                }
+            });
+
+            document.getElementById('edit-data-btn').addEventListener('click', () => {
+                techDataTextarea.readOnly = false;
+                document.getElementById('project-name').readOnly = false;
+                document.getElementById('is-ir-project-checkbox').disabled = false;
+                document.getElementById('gsd-value-select').disabled = false;
+                document.getElementById('edit-data-btn').classList.add('hidden');
+                document.getElementById('save-project-btn').disabled = false;
+                isEditMode = false;
+            });
+
+            calculateCurrentBtn.addEventListener('click', async () => {
+                const projectId = projectSelect.value;
+                if (projectId) {
+                    const projectData = await fetchFullProjectData(projectId);
+                    if (projectData) {
+                         const techStats = await calculateBonuses(projectData.rawData, projectData.isIRProject, projectData.gsdValue);
+                         displayResults(techStats, lastUsedBonusMultiplier, false);
+                         updateProjectProgress(techStats);
+                         updateTlSummary(techStats, false);
+                         document.getElementById('results-title').textContent = `Bonus Results for: ${projectData.name}`;
+                    } else {
+                        alert("Please select a project first.");
+                    }
+                } else {
+                    alert("Please select a project first.");
+                }
+            });
+
+            calculatePastedDataBtn.addEventListener('click', async () => {
+                const techData = techDataTextarea.value.trim();
+                const isIR = document.getElementById('is-ir-project-checkbox').checked;
+                const gsdVal = document.getElementById('gsd-value-select').value;
+                if (techData) {
+                     const techStats = await calculateBonuses(techData, isIR, gsdVal);
+                     displayResults(techStats, lastUsedBonusMultiplier, false);
+                     updateProjectProgress(techStats);
+                     updateTlSummary(techStats, false);
+                     document.getElementById('results-title').textContent = `Bonus Results for: Pasted Data`;
+                } else {
+                    alert("Please paste data into the text box first.");
+                }
+            });
+            
+            saveProjectBtn.addEventListener('click', async () => {
+                 const projectName = document.getElementById('project-name').value.trim();
+                 const techData = techDataTextarea.value.trim();
+                 if (!projectName || !techData) {
+                     alert("Please provide both a project name and project data.");
+                     return;
+                 }
+                 const projectId = projectName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
+                 const isIR = document.getElementById('is-ir-project-checkbox').checked;
+                 const gsdVal = document.getElementById('gsd-value-select').value;
+                 const projectData = {
+                    id: projectId,
+                    name: projectName,
+                    rawData: techData,
+                    isIRProject: isIR,
+                    gsdValue: gsdVal
+                 };
+                 await saveProjectToIndexedDB(projectData);
+                 document.getElementById('project-select').value = projectData.id;
+                 document.getElementById('project-select').dispatchEvent(new Event('change'));
+            });
+
+            calculateAllBtn.addEventListener('click', async () => {
+                const selectedProjectIds = Array.from(document.querySelectorAll('#project-select option:checked')).map(opt => opt.value);
+                let projectsToCalculate = [];
+                if (customizeCalcAllCb.checked) {
+                     if (selectedProjectIds.length === 0) {
+                        alert("Please select projects from the list to calculate.");
+                        return;
+                    }
+                    projectsToCalculate = await Promise.all(selectedProjectIds.map(id => fetchFullProjectData(id)));
+                } else {
+                     projectsToCalculate = await Promise.all(projectListCache.map(p => fetchFullProjectData(p.id)));
+                }
+
+                if (projectsToCalculate.length === 0) {
+                     alert("No projects to calculate.");
+                     return;
+                }
+
+                const combinedTechStats = {};
+                for (const project of projectsToCalculate) {
+                    if (!project) continue;
+                    const projectTechStats = await calculateBonuses(project.rawData, project.isIRProject, project.gsdValue);
+                    
+                    for (const techId in projectTechStats) {
+                        const stat = projectTechStats[techId];
+                        if (!combinedTechStats[techId]) {
+                            combinedTechStats[techId] = createNewTechStat();
+                            combinedTechStats[techId].id = techId;
+                            combinedTechStats[techId].projectIds = [];
+                        }
+                        combinedTechStats[techId].points += stat.points;
+                        combinedTechStats[techId].fixTasks += stat.fixTasks;
+                        combinedTechStats[techId].refixTasks += stat.refixTasks;
+                        combinedTechStats[techId].warnings = combinedTechStats[techId].warnings.concat(stat.warnings);
+                        combinedTechStats[techId].refixDetails = combinedTechStats[techId].refixDetails.concat(stat.refixDetails);
+                        combinedTechStats[techId].missedCategories = combinedTechStats[techId].missedCategories.concat(stat.missedCategories);
+                        combinedTechStats[techId].approvedByRQA = combinedTechStats[techId].approvedByRQA.concat(stat.approvedByRQA);
+                        combinedTechStats[techId].projectIds.push(project.name);
+                        
+                        for (const key in stat.pointsBreakdown) {
+                            combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
+                        }
+                    }
+                }
+
+                // Finalize stats for combined results
+                for (const techId in combinedTechStats) {
+                    const stat = combinedTechStats[techId];
+                    const totalFixAndRefix = stat.fixTasks + stat.refixTasks;
+                    const totalQualityDenom = totalFixAndRefix + stat.warnings.length;
+                    stat.fixQuality = (totalQualityDenom > 0) ? (stat.fixTasks / totalQualityDenom) * 100 : 0;
+                    
+                    const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
+                    const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier || 0;
+                    stat.totalBonus = stat.points * bonusMultiplier * bonusEarnedMultiplier;
+                }
+                
+                displayResults(combinedTechStats, lastUsedBonusMultiplier, true);
+                updateProjectProgress(combinedTechStats);
+                updateTlSummary(combinedTechStats, true);
+                document.getElementById('results-title').textContent = `Bonus Results for: All Projects`;
+            });
+            
+            customizeCalcAllCb.addEventListener('change', (e) => {
+                const selectEl = document.getElementById('project-select');
+                if (e.target.checked) {
+                    selectEl.setAttribute('multiple', true);
+                    selectEl.size = 10;
+                } else {
+                    selectEl.removeAttribute('multiple');
+                    selectEl.size = 1;
+                }
+            });
+
+            leaderboardSortSelect.addEventListener('change', () => updateLeaderboard(currentTechStats));
+        }
+
+        async function main() {
+            document.getElementById('db-status').textContent = 'Connecting to database...';
+            try {
+                await openDB();
+                document.getElementById('db-status').textContent = 'Database connected successfully.';
+                setupEventListeners();
+                await Promise.all([
+                    fetchProjectListSummary(),
+                    loadTeamSettings()
+                ]);
+            } catch (e) {
+                document.getElementById('db-status').textContent = 'Failed to connect to local database. Please check your browser settings.';
+                console.error(e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', main);
+    </script>
 </body>
 </html>
