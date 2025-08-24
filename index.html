@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team63 Advanced Bonus Calculator (IndexedDB)</title>
+    <title>PCS Advanced Bonus Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -192,6 +192,15 @@
             font-size: 0.625rem; /* 10px */
             line-height: 0.75rem; /* leading-3 */
         }
+        /* Code block style for documentation */
+        .code-block {
+            background-color: #111827;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+            border: 1px solid #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-300">
@@ -204,7 +213,7 @@
         <div class="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
             <div class="p-6 md:p-8 bg-gray-900/50 text-white flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-white">Team63 Advanced Bonus Calculator</h1>
+                    <h1 class="text-2xl md:text-3xl font-bold text-white">PCS Advanced Bonus Calculator</h1>
                     <p class="mt-2 text-gray-400">Save, load, and calculate bonuses for multiple projects locally.</p>
                 </div>
                  <div class="flex gap-4">
@@ -214,6 +223,12 @@
             </div>
             
             <div class="px-6 md:px-8 pt-6">
+                 <div class="card p-4 rounded-xl mb-6 bg-gray-900/30 border-gray-700/80">
+                    <h3 class="text-base font-semibold text-gray-200 mb-2">Important Information</h3>
+                    <p class="text-xs text-gray-400 mb-2"><strong class="text-gray-300">Calculation Logic:</strong> This calculator is based on the formulas and tables provided in the "Phili IC Fixpoints App Documentation v1.0." The logic employed in all calculations is designed to be transparent and accurate according to this official documentation.</p>
+                    <p class="text-xs text-gray-400"><strong class="text-gray-300">Disclaimer and Intended Use:</strong> This tool is intended for personal and informational purposes only. The results generated are estimates and should be used as a general guideline. These figures are not a guarantee of actual compensation and may differ from official salary offers or personal expectations.</p>
+                </div>
+
                 <div class="border-t border-gray-700 pt-6">
                     <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Local Database Status</h2>
                     <p id="db-status" class="text-sm text-gray-400 mb-4">Initializing database...</p>
@@ -391,7 +406,6 @@
                  </div>
             </div>
         </div>
-        <p class="text-center text-xs text-gray-500 mt-4 px-4">Disclaimer: This calculator is based on the formulas and tables in the "Phili IC Fixpoints App Documentation v1.0".</p>
     </div>
 
     <div id="team-management-modal" class="modal-overlay hidden">
@@ -461,125 +475,107 @@
         const irModifierValue = 1.5;
         const calculationInfo = {
             howItWorks: {
-                title: 'How It Works & How to Use',
-                body: `<div class="space-y-6 text-sm">
-                        <div>
-                            <h4 class="text-lg font-bold text-gray-100 mb-2">How to Use This Site</h4>
-                            <ol class="list-decimal list-inside space-y-2">
-                                <li><strong>Local Storage:</strong> All data is stored locally in your browser using IndexedDB. It won't be shared with anyone else, and you can use the app offline.</li>
-                                <li><strong>Load Projects:</strong> Click the "Refresh Projects" button (the circular arrow) to load the projects saved in your browser.</li>
-                                <li><strong>Filtering:</strong> Use the search bar and the team checkboxes to filter the results table.</li>
-                                <li><strong>Multi-Select:</strong> Check the "Select specific projects to calculate" box to choose several projects at once for a combined calculation.</li>
-                                <li><strong>Manage Teams:</strong> Click "Manage Teams" to define your own teams. This information is also stored locally.</li>
-                            </ol>
+                title: 'How It Works: A Complete Guide',
+                body: `<div class="space-y-4 text-sm">
+                    <p>This guide provides a comprehensive overview of the calculator's functions and the logic behind its calculations. All data you use is stored privately and securely in your own browser.</p>
+                    
+                    <details class="bg-gray-900/50 p-3 rounded-lg border border-gray-700" open>
+                        <summary class="font-semibold text-base text-gray-100 cursor-pointer">How to Use This Site</summary>
+                        <div class="mt-3 pt-3 border-t border-gray-600 space-y-4">
+                            <div>
+                                <h4 class="font-bold text-gray-200">1. Adding and Managing Project Data</h4>
+                                <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
+                                    <li><strong class="text-gray-300">Enter Data:</strong> Paste your tab-separated data into the main text area under "Project Data Entry". You can also drag-and-drop all shapefile components (.shp, .dbf, .shx, etc.) into this area to automatically extract and paste the attribute data.</li>
+                                    <li><strong class="text-gray-300">Set Project Options:</strong>
+                                        <ul class="list-['-_'] list-inside ml-4">
+                                            <li>Check <span class="font-semibold text-yellow-300">Mark Project as IR</span> if it's an IR project to apply a 1.5x multiplier to Fix Tasks.</li>
+                                            <li>Select the correct <span class="font-semibold text-gray-300">GSD Point Value</span> to ensure accurate point calculation for Fix Task categories.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong class="text-gray-300">Save Project:</strong> Enter a unique name in the "Enter Project Name" field and click <strong class="text-indigo-400">Save Project</strong>. The data is compressed and saved locally in your browser.</li>
+                                    <li><strong class="text-gray-300">Load Project:</strong> Click the <strong class="text-blue-400">Refresh</strong> button (circular arrow) to load all saved projects into the dropdown menu. Select a project to view its data.</li>
+                                     <li><strong class="text-gray-300">Edit/Delete:</strong> Once a project is loaded, you can click the <strong class="text-gray-400">Edit</strong> icon to modify its data or the <strong class="text-red-400">Trash</strong> icon to delete it permanently.</li>
+                                </ul>
+                            </div>
+                             <div>
+                                <h4 class="font-bold text-gray-200">2. Calculating Bonuses</h4>
+                                <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
+                                    <li><strong class="text-gray-300">Single Project:</strong> Load a project from the dropdown and click <strong class="text-blue-400">Calculate Selected Project</strong>.</li>
+                                    <li><strong class="text-gray-300">Pasted Data:</strong> If you don't want to save the data, simply paste it, set the options, and click <strong class="text-purple-400">Calculate Pasted Data</strong>.</li>
+                                    <li><strong class="text-gray-300">Multiple Projects:</strong> Check the "Select specific projects" box, hold Ctrl/Cmd and click to select multiple projects from the list, then click <strong class="text-green-400">Calculate All Projects</strong>. To calculate every saved project, simply leave the box unchecked and click the same button.</li>
+                                    <li><strong class="text-gray-300">Bonus Multiplier:</strong> Enter a value in the "Bonus Multiplier (PHP)" field to apply a multiplier to the final payout for all technicians. For example, 1.1 means a 10% bonus.</li>
+                                </ul>
+                            </div>
+                             <div>
+                                <h4 class="font-bold text-gray-200">3. Viewing Results & Metrics</h4>
+                                <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
+                                    <li><strong class="text-gray-300">Results Table:</strong> After calculation, a detailed table appears. Use the search bar or team checkboxes to filter the results.</li>
+                                    <li><strong class="text-gray-300">Detailed View:</strong> Click the info icon next to any Tech ID in the results table to see a detailed modal with their specific stats, point breakdown, and quality calculation.</li>
+                                    <li><strong class="text-gray-300">Performance Metrics:</strong> The card on the left updates with a <strong class="text-gray-300">Leaderboard</strong> (sortable by tasks, points, or quality) and a <strong class="text-gray-300">Workload Distribution</strong> chart.</li>
+                                    <li><strong class="text-gray-300">Project/TL Summary:</strong> Cards will appear below the data entry section showing overall project quality and a summary for Team Leaders.</li>
+                                </ul>
+                            </div>
                         </div>
-                        <hr class="border-gray-600">
-                        <div>
-                            <h4 class="text-lg font-bold text-gray-100 mb-2">How The Calculation Works</h4>
-                            <p>The calculation logic is based on the data from the selected project(s) and follows the "Phili IC Fixpoints App Documentation v1.0".</p>
-
-                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Primary Fix Category Counts</h5>
-                            <p>This is a count of all categories handled by a technician. It is calculated by checking the following columns in your raw data:</p>
-                            <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
-                                <li><code>category</code></li>
-                                <li><code>rv1_cat</code></li>
-                                <li><code>rv2_cat</code></li>
-                                <li><code>afp1_cat</code> (only if <code>afp1_stat</code> is "AA")</li>
-                                <li><code>afp2_cat</code> (only if <code>afp2_stat</code> is "AA")</li>
-                            </ul>
-
-                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Points from Fix Tasks Calculation</h5>
-                            <p>This is the sum of points a technician earns from all fix-related tasks. Points are calculated based on the categories found in these columns:</p>
-                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
-                                <li><code>category</code>, <code>rv1_cat</code>, <code>rv2_cat</code> (These are always included for the main technician)</li>
-                                <li><code>afp1_cat</code>, <code>afp2_cat</code> (Points are only added if the corresponding <code>_stat</code> column is "AA" - Approved by RQA)</li>
-                                <li><code>rv1_cat</code>, <code>rv2_cat</code>, etc. (Points are also added if the corresponding <code>_label</code> column contains an "M" for Miss, credited to the technician who performed that fix)</li>
-                            </ul>
-                            
-                             <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Other Points</h5>
-                             <p>Points for other task types are calculated as follows:</p>
-                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
-                                <li><strong>QC Tasks:</strong> 5 points per task.</li>
-                                <li><strong>i3qa Tasks:</strong> 5 points per task.</li>
-                                <li><strong>RV Tasks:</strong> 5 points per task.</li>
-                             </ul>
-                             <p class="mt-2">Points are also awarded for missed tasks that are credited back to a technician. For example, if a technician missed a category in a Fix task and it was caught by a QC, the QC tech gets the QC points and the original Fix tech gets the points back for the missed category.</p>
-
-                            <h5 class="text-md font-semibold text-gray-200 mt-4 mb-1">Bonus Calculation</h5>
-                             <p>The total bonus is the sum of all points multiplied by the **Bonus Multiplier** and the **% of Bonus Earned**, which is based on the technician's **Fix Quality %**.</p>
-                             <ul class="list-disc list-inside pl-4 text-xs font-mono bg-gray-900 p-2 rounded-md">
-                                <li><code>Final Bonus = Total Points * Bonus Multiplier * (% of Bonus Earned)</code></li>
-                             </ul>
-                             <p class="mt-2 text-xs text-gray-500 italic">Disclaimer: The specific point values and quality tiers are based on the "Phili IC Fixpoints App Documentation v1.0".</p>
+                    </details>
+                    
+                    <details class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                        <summary class="font-semibold text-base text-gray-100 cursor-pointer">How The Calculation Works</summary>
+                        <div class="mt-3 pt-3 border-t border-gray-600 space-y-4">
+                            <p>The calculation is a four-step process based on the official documentation.</p>
+                             <div>
+                                <h4 class="font-bold text-gray-200">Step 1: Point Calculation</h4>
+                                <p class="text-gray-400">The tool first calculates the <strong class="text-gray-300">Total Points</strong> for each technician by summing up points from different task types:</p>
+                                <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
+                                    <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value. If the project is marked as "IR", the total points for a fix task row are multiplied by 1.5.</li>
+                                    <li><strong class="text-gray-300">QC Tasks:</strong> 1/8 (0.125) points per task.</li>
+                                    <li><strong class="text-gray-300">i3qa Tasks:</strong> 1/12 (~0.083) points per task.</li>
+                                    <li><strong class="text-gray-300">RV Tasks:</strong> Points vary (e.g., 0.2, 0.25, 0.5) based on the review round and whether it's a "combo" task.</li>
+                                </ul>
+                            </div>
+                             <div>
+                                <h4 class="font-bold text-gray-200">Step 2: Fix Quality Percentage</h4>
+                                <p class="text-gray-400">A technician's quality is crucial. It's calculated with the formula:</p>
+                                <div class="code-block my-2 text-gray-300">Fix Quality % = (Fix Tasks / (Fix Tasks + Refix Tasks + Warnings)) * 100</div>
+                                <p class="text-gray-400">A higher percentage indicates better performance.</p>
+                            </div>
+                             <div>
+                                <h4 class="font-bold text-gray-200">Step 3: Bonus Earned Percentage</h4>
+                                <p class="text-gray-400">The <strong class="text-gray-300">Fix Quality %</strong> is used to find the <strong class="text-gray-300">% of Bonus Earned</strong> from a predefined tiered table. For example:</p>
+                                <ul class="list-['-_'] list-inside ml-4 text-gray-400">
+                                    <li>A quality of <strong class="text-green-400">100%</strong> earns <strong class="text-green-400">120%</strong> of the bonus.</li>
+                                    <li>A quality of <strong class="text-yellow-400">95%</strong> earns <strong class="text-yellow-400">100%</strong> of the bonus.</li>
+                                    <li>A quality of <strong class="text-orange-400">82.5%</strong> earns <strong class="text-orange-400">55%</strong> of the bonus.</li>
+                                    <li>A quality below <strong class="text-red-400">77.5%</strong> earns <strong class="text-red-400">0%</strong> of the bonus.</li>
+                                </ul>
+                            </div>
+                             <div>
+                                <h4 class="font-bold text-gray-200">Step 4: Final Payout</h4>
+                                <p class="text-gray-400">The final payout in PHP is calculated by combining all the previous elements:</p>
+                                 <div class="code-block my-2 text-blue-300">Final Payout = Total Points * Bonus Multiplier * % of Bonus Earned</div>
+                            </div>
                         </div>
-                    </div>`
+                    </details>
+                </div>`
             },
-            bonusMultiplier: {
-                title: 'Bonus Multiplier (PHP)',
-                body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>`
-            },
-            totalPoints: {
-                title: 'Total Points Calculation',
-                body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician.</p><p>For Fix tasks, points are derived from a table of category values. The GSD setting can change the points for certain categories. An "IR" project applies a 1.5x multiplier to the sum of all fix categories in a single task row.</p>`
-            },
-            fixQuality: {
-                title: 'Fix Quality % Calculation',
-                body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`
-            },
-            bonusEarned: {
-                title: '% of Bonus Earned Calculation',
-                body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. For example, a quality of 100% earns 120% of the bonus, while 82.5% earns 55%, and so on. Below 77.5%, no bonus is earned.</p>`
-            },
-            totalBonus: {
-                title: 'Final Payout (PHP) Calculation',
-                body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`
-            }
+            bonusMultiplier: { title: 'Bonus Multiplier (PHP)', body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>` },
+            totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician.</p><p>For Fix tasks, points are derived from a table of category values. The GSD setting can change the points for certain categories. An "IR" project applies a 1.5x multiplier to the sum of all fix categories in a single task row.</p>`},
+            fixQuality: { title: 'Fix Quality % Calculation', body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`},
+            bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. For example, a quality of 100% earns 120% of the bonus, while 82.5% earns 55%, and so on. Below 77.5%, no bonus is earned.</p>`},
+            totalBonus: { title: 'Final Payout (PHP) Calculation', body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`}
         };
-
-        // Point tables from documentation
-        const qcPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
-        const i3qaPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
-        const rvPoints = { "3in": 5, "4in": 5, "6in": 5, "9in": 5 };
-        
-        // Quality tiers from documentation
-        const bonusTiers = [
-            { min: 95.1, max: 100, multiplier: 1.2 },
-            { min: 90.1, max: 95, multiplier: 1.1 },
-            { min: 87.6, max: 90, multiplier: 1.0 },
-            { min: 85.1, max: 87.5, multiplier: 0.9 },
-            { min: 82.6, max: 85, multiplier: 0.8 },
-            { min: 80.1, max: 82.5, multiplier: 0.55 },
-            { min: 77.5, max: 80, multiplier: 0.25 },
-            { min: 0, max: 77.4, multiplier: 0 }
-        ];
 
         // --- IndexedDB Helper Functions ---
         async function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('BonusCalculatorDB', 1);
-
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    if (!db.objectStoreNames.contains('projects')) {
-                        db.createObjectStore('projects', { keyPath: 'id' });
-                    }
-                    if (!db.objectStoreNames.contains('teams')) {
-                        db.createObjectStore('teams', { keyPath: 'id' });
-                    }
-                    if (!db.objectStoreNames.contains('settings')) {
-                        db.createObjectStore('settings', { keyPath: 'id' });
-                    }
+                    if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('teams')) db.createObjectStore('teams', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
                 };
-
-                request.onsuccess = (event) => {
-                    db = event.target.result;
-                    resolve(db);
-                };
-
-                request.onerror = (event) => {
-                    console.error("IndexedDB error:", event.target.error);
-                    reject(event.target.error);
-                };
+                request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+                request.onerror = (event) => { console.error("IndexedDB error:", event.target.error); reject(event.target.error); };
             });
         }
         
@@ -626,42 +622,11 @@
         // --- CORE LOGIC FUNCTIONS ---
         function createNewTechStat() {
             return {
-                id: '',
-                points: 0,
-                fixTasks: 0,
-                refixTasks: 0,
-                warnings: [],
-                refixDetails: [],
-                missedCategories: [],
-                approvedByRQA: [],
-                approvedByRQACategoryCounts: {
-                    1: 0,
-                    2: 0,
-                    3: 0,
-                    4: 0,
-                    5: 0,
-                    6: 0,
-                    7: 0,
-                    8: 0,
-                    9: 0
-                },
-                categoryCounts: {
-                    1: 0,
-                    2: 0,
-                    3: 0,
-                    4: 0,
-                    5: 0,
-                    6: 0,
-                    7: 0,
-                    8: 0,
-                    9: 0
-                },
-                pointsBreakdown: {
-                    fix: 0,
-                    qc: 0,
-                    i3qa: 0,
-                    rv: 0
-                }
+                id: '', points: 0, fixTasks: 0, refixTasks: 0, warnings: [],
+                refixDetails: [], missedCategories: [], approvedByRQA: [],
+                approvedByRQACategoryCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
+                categoryCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
+                pointsBreakdown: { fix: 0, qc: 0, i3qa: 0, rv: 0 }
             };
         }
 
@@ -696,17 +661,10 @@
                 const compressed = pako.deflate(dataAsUint8Array);
                 const base64String = btoa(String.fromCharCode.apply(null, compressed));
 
-                const fullDataToSave = {
-                    ...projectData,
-                    rawData: base64String,
-                    projectOrder: Date.now() // Use timestamp for default order
-                };
+                const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: Date.now() };
                 
                 await putToDB('projects', fullDataToSave);
-                
-                // Update project list in settings
                 await fetchProjectListSummary();
-
                 showNotification("Project saved/updated successfully!");
             } catch (err) {
                 console.error("Error saving project:", err);
@@ -717,11 +675,7 @@
         async function fetchProjectListSummary() {
             try {
                 const projects = await getAllFromDB('projects');
-                projectListCache = projects.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    projectOrder: p.projectOrder || 0
-                }));
+                projectListCache = projects.map(p => ({ id: p.id, name: p.name, projectOrder: p.projectOrder || 0 }));
                 projectListCache.sort((a, b) => b.projectOrder - a.projectOrder);
                 populateProjectSelect();
             } catch (err) {
@@ -730,9 +684,7 @@
         }
 
         async function fetchFullProjectData(projectId) {
-            if (fullProjectDataCache[projectId]) {
-                return fullProjectDataCache[projectId];
-            }
+            if (fullProjectDataCache[projectId]) return fullProjectDataCache[projectId];
             try {
                 const data = await getFromDB('projects', projectId);
                 if (data) {
@@ -750,10 +702,7 @@
         }
 
         async function deleteProjectFromIndexedDB(projectId) {
-            if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
-                return;
-            }
-
+            if (!window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) return;
             try {
                 await deleteFromDB('projects', projectId);
                 delete fullProjectDataCache[projectId];
@@ -764,284 +713,245 @@
                 alert("Error deleting project. Check console for details.");
             }
         }
-
-        async function calculateBonuses(techData, isIRProject, gsdValue) {
-            const lines = techData.trim().split('\n');
-            const headers = lines[0].split('\t').map(h => h.trim().toLowerCase());
-            const dataRows = lines.slice(1);
+        
+        // --- FINALIZED CALCULATION LOGIC ---
+        function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Data", gsdForCalculation = "3in") {
             const techStats = {};
+            const lines = data.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 1) return null;
+
+            const headers = lines.shift().split('\t').map(h => h.trim().toLowerCase());
+            const headerMap = {};
+            headers.forEach((h, i) => { headerMap[h] = i; });
             
-            const getPointsForCategory = (category) => {
-                const cat = parseInt(category, 10);
-                if (!isNaN(cat) && categoryValues[cat] && categoryValues[cat][gsdValue]) {
-                    return categoryValues[cat][gsdValue];
+            const summaryStats = { totalRows: 0, comboTasks: 0, totalIncorrect: 0, totalMiss: 0 };
+            const techIdCols = headers.filter(h => h.endsWith('_id'));
+            const warnCols = headers.filter(h => h.startsWith('r') && h.endsWith('_warn'));
+
+            lines.forEach(line => {
+                const values = line.split('\t');
+                const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
+                if (isComboIR) summaryStats.comboTasks++;
+                
+                const allTechsInRow = new Set(techIdCols.map(col => values[headerMap[col]]?.trim()).filter(Boolean));
+                allTechsInRow.forEach(techId => { if (!techStats[techId]) { techStats[techId] = createNewTechStat(); techStats[techId].id = techId; } });
+
+                const fix1_id = values[headerMap['fix1_id']]?.trim();
+                const fix2_id = values[headerMap['fix2_id']]?.trim();
+
+                let totalRowFixPoints_fix1 = 0;
+                let categoriesInThisRow_fix1 = 0;
+                let totalRowFixPoints_fix2 = 0;
+                let categoriesInThisRow_fix2 = 0;
+
+                // Rule 1: 'category' credited to fix1_id
+                if (fix1_id && techStats[fix1_id]) {
+                    const catValue = parseInt(values[headerMap['category']]);
+                    if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                        categoriesInThisRow_fix1++;
+                        totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                        techStats[fix1_id].categoryCounts[catValue]++;
+                    }
                 }
-                return 0;
-            };
-
-            const getTechStat = (id) => {
-                if (!techStats[id]) {
-                    techStats[id] = createNewTechStat();
-                    techStats[id].id = id;
+                
+                // Rule: 'i3qa_cat' credited to fix1_id if 'M' or 'C'
+                if (fix1_id && techStats[fix1_id]) {
+                    const i3qa_label = values[headerMap['i3qa_label']]?.trim().toUpperCase();
+                     if (i3qa_label && (i3qa_label.includes('M') || i3qa_label.includes('C'))) {
+                        const catValue = parseInt(values[headerMap['i3qa_cat']]);
+                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                            categoriesInThisRow_fix1++;
+                            totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[fix1_id].categoryCounts[catValue]++;
+                        }
+                    }
                 }
-                return techStats[id];
-            };
 
-            for (const row of dataRows) {
-                const cols = row.split('\t').map(c => c.trim());
-                const rowData = {};
-                headers.forEach((header, i) => {
-                    rowData[header] = cols[i];
-                });
+                // Rule 2: 'rv1_cat' & 'rv2_cat' credited to fix2_id if 'M'
+                if (fix2_id && techStats[fix2_id]) {
+                    const rv1_label = values[headerMap['rv1_label']]?.trim().toUpperCase();
+                    const rv2_label = values[headerMap['rv2_label']]?.trim().toUpperCase();
+                    if (rv1_label && rv1_label.includes('M')) {
+                        const catValue = parseInt(values[headerMap['rv1_cat']]);
+                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                            categoriesInThisRow_fix2++;
+                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[fix2_id].categoryCounts[catValue]++;
+                        }
+                    }
+                    if (rv2_label && rv2_label.includes('M')) {
+                         const catValue = parseInt(values[headerMap['rv2_cat']]);
+                         if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                            categoriesInThisRow_fix2++;
+                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[fix2_id].categoryCounts[catValue]++;
+                         }
+                    }
+                }
 
-                const techId = rowData['tech_id'];
-                if (!techId) continue;
-                const techStat = getTechStat(techId);
+                // Rule 3: 'afp1_cat' credited to fix1_id if 'AA'
+                if (fix1_id && techStats[fix1_id]) {
+                    const statIndex = headerMap['afp1_stat'], catIndex = headerMap['afp1_cat'];
+                    if (statIndex !== undefined && catIndex !== undefined && values[statIndex]?.trim().toUpperCase() === 'AA') {
+                        const catValue = parseInt(values[catIndex]);
+                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                            categoriesInThisRow_fix1++;
+                            totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[fix1_id].categoryCounts[catValue]++;
+                            techStats[fix1_id].approvedByRQACategoryCounts[catValue]++;
+                            techStats[fix1_id].approvedByRQA.push({ round: 'AFP1', category: catValue, project: currentProjectName });
+                        }
+                    }
+                }
 
-                const taskType = rowData['tasktype'];
-                const taskResult = rowData['task_result'];
-
-                let fixCategories = [];
-                let fixPoints = 0;
-
-                if (taskType === 'Fix') {
-                    techStat.fixTasks++;
-                    let hasMissedCategories = false;
-                    let hasApprovedCategories = false;
-
-                    let currentFixPoints = getPointsForCategory(rowData['category']);
-                    fixCategories.push(rowData['category']);
-
-                    const checkMissAndPoints = (catKey, labelKey, pointsAcc) => {
-                        const category = rowData[catKey];
-                        const label = rowData[labelKey];
-                        if (category) {
-                            if (label && label.includes('M')) {
-                                hasMissedCategories = true;
-                                techStat.missedCategories.push({
-                                    id: rowData['task_id'],
-                                    category: category,
-                                    fromTech: techId
-                                });
-                            } else {
-                                pointsAcc += getPointsForCategory(category);
-                                fixCategories.push(category);
+                // Rule 4: 'afp2_cat' credited to fix2_id if 'AA'
+                if (fix2_id && techStats[fix2_id]) {
+                    const statIndex = headerMap['afp2_stat'], catIndex = headerMap['afp2_cat'];
+                    if (statIndex !== undefined && catIndex !== undefined && values[statIndex]?.trim().toUpperCase() === 'AA') {
+                        const catValue = parseInt(values[catIndex]);
+                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
+                            categoriesInThisRow_fix2++;
+                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[fix2_id].categoryCounts[catValue]++;
+                            techStats[fix2_id].approvedByRQACategoryCounts[catValue]++;
+                            techStats[fix2_id].approvedByRQA.push({ round: 'AFP2', category: catValue, project: currentProjectName });
+                        }
+                    }
+                }
+                
+                // Finalize points for fix1_id
+                if (fix1_id && techStats[fix1_id]) {
+                    techStats[fix1_id].fixTasks += categoriesInThisRow_fix1;
+                    let pointsToAdd = totalRowFixPoints_fix1;
+                    if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= irModifierValue;
+                    techStats[fix1_id].points += pointsToAdd;
+                    techStats[fix1_id].pointsBreakdown.fix += pointsToAdd;
+                }
+                
+                // Finalize points for fix2_id
+                if (fix2_id && techStats[fix2_id]) {
+                    techStats[fix2_id].fixTasks += categoriesInThisRow_fix2;
+                    let pointsToAdd = totalRowFixPoints_fix2;
+                    if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= irModifierValue;
+                    techStats[fix2_id].points += pointsToAdd;
+                    techStats[fix2_id].pointsBreakdown.fix += pointsToAdd;
+                }
+                
+                // Handle other point types (QC, i3qa, RV) and refix/warning counts
+                techIdCols.forEach(colName => {
+                    const techId = values[headerMap[colName]]?.trim();
+                    if (techId && techStats[techId]) {
+                        if (colName.startsWith('fix')) {
+                            const roundMatch = colName.match(/\d+/);
+                            if (roundMatch) {
+                                const round = roundMatch[0];
+                                const rvLabelIndex = headerMap[`rv${round}_label`];
+                                if (rvLabelIndex !== undefined && values[rvLabelIndex]?.trim().toUpperCase().includes('I')) {
+                                    summaryStats.totalIncorrect++;
+                                    const rvCatIndex = headerMap[`rv${round}_cat`];
+                                    const refixCategory = rvCatIndex !== undefined ? values[rvCatIndex]?.trim() : 'N/A';
+                                    techStats[techId].refixTasks++;
+                                    techStats[techId].refixDetails.push({ round: `RV${round}`, project: currentProjectName, category: refixCategory });
+                                }
                             }
-                        }
-                        return pointsAcc;
-                    };
-                    
-                    const checkApprovedAndPoints = (catKey, statKey, pointsAcc) => {
-                        const category = rowData[catKey];
-                        const status = rowData[statKey];
-                        if (category && status === 'AA') {
-                            hasApprovedCategories = true;
-                            pointsAcc += getPointsForCategory(category);
-                            techStat.approvedByRQA.push({
-                                id: rowData['task_id'],
-                                category: category,
-                                tech: techId
-                            });
-                            fixCategories.push(category);
-                            techStat.approvedByRQACategoryCounts[category]++;
-                        }
-                        return pointsAcc;
-                    };
-
-                    currentFixPoints = checkMissAndPoints('rv1_cat', 'rv1_label', currentFixPoints);
-                    currentFixPoints = checkMissAndPoints('rv2_cat', 'rv2_label', currentFixPoints);
-                    currentFixPoints = checkApprovedAndPoints('afp1_cat', 'afp1_stat', currentFixPoints);
-                    currentFixPoints = checkApprovedAndPoints('afp2_cat', 'afp2_stat', currentFixPoints);
-
-                    if (isIRProject) {
-                        currentFixPoints = currentFixPoints * irModifierValue;
-                    }
-
-                    techStat.points += currentFixPoints;
-                    techStat.pointsBreakdown.fix += currentFixPoints;
-                    fixPoints = currentFixPoints;
-                    
-                    for (const cat of fixCategories) {
-                        const catNum = parseInt(cat, 10);
-                        if (!isNaN(catNum)) {
-                            techStat.categoryCounts[catNum]++;
+                        } else if (colName.startsWith('qc')) {
+                            techStats[techId].points += 1 / 8; techStats[techId].pointsBreakdown.qc += 1 / 8;
+                        } else if (colName.startsWith('i3qa')) {
+                            techStats[techId].points += 1 / 12; techStats[techId].pointsBreakdown.i3qa += 1 / 12;
+                        } else if (colName.startsWith('rv')) {
+                            let points = 0;
+                            if (colName === 'rv1_id') points = isComboIR ? 0.25 : 0.2;
+                            else if (colName === 'rv2_id') points = 0.5;
+                            techStats[techId].points += points;
+                            techStats[techId].pointsBreakdown.rv += points;
                         }
                     }
-
-                    const refixTechId = rowData['refix_tech_id'];
-                    const warningTechId = rowData['warning_tech_id'];
-
-                    if (taskResult === 'Refix') {
-                        techStat.refixTasks++;
-                    }
-
-                    if (refixTechId) {
-                        const refixTechStat = getTechStat(refixTechId);
-                        refixTechStat.refixDetails.push({
-                            id: rowData['task_id'],
-                            tech: techId
-                        });
-                    }
-
-                    if (warningTechId && warningTechId !== techId) {
-                        techStat.warnings.push({
-                            id: rowData['task_id'],
-                            tech: techId,
-                            warningTech: warningTechId
-                        });
-                    }
-
-                } else if (taskType === 'QC') {
-                    const qcTechId = rowData['qc_tech_id'];
-                    if (qcTechId) {
-                        const qcTechStat = getTechStat(qcTechId);
-                        const qcPointsEarned = qcPoints[gsdValue] || 0;
-                        qcTechStat.points += qcPointsEarned;
-                        qcTechStat.pointsBreakdown.qc += qcPointsEarned;
-                    }
-                } else if (taskType === 'i3qa') {
-                    const i3qaTechId = rowData['i3qa_tech_id'];
-                    if (i3qaTechId) {
-                        const i3qaTechStat = getTechStat(i3qaTechId);
-                        const i3qaPointsEarned = i3qaPoints[gsdValue] || 0;
-                        i3qaTechStat.points += i3qaPointsEarned;
-                        i3qaTechStat.pointsBreakdown.i3qa += i3qaPointsEarned;
-                    }
-                } else if (taskType === 'RV') {
-                    const rvTechId = rowData['rv_tech_id'];
-                    if (rvTechId) {
-                        const rvTechStat = getTechStat(rvTechId);
-                        const rvPointsEarned = rvPoints[gsdValue] || 0;
-                        rvTechStat.points += rvPointsEarned;
-                        rvTechStat.pointsBreakdown.rv += rvPointsEarned;
-                    }
-                }
-
-                if (rowData['rv1_label'] && rowData['rv1_label'].includes('M')) {
-                    const missedCat = rowData['rv1_cat'];
-                    const originalTech = rowData['tech_id'];
-                    const originalTechStat = getTechStat(originalTech);
-                    const pointsToCredit = getPointsForCategory(missedCat);
-                    originalTechStat.points += pointsToCredit;
-                    originalTechStat.pointsBreakdown.fix += pointsToCredit;
-                }
-                if (rowData['rv2_label'] && rowData['rv2_label'].includes('M')) {
-                    const missedCat = rowData['rv2_cat'];
-                    const originalTech = rowData['tech_id'];
-                    const originalTechStat = getTechStat(originalTech);
-                    const pointsToCredit = getPointsForCategory(missedCat);
-                    originalTechStat.points += pointsToCredit;
-                    originalTechStat.pointsBreakdown.fix += pointsToCredit;
-                }
-            }
-
-            for (const techId in techStats) {
-                const stat = techStats[techId];
-                const totalFixAndRefix = stat.fixTasks + stat.refixTasks;
-                const totalQualityDenom = totalFixAndRefix + stat.warnings.length;
+                });
                 
-                stat.fixQuality = (totalQualityDenom > 0) ? (stat.fixTasks / totalQualityDenom) * 100 : 0;
-                
-                const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
-                const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier || 0;
-                
-                stat.totalBonus = stat.points * bonusMultiplier * bonusEarnedMultiplier;
-            }
-
-            currentTechStats = techStats;
-            return techStats;
+                warnCols.forEach(colName => {
+                    const warnValue = values[headerMap[colName]]?.trim().toUpperCase();
+                    if (warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue)) {
+                        const round = colName.match(/\d+/)[0];
+                        const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
+                        if (fixTechId && techStats[fixTechId]) techStats[fixTechId].warnings.push({ type: warnValue, project: currentProjectName });
+                    }
+                });
+            });
+            return { techStats, summaryStats };
         }
         
+        function calculateQualityModifier(qualityRate) {
+            if (qualityRate >= 100) return 1.20; if (qualityRate >= 99.5) return 1.18; if (qualityRate >= 99) return 1.16;
+            if (qualityRate >= 98.5) return 1.14; if (qualityRate >= 98) return 1.12; if (qualityRate >= 97.5) return 1.10;
+            if (qualityRate >= 97) return 1.08; if (qualityRate >= 96.5) return 1.06; if (qualityRate >= 96) return 1.04;
+            if (qualityRate >= 95.5) return 1.02; if (qualityRate >= 95) return 1.00; if (qualityRate >= 94.5) return 0.99;
+            if (qualityRate >= 94) return 0.98; if (qualityRate >= 93.5) return 0.97; if (qualityRate >= 93) return 0.96;
+            if (qualityRate >= 92.5) return 0.95; if (qualityRate >= 92) return 0.94; if (qualityRate >= 91.5) return 0.93;
+            if (qualityRate >= 91) return 0.91; if (qualityRate >= 90.5) return 0.90; if (qualityRate >= 90) return 0.88;
+            if (qualityRate >= 89.5) return 0.87; if (qualityRate >= 89) return 0.85; if (qualityRate >= 88.5) return 0.83;
+            if (qualityRate >= 88) return 0.80; if (qualityRate >= 87.5) return 0.78; if (qualityRate >= 87) return 0.75;
+            if (qualityRate >= 86.5) return 0.73; if (qualityRate >= 86) return 0.70; if (qualityRate >= 85.5) return 0.68;
+            if (qualityRate >= 85) return 0.66; if (qualityRate >= 84.5) return 0.64; if (qualityRate >= 84) return 0.62;
+            if (qualityRate >= 83.5) return 0.60; if (qualityRate >= 83) return 0.57; if (qualityRate >= 82.5) return 0.55;
+            if (qualityRate >= 82) return 0.50; if (qualityRate >= 81.5) return 0.45; if (qualityRate >= 81) return 0.40;
+            if (qualityRate >= 80.5) return 0.35; if (qualityRate >= 80) return 0.30; if (qualityRate >= 79.5) return 0.25;
+            if (qualityRate >= 79) return 0.20; if (qualityRate >= 78.5) return 0.15; if (qualityRate >= 78) return 0.10;
+            if (qualityRate >= 77.5) return 0.05; return 0;
+        }
+
         // --- UI MANIPULATION FUNCTIONS ---
-        function displayResults(techStats, usedMultiplier, isCombinedCalc) {
-            lastUsedBonusMultiplier = usedMultiplier;
-            lastCalculationUsedMultiplier = usedMultiplier !== 1;
+        function displayResults(techStats) {
+            const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
             document.getElementById('tech-results-container').classList.add('visible');
             const tbody = document.getElementById('tech-results-body');
             const thead = document.getElementById('results-thead');
             tbody.innerHTML = '';
-            
-            const projectsHeader = isCombinedCalc ? `<th class="px-4 py-2 text-left font-medium text-gray-300">Projects</th>` : '';
-            const techHeader = `
+
+            const infoIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.083.082.38-2.29.287-.082-.38.45-.083a.89.89 0 0 1 .352-.176c.24-.11.24-.216.06-.563l-.738-3.468c-.18-.84.48-1.133 1.17-1.133H8l.084.38zM8 5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>`;
+            thead.innerHTML = `
                 <tr>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Tech ID</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Team</th>
-                    ${projectsHeader}
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Total Points</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Fix Tasks</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Refix Tasks</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Warnings</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Fix Quality %</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Bonus Earned %</th>
-                    <th class="px-4 py-2 text-left font-medium text-gray-300">Final Payout (PHP)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tech ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total Points <span class="info-icon" data-key="totalPoints">${infoIconSvg}</span></th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Fix Quality % <span class="info-icon" data-key="fixQuality">${infoIconSvg}</span></th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">% of Bonus Earned <span class="info-icon" data-key="bonusEarned">${infoIconSvg}</span></th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Final Payout (PHP) <span class="info-icon" data-key="totalBonus">${infoIconSvg}</span></th>
                 </tr>
             `;
-            thead.innerHTML = techHeader;
-            
-            const sortedTechIds = Object.keys(techStats).sort((a, b) => {
-                const statA = techStats[a];
-                const statB = techStats[b];
-                return statB.totalBonus - statA.totalBonus;
-            });
-            
-            const getTeamName = (techId) => {
-                for (const team in teamSettings) {
-                    if (teamSettings[team].includes(techId)) {
-                        return team;
-                    }
-                }
-                return 'N/A';
-            };
 
-            const summaryEl = document.getElementById('results-summary');
-            let totalProjects = isCombinedCalc ? new Set() : new Set();
-            let totalPoints = 0;
-            let totalFixTasks = 0;
-            let totalRefixTasks = 0;
-            let totalWarnings = 0;
+            const sortedTechs = Object.values(techStats).sort((a,b) => b.points - a.points);
 
-            sortedTechIds.forEach(techId => {
-                const stat = techStats[techId];
-                if (stat.projectIds) {
-                    stat.projectIds.forEach(id => totalProjects.add(id));
-                } else {
-                    totalProjects.add(document.getElementById('project-select').value);
-                }
-                totalPoints += stat.points;
-                totalFixTasks += stat.fixTasks;
-                totalRefixTasks += stat.refixTasks;
-                totalWarnings += stat.warnings.length;
-                
-                const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier * 100 || 0;
+            sortedTechs.forEach(tech => {
+                const denominator = tech.fixTasks + tech.refixTasks + tech.warnings.length;
+                const fixQuality = denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0;
+                const qualityModifier = calculateQualityModifier(fixQuality);
+                const finalPayout = tech.points * bonusMultiplier * qualityModifier;
 
                 const row = document.createElement('tr');
-                row.classList.add('hover:bg-gray-700/50', 'transition-colors');
+                row.className = "hover:bg-gray-700/50 transition-colors";
                 row.innerHTML = `
-                    <td class="px-4 py-2 font-bold">${techId}</td>
-                    <td class="px-4 py-2 text-gray-400">${getTeamName(techId)}</td>
-                    ${isCombinedCalc ? `<td class="px-4 py-2 text-gray-400 text-xs">${stat.projectIds.join(', ')}</td>` : ''}
-                    <td class="px-4 py-2 text-blue-400 font-bold">${stat.points.toFixed(2)}</td>
-                    <td class="px-4 py-2">${stat.fixTasks}</td>
-                    <td class="px-4 py-2">${stat.refixTasks}</td>
-                    <td class="px-4 py-2">${stat.warnings.length}</td>
-                    <td class="px-4 py-2">${stat.fixQuality.toFixed(2)}%</td>
-                    <td class="px-4 py-2 text-yellow-300">${bonusEarnedMultiplier}%</td>
-                    <td class="px-4 py-2 text-green-400 font-bold">₱${stat.totalBonus.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">
+                        ${tech.id}
+                        <span class="info-icon tech-summary-icon" data-tech-id="${tech.id}">
+                           ${infoIconSvg}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${tech.points.toFixed(3)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${fixQuality.toFixed(2)}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${(qualityModifier * 100).toFixed(0)}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-400">${finalPayout.toFixed(2)}</td>
                 `;
                 tbody.appendChild(row);
             });
             
-            summaryEl.innerHTML = `
-                <p><strong>Total Projects:</strong> ${totalProjects.size}</p>
-                <p><strong>Total Tasks:</strong> ${totalFixTasks + totalRefixTasks} (Fix: ${totalFixTasks}, Refix: ${totalRefixTasks})</p>
-                <p><strong>Total Warnings:</strong> ${totalWarnings}</p>
-            `;
-            
             document.getElementById('search-tech-id').addEventListener('input', applyFilters);
             document.getElementById('team-filter-container').addEventListener('change', applyFilters);
-
-            updateLeaderboard(techStats);
-            updateWorkloadChart(techStats);
+            document.body.addEventListener('click', (e) => {
+                const icon = e.target.closest('.tech-summary-icon');
+                if (icon) {
+                    const techId = icon.dataset.techId;
+                    if (techId) openTechSummaryModal(techId);
+                }
+            });
         }
         
         function populateProjectSelect() {
@@ -1066,12 +976,8 @@
                 item.setAttribute('data-id', project.id);
                 list.appendChild(item);
             });
-            if (!reorderSortable) {
-                reorderSortable = Sortable.create(list, {
-                    animation: 150,
-                    ghostClass: 'sortable-ghost'
-                });
-            }
+            if (reorderSortable) reorderSortable.destroy();
+            reorderSortable = Sortable.create(list, { animation: 150, ghostClass: 'sortable-ghost' });
         }
 
         function populateAdminTeamManagement() {
@@ -1097,13 +1003,10 @@
         function populateTeamFilters() {
             const container = document.getElementById('team-filter-container');
             const existingRefreshButton = document.getElementById('refresh-teams-btn');
-            container.innerHTML = '';
-            container.appendChild(document.createElement('span')).className = "text-sm font-medium text-gray-300";
-            container.lastChild.textContent = "Filter by Team:";
+            container.innerHTML = `<span class="text-sm font-medium text-gray-300">Filter by Team:</span>`;
             container.appendChild(existingRefreshButton);
             
-            const allTeams = Object.keys(teamSettings);
-            allTeams.forEach(team => {
+            Object.keys(teamSettings).sort().forEach(team => {
                 const div = document.createElement('div');
                 div.className = 'flex items-center';
                 div.innerHTML = `
@@ -1121,36 +1024,32 @@
             const sortBy = sortSelect.value;
             tbody.innerHTML = '';
 
-            const sorted = Object.values(techStats).sort((a, b) => {
-                if (sortBy === 'totalTasks') return b.fixTasks - a.fixTasks;
-                if (sortBy === 'totalPoints') return b.points - a.points;
-                if (sortBy === 'fixQuality') return b.fixQuality - a.fixQuality;
-                return 0;
+            const techArray = Object.values(techStats).map(tech => {
+                 const denominator = tech.fixTasks + tech.refixTasks + tech.warnings.length;
+                 return {
+                    id: tech.id,
+                    fixTasks: tech.fixTasks,
+                    totalPoints: tech.points,
+                    fixQuality: denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0,
+                };
             });
+
+            if (sortBy === 'totalPoints') techArray.sort((a, b) => b.totalPoints - a.totalPoints);
+            else if (sortBy === 'fixQuality') techArray.sort((a, b) => b.fixQuality - a.fixQuality);
+            else techArray.sort((a, b) => b.fixTasks - a.fixTasks);
             
             metricHeader.textContent = sortBy === 'totalTasks' ? 'Total Tasks' : (sortBy === 'totalPoints' ? 'Total Points' : 'Fix Quality %');
             
-            if (sorted.length === 0) {
-                tbody.innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>No data to display...</i></td></tr>`;
-                return;
-            }
+            if (techArray.length === 0) return tbody.innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>No data to display...</i></td></tr>`;
 
-            sorted.forEach((stat, index) => {
+            techArray.forEach((stat, index) => {
                 const row = document.createElement('tr');
                 let value;
-                if (sortBy === 'totalTasks') {
-                    value = stat.fixTasks;
-                } else if (sortBy === 'totalPoints') {
-                    value = stat.points.toFixed(2);
-                } else if (sortBy === 'fixQuality') {
-                    value = `${stat.fixQuality.toFixed(2)}%`;
-                }
+                if (sortBy === 'totalTasks') value = stat.fixTasks;
+                else if (sortBy === 'totalPoints') value = stat.totalPoints.toFixed(2);
+                else value = `${stat.fixQuality.toFixed(2)}%`;
 
-                row.innerHTML = `
-                    <td class="px-4 py-2">${index + 1}</td>
-                    <td class="px-4 py-2">${stat.id}</td>
-                    <td class="px-4 py-2">${value}</td>
-                `;
+                row.innerHTML = `<td class="px-4 py-2">${index + 1}</td><td class="px-4 py-2">${stat.id}</td><td class="px-4 py-2">${value}</td>`;
                 tbody.appendChild(row);
             });
         }
@@ -1160,25 +1059,17 @@
             container.innerHTML = '';
             
             const totalTasks = Object.values(techStats).reduce((sum, stat) => sum + stat.fixTasks, 0);
-            if (totalTasks === 0) {
-                 container.innerHTML = `<p class="text-gray-500 italic text-sm text-center">No tasks found for workload chart.</p>`;
-                 return;
-            }
+            if (totalTasks === 0) return container.innerHTML = `<p class="text-gray-500 italic text-sm text-center">No tasks found for workload chart.</p>`;
             
-            const sortedTechs = Object.values(techStats).sort((a, b) => b.fixTasks - a.fixTasks);
-            
-            sortedTechs.forEach(stat => {
+            Object.values(techStats).sort((a, b) => b.fixTasks - a.fixTasks).forEach(stat => {
                 const percentage = (stat.fixTasks / totalTasks) * 100;
                 const barWrapper = document.createElement('div');
                 barWrapper.className = 'workload-bar-wrapper';
                 barWrapper.innerHTML = `
                     <div class="workload-label" title="${stat.id}">${stat.id}</div>
                     <div class="workload-bar">
-                        <div class="workload-bar-inner" style="width: ${percentage.toFixed(2)}%;">
-                            ${stat.fixTasks > 0 ? stat.fixTasks : ''}
-                        </div>
-                    </div>
-                `;
+                        <div class="workload-bar-inner" style="width: ${percentage.toFixed(2)}%;">${stat.fixTasks > 0 ? stat.fixTasks : ''}</div>
+                    </div>`;
                 container.appendChild(barWrapper);
             });
         }
@@ -1186,19 +1077,13 @@
         function updateProjectProgress(techStats) {
             const container = document.getElementById('project-progress-content');
             container.innerHTML = '';
-
             const statsArray = Object.values(techStats);
-            if (statsArray.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>`;
-                return;
-            }
-
+            if (statsArray.length === 0) return container.innerHTML = `<p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>`;
+            
             const totalFixTasks = statsArray.reduce((sum, stat) => sum + stat.fixTasks, 0);
             const totalRefixTasks = statsArray.reduce((sum, stat) => sum + stat.refixTasks, 0);
             const totalWarnings = statsArray.reduce((sum, stat) => sum + stat.warnings.length, 0);
-            const totalTasks = totalFixTasks + totalRefixTasks;
-
-            const totalFixQuality = (totalFixTasks / (totalTasks + totalWarnings)) * 100;
+            const totalFixQuality = ((totalFixTasks + totalRefixTasks + totalWarnings) > 0) ? (totalFixTasks / (totalFixTasks + totalRefixTasks + totalWarnings)) * 100 : 0;
 
             container.innerHTML = `
                 <div class="space-y-2">
@@ -1208,158 +1093,130 @@
                 </div>
                 <div class="mt-4">
                     <p class="text-sm font-medium text-gray-300 mb-2">Overall Project Quality: <span class="font-bold text-lg text-green-400">${totalFixQuality.toFixed(2)}%</span></p>
-                    <div class="progress-bar h-2.5">
-                        <div class="progress-bar-inner h-full" style="width: ${totalFixQuality.toFixed(2)}%; background-color: #34d399;"></div>
-                    </div>
-                </div>
-            `;
+                    <div class="progress-bar h-2.5"><div class="progress-bar-inner h-full" style="width: ${totalFixQuality.toFixed(2)}%; background-color: #34d399;"></div></div>
+                </div>`;
             document.getElementById('project-progress-card').classList.add('visible');
         }
 
-        function updateTlSummary(techStats, isCombinedCalc) {
-            const container = document.getElementById('tl-summary-content');
-            container.innerHTML = '';
+        function updateTlSummary(stats, projectBreakdown) {
+            const content = document.getElementById('tl-summary-content');
+            if (!stats) return;
+
+            content.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total Category Instances:</span><span class="font-bold text-xl text-gray-100">${stats.totalRows}</span></div>
+                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total "Incorrect":</span><span class="font-bold text-xl text-red-400">${stats.totalIncorrect}</span></div>
+                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total "Miss":</span><span class="font-bold text-xl text-orange-400">${stats.totalMiss}</span></div>
+                </div>`;
             
-            const tlSummary = {};
-            const allProjects = isCombinedCalc ? [...new Set(Object.values(techStats).flatMap(s => s.projectIds || []))] : [document.getElementById('project-select').value];
-            
-            const getTeamName = (techId) => {
-                for (const team in teamSettings) {
-                    if (teamSettings[team].includes(techId)) {
-                        return team;
-                    }
-                }
-                return null;
-            };
-
-            for (const techId in techStats) {
-                const team = getTeamName(techId);
-                if (team) {
-                    if (!tlSummary[team]) {
-                        tlSummary[team] = {
-                            members: [],
-                            totalPoints: 0,
-                            totalFixTasks: 0,
-                            totalRefixTasks: 0,
-                            totalWarnings: 0,
-                            fixQuality: 0,
-                            totalBonus: 0,
-                            projects: new Set()
-                        };
-                    }
-                    const stat = techStats[techId];
-                    tlSummary[team].members.push(techId);
-                    tlSummary[team].totalPoints += stat.points;
-                    tlSummary[team].totalFixTasks += stat.fixTasks;
-                    tlSummary[team].totalRefixTasks += stat.refixTasks;
-                    tlSummary[team].totalWarnings += stat.warnings.length;
-                    tlSummary[team].totalBonus += stat.totalBonus;
-                    if (stat.projectIds) {
-                         stat.projectIds.forEach(id => tlSummary[team].projects.add(id));
-                    } else {
-                         tlSummary[team].projects.add(allProjects[0]);
-                    }
-                }
+            if (projectBreakdown && projectBreakdown.length > 1) {
+                let grandTotalPoints = 0;
+                let breakdownHtml = `<details class="mt-6" open><summary class="font-semibold text-gray-200 cursor-pointer">Project Breakdown</summary><ul class="mt-2 border border-gray-700 rounded-lg divide-y divide-gray-700 text-sm overflow-hidden">`;
+                projectBreakdown.forEach((proj, index) => {
+                    grandTotalPoints += proj.points;
+                    const bgColor = index % 2 === 0 ? 'bg-gray-700/50' : 'bg-gray-800/30';
+                    breakdownHtml += `<li class="p-3 flex justify-between items-center ${bgColor}"><span class="font-medium text-gray-300">${proj.name}</span><span class="font-mono font-medium text-gray-100">${proj.points.toFixed(3)} pts</span></li>`;
+                });
+                breakdownHtml += `</ul><div class="mt-3 p-3 bg-gray-700 rounded-lg flex justify-between font-bold text-base"><span>Grand Total:</span><span class="font-mono text-gray-100">${grandTotalPoints.toFixed(3)} pts</span></div></details>`;
+                content.insertAdjacentHTML('beforeend', breakdownHtml);
             }
-
-            const sortedTeams = Object.keys(tlSummary).sort((a, b) => tlSummary[b].totalBonus - tlSummary[a].totalBonus);
-
-            if (sortedTeams.length === 0) {
-                 container.innerHTML = `<p class="text-xs text-gray-500 italic">TL Summary will be shown here after calculation.</p>`;
-                 return;
-            }
-
-            sortedTeams.forEach(team => {
-                const teamStats = tlSummary[team];
-                const totalQualityDenom = teamStats.totalFixTasks + teamStats.totalRefixTasks + teamStats.totalWarnings;
-                const teamFixQuality = (totalQualityDenom > 0) ? (teamStats.totalFixTasks / totalQualityDenom) * 100 : 0;
-                
-                const teamDiv = document.createElement('details');
-                teamDiv.className = 'border border-gray-700 rounded-lg p-4 space-y-2';
-                teamDiv.innerHTML = `
-                    <summary class="flex items-center justify-between cursor-pointer font-bold text-gray-200">
-                        <span>${team}</span>
-                        <span class="text-green-400">₱${teamStats.totalBonus.toFixed(2)}</span>
-                    </summary>
-                    <div class="text-sm space-y-2 pl-4 pt-2 border-t border-gray-700">
-                        <p><strong>Total Points:</strong> ${teamStats.totalPoints.toFixed(2)}</p>
-                        <p><strong>Fix Quality:</strong> ${teamFixQuality.toFixed(2)}%</p>
-                        <p><strong>Member Count:</strong> ${teamStats.members.length}</p>
-                        <p><strong>Members:</strong> ${teamStats.members.join(', ')}</p>
-                        <p><strong>Projects:</strong> ${[...teamStats.projects].join(', ')}</p>
-                    </div>
-                `;
-                container.appendChild(teamDiv);
-            });
             document.getElementById('tl-summary-card').classList.add('visible');
         }
         
         function applyFilters() {
-            const searchInput = document.getElementById('search-tech-id');
-            const filterCheckboxes = document.querySelectorAll('.team-filter-cb');
-            const tableRows = document.querySelectorAll('#tech-results-body tr');
+            const searchValue = document.getElementById('search-tech-id').value.toUpperCase();
+            const selectedTeams = Array.from(document.querySelectorAll('.team-filter-cb:checked')).map(cb => cb.dataset.team);
             
-            const searchValue = searchInput.value.toLowerCase();
-            const selectedTeams = Array.from(filterCheckboxes).filter(cb => cb.checked).map(cb => cb.dataset.team);
-            
-            tableRows.forEach(row => {
-                const techId = row.querySelector('td:first-child').textContent.toLowerCase();
-                const team = row.querySelector('td:nth-child(2)').textContent;
+            document.querySelectorAll('#tech-results-body tr').forEach(row => {
+                const techIdCell = row.querySelector('td:first-child');
+                if (!techIdCell) return;
+                
+                const techId = techIdCell.textContent.trim().toUpperCase();
+                let teamName = 'N/A';
+                for (const team in teamSettings) {
+                    if (teamSettings[team].some(id => id.toUpperCase() === techId)) {
+                        teamName = team;
+                        break;
+                    }
+                }
                 
                 const searchMatch = techId.includes(searchValue);
-                const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(team);
+                const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(teamName);
                 
-                if (searchMatch && teamMatch) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+                row.style.display = (searchMatch && teamMatch) ? '' : 'none';
             });
         }
         
         function showNotification(message) {
             const notification = document.getElementById('update-notification');
             notification.textContent = message;
-            notification.classList.remove('hidden');
+            notification.classList.remove('hidden', 'opacity-0', 'translate-y-2');
             setTimeout(() => {
                 notification.classList.add('opacity-0', 'translate-y-2');
-                notification.classList.remove('translate-y-0');
                 setTimeout(() => notification.classList.add('hidden'), 500);
             }, 3000);
-            notification.classList.remove('opacity-0', 'translate-y-2');
-            notification.classList.add('translate-y-0');
         }
         
         function showModal(key) {
-            const modalOverlay = document.getElementById('info-modal');
-            const modalTitle = document.getElementById('modal-title');
-            const modalBody = document.getElementById('modal-body');
-
             const info = calculationInfo[key];
             if (info) {
-                modalTitle.textContent = info.title;
-                modalBody.innerHTML = info.body;
-                modalOverlay.classList.remove('hidden');
+                document.getElementById('modal-title').textContent = info.title;
+                document.getElementById('modal-body').innerHTML = info.body;
+                document.getElementById('info-modal').classList.remove('hidden');
             }
         }
-        
-        function closeModal() {
-            document.getElementById('info-modal').classList.add('hidden');
+
+        function openTechSummaryModal(techId) {
+            const tech = currentTechStats[techId];
+            if (!tech) return;
+
+            const modal = document.getElementById('info-modal');
+            const warningsCount = tech.warnings.length;
+            const denominator = tech.fixTasks + tech.refixTasks + warningsCount;
+            const fixQuality = denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0;
+            const qualityModifier = calculateQualityModifier(fixQuality);
+            const finalPayout = tech.points * lastUsedBonusMultiplier * qualityModifier;
+
+            document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
+            
+            const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
+            
+            let categoryHtml = '';
+            let totalCategoryCount = 0;
+            const gsd = lastUsedGsdValue || '3in';
+
+            for (let i = 1; i <= 9; i++) {
+                const count = tech.categoryCounts[i];
+                if (count > 0) {
+                    totalCategoryCount += count;
+                    const pointsPerCategory = categoryValues[i]?.[gsd] || 0;
+                    categoryHtml += `<li class="flex justify-between p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}"><span>Category ${i}:</span><span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span></li>`;
+                }
+            }
+            if (tech.pointsBreakdown.fix > 0) categoryHtml += `<li class="flex justify-between font-bold border-t-2 border-gray-600 pt-2 mt-2 bg-gray-700 p-2 rounded-md"><span>Total from Categories:</span><span class="font-mono">(${totalCategoryCount} tasks) ${tech.pointsBreakdown.fix.toFixed(2)} pts</span></li>`;
+            if (!categoryHtml) categoryHtml = '<li>No primary fix tasks.</li>';
+
+            const multiplierDisplay = lastCalculationUsedMultiplier ? `${lastUsedBonusMultiplier.toFixed(2)} (Multiplier)` : '1 (No Multiplier)';
+            const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
+            const refixDetailHtml = tech.refixDetails.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.refixDetails.map(r => `<li>Task: <span class="font-mono font-semibold">${r.round}</span> <span class="font-semibold text-red-400">(Cat: ${r.category})</span> (Project: ${r.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No refixes.</p>`;
+            const visibleMisses = tech.missedCategories.filter(m => m.round.toLowerCase() !== 'i3qa');
+            const missesDetailHtml = visibleMisses.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${visibleMisses.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No misses.</p>`;
+            const approvedByRQACount = tech.approvedByRQA.length;
+            const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
+
+            document.getElementById('modal-body').innerHTML = `<div class="space-y-4 text-sm">
+                <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4><div class="flex justify-between"><span class="text-gray-400">Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div><div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>${refixDetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${visibleMisses.length}</span></div>${missesDetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Approved by RQA (AA):</span><span class="font-bold text-green-400">${approvedByRQACount}</span></div>${approvedByRQADetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>${warningsDetailHtml}<details class="mt-2 text-xs"><summary class="cursor-pointer font-medium text-gray-500">Show Primary Fix Category Counts</summary><ul class="mt-1 space-y-1 pl-2">${categoryHtml}</ul></details></div>
+                <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
+                <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
+                <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
+            </div>`;
+            modal.classList.remove('hidden');
         }
         
-        function closeTeamManagementModal() {
-            document.getElementById('team-management-modal').classList.add('hidden');
-        }
-        
-        function openTeamManagementModal() {
-            populateAdminTeamManagement();
-            document.getElementById('team-management-modal').classList.remove('hidden');
-        }
-        
-        function closeReorderModal() {
-            if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; }
-            document.getElementById('reorder-modal').classList.add('hidden');
-        }
+        function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
+        function closeTeamManagementModal() { document.getElementById('team-management-modal').classList.add('hidden'); }
+        function openTeamManagementModal() { populateAdminTeamManagement(); document.getElementById('team-management-modal').classList.remove('hidden'); }
+        function closeReorderModal() { if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; } document.getElementById('reorder-modal').classList.add('hidden'); }
 
         async function saveReorderModal() {
             if (!reorderSortable) return;
@@ -1369,15 +1226,12 @@
                 const projectMap = new Map(projects.map(p => [p.id, p]));
                 const reorderedList = newOrderIds.map((id, index) => {
                     const project = projectMap.get(id);
-                    if (project) {
-                        project.projectOrder = index;
-                        return project;
-                    }
+                    if (project) { project.projectOrder = index; return project; }
                 }).filter(Boolean);
                 
                 const tx = db.transaction(['projects'], 'readwrite');
                 const store = tx.objectStore('projects');
-                await Promise.all(reorderedList.map(project => putToDB('projects', project)));
+                await Promise.all(reorderedList.map(project => store.put(project)));
                 
                 alert("Project order saved!");
                 await fetchProjectListSummary();
@@ -1387,86 +1241,44 @@
                 alert("Error saving order.");
             }
         }
-
+        
         function setupEventListeners() {
-            const howItWorksBtn = document.getElementById('how-it-works-btn');
-            const manageTeamsBtn = document.getElementById('manage-teams-btn');
-            const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
-            const projectSelect = document.getElementById('project-select');
-            const deleteProjectBtn = document.getElementById('delete-project-btn');
-            const calculateCurrentBtn = document.getElementById('calculateCurrentBtn');
-            const calculatePastedDataBtn = document.getElementById('calculatePastedDataBtn');
-            const saveProjectBtn = document.getElementById('save-project-btn');
-            const customizeCalcAllCb = document.getElementById('customize-calc-all-cb');
-            const calculateAllBtn = document.getElementById('calculate-all-btn');
-            const leaderboardSortSelect = document.getElementById('leaderboard-sort-select');
-            const reorderProjectsBtn = document.getElementById('reorder-projects-btn');
-            const reorderSaveBtn = document.getElementById('reorder-save-btn');
-            const reorderCancelBtn = document.getElementById('reorder-cancel-btn');
-            const closeTeamsModalBtn = document.getElementById('close-teams-modal-btn');
-            const addTeamBtn = document.getElementById('add-team-btn');
-            const saveTeamsBtn = document.getElementById('save-teams-btn');
-            const dropZone = document.getElementById('drop-zone');
-            const techDataTextarea = document.getElementById('techData');
-
-            howItWorksBtn.addEventListener('click', () => showModal('howItWorks'));
+            document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
             document.getElementById('modal-close').addEventListener('click', closeModal);
+            document.querySelectorAll('.info-icon').forEach(icon => icon.addEventListener('click', (e) => { e.stopPropagation(); showModal(icon.dataset.key); }));
+            document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
+            document.getElementById('close-teams-modal-btn').addEventListener('click', closeTeamManagementModal);
+            document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
+            document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
+            document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
 
-            document.querySelectorAll('.info-icon').forEach(icon => {
-                icon.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showModal(icon.dataset.key);
-                });
-            });
-
-            manageTeamsBtn.addEventListener('click', openTeamManagementModal);
-            closeTeamsModalBtn.addEventListener('click', closeTeamManagementModal);
-            
-            reorderProjectsBtn.addEventListener('click', () => {
-                populateAdminProjectReorder();
-                document.getElementById('reorder-modal').classList.remove('hidden');
-            });
-            reorderSaveBtn.addEventListener('click', saveReorderModal);
-            reorderCancelBtn.addEventListener('click', closeReorderModal);
-
-            addTeamBtn.addEventListener('click', () => {
+            document.getElementById('add-team-btn').addEventListener('click', () => {
                 const newTeamName = document.getElementById('new-team-name').value.trim();
-                if (newTeamName && !teamSettings[newTeamName]) {
-                    teamSettings[newTeamName] = [];
-                    populateAdminTeamManagement();
-                    document.getElementById('new-team-name').value = '';
-                }
+                if (newTeamName && !teamSettings[newTeamName]) { teamSettings[newTeamName] = []; populateAdminTeamManagement(); document.getElementById('new-team-name').value = ''; }
             });
-
             document.getElementById('team-list-container').addEventListener('click', (e) => {
                 if (e.target.closest('.delete-team-btn')) {
                     const team = e.target.closest('.delete-team-btn').dataset.team;
-                    if (window.confirm(`Are you sure you want to delete the team "${team}"?`)) {
-                        delete teamSettings[team];
-                        populateAdminTeamManagement();
-                    }
+                    if (window.confirm(`Are you sure you want to delete the team "${team}"?`)) { delete teamSettings[team]; populateAdminTeamManagement(); }
                 }
             });
-
-            saveTeamsBtn.addEventListener('click', () => {
+            document.getElementById('save-teams-btn').addEventListener('click', () => {
                 const newSettings = {};
                 document.querySelectorAll('.team-ids-input').forEach(input => {
                     const teamName = input.dataset.team;
-                    const ids = input.value.split(',').map(id => id.trim()).filter(id => id !== '');
-                    newSettings[teamName] = ids;
+                    newSettings[teamName] = input.value.split(',').map(id => id.trim()).filter(id => id !== '');
                 });
                 saveTeamSettings(newSettings);
             });
             
-            refreshProjectsBtn.addEventListener('click', fetchProjectListSummary);
-
-            projectSelect.addEventListener('change', async (e) => {
+            document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
+            document.getElementById('project-select').addEventListener('change', async (e) => {
                 const projectId = e.target.value;
                 if (projectId) {
                     const projectData = await fetchFullProjectData(projectId);
                     if (projectData) {
-                        techDataTextarea.value = projectData.rawData;
-                        techDataTextarea.readOnly = true;
+                        document.getElementById('techData').value = projectData.rawData;
+                        document.getElementById('techData').readOnly = true;
                         document.getElementById('project-name').value = projectData.name;
                         document.getElementById('project-name').readOnly = true;
                         document.getElementById('is-ir-project-checkbox').checked = projectData.isIRProject;
@@ -1475,11 +1287,11 @@
                         document.getElementById('gsd-value-select').disabled = true;
                         document.getElementById('edit-data-btn').classList.remove('hidden');
                         document.getElementById('save-project-btn').disabled = true;
-                        isEditMode = true;
+                        isEditMode = false;
                     }
                 } else {
-                    techDataTextarea.value = '';
-                    techDataTextarea.readOnly = false;
+                    document.getElementById('techData').value = '';
+                    document.getElementById('techData').readOnly = false;
                     document.getElementById('project-name').value = '';
                     document.getElementById('project-name').readOnly = false;
                     document.getElementById('is-ir-project-checkbox').checked = false;
@@ -1488,157 +1300,125 @@
                     document.getElementById('gsd-value-select').disabled = false;
                     document.getElementById('edit-data-btn').classList.add('hidden');
                     document.getElementById('save-project-btn').disabled = false;
-                    isEditMode = false;
+                    isEditMode = true;
                 }
             });
-
-            deleteProjectBtn.addEventListener('click', async () => {
-                const projectId = projectSelect.value;
-                if (projectId) {
-                    await deleteProjectFromIndexedDB(projectId);
-                }
-            });
-
+            document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
             document.getElementById('edit-data-btn').addEventListener('click', () => {
-                techDataTextarea.readOnly = false;
+                document.getElementById('techData').readOnly = false;
                 document.getElementById('project-name').readOnly = false;
                 document.getElementById('is-ir-project-checkbox').disabled = false;
                 document.getElementById('gsd-value-select').disabled = false;
                 document.getElementById('edit-data-btn').classList.add('hidden');
                 document.getElementById('save-project-btn').disabled = false;
-                isEditMode = false;
-            });
-
-            calculateCurrentBtn.addEventListener('click', async () => {
-                const projectId = projectSelect.value;
-                if (projectId) {
-                    const projectData = await fetchFullProjectData(projectId);
-                    if (projectData) {
-                         const techStats = await calculateBonuses(projectData.rawData, projectData.isIRProject, projectData.gsdValue);
-                         displayResults(techStats, lastUsedBonusMultiplier, false);
-                         updateProjectProgress(techStats);
-                         updateTlSummary(techStats, false);
-                         document.getElementById('results-title').textContent = `Bonus Results for: ${projectData.name}`;
-                    } else {
-                        alert("Please select a project first.");
-                    }
-                } else {
-                    alert("Please select a project first.");
-                }
-            });
-
-            calculatePastedDataBtn.addEventListener('click', async () => {
-                const techData = techDataTextarea.value.trim();
-                const isIR = document.getElementById('is-ir-project-checkbox').checked;
-                const gsdVal = document.getElementById('gsd-value-select').value;
-                if (techData) {
-                     const techStats = await calculateBonuses(techData, isIR, gsdVal);
-                     displayResults(techStats, lastUsedBonusMultiplier, false);
-                     updateProjectProgress(techStats);
-                     updateTlSummary(techStats, false);
-                     document.getElementById('results-title').textContent = `Bonus Results for: Pasted Data`;
-                } else {
-                    alert("Please paste data into the text box first.");
-                }
+                isEditMode = true;
             });
             
-            saveProjectBtn.addEventListener('click', async () => {
+            document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
+                const projectId = document.getElementById('project-select').value;
+                if (!projectId) return alert("Please select a project.");
+                const projectData = await fetchFullProjectData(projectId);
+                if (projectData) {
+                    lastUsedGsdValue = projectData.gsdValue;
+                    const parsed = parseRawData(projectData.rawData, projectData.isIRProject, projectData.name, projectData.gsdValue);
+                    if (parsed) {
+                        currentTechStats = parsed.techStats;
+                        displayResults(currentTechStats);
+                        updateLeaderboard(currentTechStats);
+                        updateWorkloadChart(currentTechStats);
+                        updateProjectProgress(currentTechStats);
+                        updateTlSummary(parsed.summaryStats, [{ name: projectData.name, points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
+                        document.getElementById('results-title').textContent = `Bonus Results for: ${projectData.name}`;
+                    }
+                }
+            });
+
+            document.getElementById('calculatePastedDataBtn').addEventListener('click', () => {
+                const techData = document.getElementById('techData').value.trim();
+                const isIR = document.getElementById('is-ir-project-checkbox').checked;
+                const gsdVal = document.getElementById('gsd-value-select').value;
+                lastUsedGsdValue = gsdVal;
+                if (techData) {
+                    const parsed = parseRawData(techData, isIR, 'Pasted Data', gsdVal);
+                    if (parsed) {
+                        currentTechStats = parsed.techStats;
+                        displayResults(currentTechStats);
+                        updateLeaderboard(currentTechStats);
+                        updateWorkloadChart(currentTechStats);
+                        updateProjectProgress(currentTechStats);
+                        updateTlSummary(parsed.summaryStats, [{ name: 'Pasted Data', points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
+                        document.getElementById('results-title').textContent = `Bonus Results for: Pasted Data`;
+                    }
+                } else alert("Please paste data into the text box first.");
+            });
+            
+            document.getElementById('save-project-btn').addEventListener('click', async () => {
                  const projectName = document.getElementById('project-name').value.trim();
-                 const techData = techDataTextarea.value.trim();
-                 if (!projectName || !techData) {
-                     alert("Please provide both a project name and project data.");
-                     return;
-                 }
-                 const projectId = projectName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now();
+                 const techData = document.getElementById('techData').value.trim();
+                 if (!projectName || !techData) return alert("Please provide both a project name and project data.");
+                 
+                 const projectId = !isEditMode ? projectName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now() : document.getElementById('project-select').value;
                  const isIR = document.getElementById('is-ir-project-checkbox').checked;
                  const gsdVal = document.getElementById('gsd-value-select').value;
-                 const projectData = {
-                    id: projectId,
-                    name: projectName,
-                    rawData: techData,
-                    isIRProject: isIR,
-                    gsdValue: gsdVal
-                 };
+                 const projectData = { id: projectId, name: projectName, rawData: techData, isIRProject: isIR, gsdValue: gsdVal };
                  await saveProjectToIndexedDB(projectData);
                  document.getElementById('project-select').value = projectData.id;
                  document.getElementById('project-select').dispatchEvent(new Event('change'));
             });
+            
+            document.getElementById('calculate-all-btn').addEventListener('click', async () => {
+                const selectedProjectIds = Array.from(document.querySelectorAll('#project-select option:checked')).map(opt => opt.value).filter(Boolean);
+                const isCustomized = document.getElementById('customize-calc-all-cb').checked;
 
-            calculateAllBtn.addEventListener('click', async () => {
-                const selectedProjectIds = Array.from(document.querySelectorAll('#project-select option:checked')).map(opt => opt.value);
-                let projectsToCalculate = [];
-                if (customizeCalcAllCb.checked) {
-                     if (selectedProjectIds.length === 0) {
-                        alert("Please select projects from the list to calculate.");
-                        return;
-                    }
-                    projectsToCalculate = await Promise.all(selectedProjectIds.map(id => fetchFullProjectData(id)));
-                } else {
-                     projectsToCalculate = await Promise.all(projectListCache.map(p => fetchFullProjectData(p.id)));
-                }
+                let projectsToCalcIds = isCustomized ? selectedProjectIds : projectListCache.map(p => p.id);
+                if (isCustomized && selectedProjectIds.length === 0) return alert("Please select projects from the list to calculate.");
+                if (projectsToCalcIds.length === 0) return alert("No projects to calculate.");
 
-                if (projectsToCalculate.length === 0) {
-                     alert("No projects to calculate.");
-                     return;
-                }
+                const projectsToCalculate = await Promise.all(projectsToCalcIds.map(id => fetchFullProjectData(id)));
 
                 const combinedTechStats = {};
+                const projectBreakdown = [];
+                let combinedSummary = { totalRows: 0, totalIncorrect: 0, totalMiss: 0 };
+
+                if (projectsToCalculate.filter(Boolean).length > 0) lastUsedGsdValue = projectsToCalculate.filter(Boolean)[0].gsdValue;
+
                 for (const project of projectsToCalculate) {
                     if (!project) continue;
-                    const projectTechStats = await calculateBonuses(project.rawData, project.isIRProject, project.gsdValue);
-                    
-                    for (const techId in projectTechStats) {
-                        const stat = projectTechStats[techId];
-                        if (!combinedTechStats[techId]) {
-                            combinedTechStats[techId] = createNewTechStat();
-                            combinedTechStats[techId].id = techId;
-                            combinedTechStats[techId].projectIds = [];
-                        }
-                        combinedTechStats[techId].points += stat.points;
-                        combinedTechStats[techId].fixTasks += stat.fixTasks;
-                        combinedTechStats[techId].refixTasks += stat.refixTasks;
-                        combinedTechStats[techId].warnings = combinedTechStats[techId].warnings.concat(stat.warnings);
-                        combinedTechStats[techId].refixDetails = combinedTechStats[techId].refixDetails.concat(stat.refixDetails);
-                        combinedTechStats[techId].missedCategories = combinedTechStats[techId].missedCategories.concat(stat.missedCategories);
-                        combinedTechStats[techId].approvedByRQA = combinedTechStats[techId].approvedByRQA.concat(stat.approvedByRQA);
-                        combinedTechStats[techId].projectIds.push(project.name);
+                    const parsed = parseRawData(project.rawData, project.isIRProject, project.name, project.gsdValue);
+                    if (parsed) {
+                        projectBreakdown.push({name: project.name, points: Object.values(parsed.techStats).reduce((s, t) => s + t.points, 0)});
+                        combinedSummary.totalRows += parsed.summaryStats.totalRows;
+                        combinedSummary.totalIncorrect += parsed.summaryStats.totalIncorrect;
+                        combinedSummary.totalMiss += parsed.summaryStats.totalMiss;
                         
-                        for (const key in stat.pointsBreakdown) {
-                            combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
+                        for (const techId in parsed.techStats) {
+                            const stat = parsed.techStats[techId];
+                            if (!combinedTechStats[techId]) combinedTechStats[techId] = createNewTechStat();
+                            combinedTechStats[techId].id = techId;
+                            combinedTechStats[techId].points += stat.points;
+                            combinedTechStats[techId].fixTasks += stat.fixTasks;
+                            combinedTechStats[techId].refixTasks += stat.refixTasks;
+                            combinedTechStats[techId].warnings.push(...stat.warnings);
+                            for (const key in stat.pointsBreakdown) combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
                         }
                     }
                 }
-
-                // Finalize stats for combined results
-                for (const techId in combinedTechStats) {
-                    const stat = combinedTechStats[techId];
-                    const totalFixAndRefix = stat.fixTasks + stat.refixTasks;
-                    const totalQualityDenom = totalFixAndRefix + stat.warnings.length;
-                    stat.fixQuality = (totalQualityDenom > 0) ? (stat.fixTasks / totalQualityDenom) * 100 : 0;
-                    
-                    const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
-                    const bonusEarnedMultiplier = bonusTiers.find(tier => stat.fixQuality >= tier.min && stat.fixQuality <= tier.max)?.multiplier || 0;
-                    stat.totalBonus = stat.points * bonusMultiplier * bonusEarnedMultiplier;
-                }
                 
-                displayResults(combinedTechStats, lastUsedBonusMultiplier, true);
-                updateProjectProgress(combinedTechStats);
-                updateTlSummary(combinedTechStats, true);
-                document.getElementById('results-title').textContent = `Bonus Results for: All Projects`;
+                currentTechStats = combinedTechStats;
+                displayResults(currentTechStats);
+                updateLeaderboard(currentTechStats);
+                updateWorkloadChart(currentTechStats);
+                updateProjectProgress(currentTechStats);
+                updateTlSummary(combinedSummary, projectBreakdown);
+                document.getElementById('results-title').textContent = `Bonus Results for: ${isCustomized ? 'Selected Projects' : 'All Projects'}`;
             });
             
-            customizeCalcAllCb.addEventListener('change', (e) => {
+            document.getElementById('customize-calc-all-cb').addEventListener('change', (e) => {
                 const selectEl = document.getElementById('project-select');
-                if (e.target.checked) {
-                    selectEl.setAttribute('multiple', true);
-                    selectEl.size = 10;
-                } else {
-                    selectEl.removeAttribute('multiple');
-                    selectEl.size = 1;
-                }
+                selectEl.multiple = e.target.checked;
+                selectEl.size = e.target.checked ? 10 : 1;
             });
-
-            leaderboardSortSelect.addEventListener('change', () => updateLeaderboard(currentTechStats));
+            document.getElementById('leaderboard-sort-select').addEventListener('change', () => updateLeaderboard(currentTechStats));
         }
 
         async function main() {
@@ -1647,10 +1427,7 @@
                 await openDB();
                 document.getElementById('db-status').textContent = 'Database connected successfully.';
                 setupEventListeners();
-                await Promise.all([
-                    fetchProjectListSummary(),
-                    loadTeamSettings()
-                ]);
+                await Promise.all([ fetchProjectListSummary(), loadTeamSettings() ]);
             } catch (e) {
                 document.getElementById('db-status').textContent = 'Failed to connect to local database. Please check your browser settings.';
                 console.error(e);
