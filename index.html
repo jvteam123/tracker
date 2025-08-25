@@ -468,7 +468,11 @@
 
         const defaultTeams = {
             "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
-            "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"]
+            "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"],
+            "Team 115": ["4297RQ", "7086LP", "7087LA", "7088MA", "7099SS", "7171AL", "7311JT", "7173ES", "7175JP", "7084LQ", "7044AM"],
+            "Team 57": ["4488MD", "7096AV", "4489EA", "7103RE", "7043RP", "7093MG", "7166CR", "7090JA", "7165GR", "7176CC"],
+            "Team 114": ["7042NB", "7234CS", "7313MB", "7036RB", "4478JV", "7239EO", "4477PT", "7251DJ", "7233JP", "4135RC", "7315CR", "7243JC"],
+            "Team 64": ["4474HS", "4492CP", "4421AT", "7237ML", "4481JV", "7316NT", "7245SC", "4476JR", "7246AJ", "7241DM", "4435AC", "7242FV", "2274JD"]
         };
 
         // --- DATA FROM DOCUMENTATION ---
@@ -756,11 +760,11 @@
 
                 const fix1_id = values[headerMap['fix1_id']]?.trim();
                 const fix2_id = values[headerMap['fix2_id']]?.trim();
+                const fix3_id = values[headerMap['fix3_id']]?.trim();
+                const fix4_id = values[headerMap['fix4_id']]?.trim();
 
-                let totalRowFixPoints = 0;
-                let categoriesInThisRow = 0;
 
-                // Combined logic for fix1_id and fix2_id
+                // --- POINT CALCULATION ---
                 const processFixTech = (techId, catSources) => {
                     if (!techId || !techStats[techId]) return;
                     let techPoints = 0;
@@ -788,17 +792,48 @@
                     techStats[techId].pointsBreakdown.fix += pointsToAdd;
                 };
                 
+                // --- Updated Point Credit Logic ---
+                // fix1 gets points for initial fix, i3qa misses, and afp1 approvals
                 processFixTech(fix1_id, [
-                    { cat: 'category' },
+                    { cat: 'category' }, // Initial fix
                     { cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) },
                     { cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' }
                 ]);
-
+                
+                // fix2 gets points for rv1 misses and afp2 approvals
                 processFixTech(fix2_id, [
                     { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M') },
-                    { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M') },
                     { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2' }
                 ]);
+
+                // fix3 gets points for rv2 misses
+                processFixTech(fix3_id, [
+                    { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M') }
+                ]);
+
+                // fix4 gets points for rv3 misses
+                processFixTech(fix4_id, [
+                    { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M') }
+                ]);
+
+
+                // --- MISS & REFIX COUNTING ---
+                const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
+                    if (techIdToBlame && techStats[techIdToBlame]) {
+                        const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
+                        if (labelValue && labelValue.includes('M')) {
+                             const category = values[headerMap[catKey]]?.trim() || 'N/A';
+                             techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
+                        }
+                    }
+                };
+                
+                // Attribute misses to the person whose work was being reviewed
+                processMiss(values[headerMap['i3qa_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
+                processMiss(values[headerMap['rv1_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
+                processMiss(values[headerMap['rv2_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
+                processMiss(values[headerMap['rv3_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
+
                 
                 // Handle other point types (QC, i3qa, RV) and refix/warning counts
                 techIdCols.forEach(colName => {
@@ -1289,13 +1324,27 @@
             const multiplierDisplay = lastCalculationUsedMultiplier ? `${lastUsedBonusMultiplier.toFixed(2)} (Multiplier)` : '1 (No Multiplier)';
             const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
             const refixDetailHtml = tech.refixDetails.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.refixDetails.map(r => `<li>Task: <span class="font-mono font-semibold">${r.round}</span> <span class="font-semibold text-red-400">(Cat: ${r.category})</span> (Project: ${r.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No refixes.</p>`;
-            const visibleMisses = tech.missedCategories.filter(m => m.round.toLowerCase() !== 'i3qa');
-            const missesDetailHtml = visibleMisses.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${visibleMisses.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No misses.</p>`;
+            const missesDetailHtml = tech.missedCategories.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.missedCategories.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No misses.</p>`;
             const approvedByRQACount = tech.approvedByRQA.length;
             const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
 
             document.getElementById('modal-body').innerHTML = `<div class="space-y-4 text-sm">
-                <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4><div class="flex justify-between"><span class="text-gray-400">Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div><div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>${refixDetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${visibleMisses.length}</span></div>${missesDetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Approved by RQA (AA):</span><span class="font-bold text-green-400">${approvedByRQACount}</span></div>${approvedByRQADetailHtml}<div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>${warningsDetailHtml}<details class="mt-2 text-xs"><summary class="cursor-pointer font-medium text-gray-500">Show Primary Fix Category Counts</summary><ul class="mt-1 space-y-1 pl-2">${categoryHtml}</ul></details></div>
+                <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4>
+                    <div class="flex justify-between"><span class="text-gray-400">Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>
+                    ${refixDetailHtml}
+                    <div class="flex justify-between mt-2"><span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${tech.missedCategories.length}</span></div>
+                    ${missesDetailHtml}
+                    <div class="flex justify-between mt-2"><span class="text-gray-400">Approved by RQA (AA):</span><span class="font-bold text-green-400">${approvedByRQACount}</span></div>
+                    ${approvedByRQADetailHtml}
+                    <div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>
+                    ${warningsDetailHtml}
+                    <div class="mt-2 text-xs">
+                        <h4 class="font-medium text-gray-400 mb-1">Primary Fix Category Counts</h4>
+                        <ul class="mt-1 space-y-1 pl-2">${categoryHtml}</ul>
+                    </div>
+                </div>
                 <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
                 <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
                 <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
@@ -1332,13 +1381,8 @@
             }
         }
 
-        // *** NEW/UPDATED CODE STARTS HERE ***
-
         // Placeholder function to handle file processing
         async function handleDroppedFiles(files) {
-            // You need to implement the logic to read .shp and .dbf files here.
-            // This is a complex task that usually requires a library.
-            // The `shapefile` library is included, so you can use it like this:
             let dbfFile, shpFile;
             for (const file of files) {
                 if (file.name.endsWith('.dbf')) dbfFile = file;
@@ -1598,7 +1642,6 @@
                 handleDroppedFiles(files);
             });
         }
-        // *** NEW/UPDATED CODE ENDS HERE ***
 
         async function main() {
             document.getElementById('db-status').textContent = 'Connecting to database...';
