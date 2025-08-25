@@ -1331,8 +1331,48 @@
                 alert("Error saving order.");
             }
         }
+
+        // *** NEW/UPDATED CODE STARTS HERE ***
+
+        // Placeholder function to handle file processing
+        async function handleDroppedFiles(files) {
+            // You need to implement the logic to read .shp and .dbf files here.
+            // This is a complex task that usually requires a library.
+            // The `shapefile` library is included, so you can use it like this:
+            let dbfFile, shpFile;
+            for (const file of files) {
+                if (file.name.endsWith('.dbf')) dbfFile = file;
+                if (file.name.endsWith('.shp')) shpFile = file;
+            }
+
+            if (dbfFile && shpFile) {
+                try {
+                    const dbfBuffer = await dbfFile.arrayBuffer();
+                    const shpBuffer = await shpFile.arrayBuffer();
+                    const geojson = await shapefile.read(shpBuffer, dbfBuffer);
+                    
+                    if (geojson && geojson.features && geojson.features.length > 0) {
+                        const properties = geojson.features.map(f => f.properties);
+                        const headers = Object.keys(properties[0]);
+                        let tsv = headers.join('\t') + '\n';
+                        properties.forEach(row => {
+                            tsv += headers.map(h => row[h]).join('\t') + '\n';
+                        });
+                        document.getElementById('techData').value = tsv;
+                        showNotification(`${files.length} files processed. Data loaded into text area.`);
+                    } else {
+                       alert("Could not extract features from the shapefile.");
+                    }
+                } catch (error) {
+                    console.error("Error reading shapefile:", error);
+                    alert("Error processing shapefiles. Check the console for details.");
+                }
+            } else {
+                alert("Please drop both a .shp and a .dbf file together.");
+            }
+        }
         
-       function setupEventListeners() {
+        function setupEventListeners() {
             // Modal Listeners
             document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
             document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -1346,28 +1386,6 @@
                 if (techIcon && techIcon.dataset.techId) {
                     openTechSummaryModal(techIcon.dataset.techId);
                 }
-            });
-
-            // --- UPDATED --- Drag and Drop Listeners
-            const dropZone = document.getElementById('drop-zone');
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault(); 
-                e.stopPropagation();
-                dropZone.classList.add('drag-over');
-            });
-
-            dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('drag-over');
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault(); // This was the missing piece!
-                e.stopPropagation();
-                dropZone.classList.remove('drag-over');
-                const files = e.dataTransfer.files;
-                handleDroppedFiles(files);
             });
 
             // Team Management Listeners
@@ -1557,7 +1575,30 @@
                 selectEl.size = e.target.checked ? 10 : 1;
             });
             document.getElementById('leaderboard-sort-select').addEventListener('change', applyFilters);
+
+            // Drag and Drop Listeners
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault(); // This is crucial for drop to work
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault(); // FIX: This is the missing piece
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                handleDroppedFiles(files);
+            });
         }
+        // *** NEW/UPDATED CODE ENDS HERE ***
 
         async function main() {
             document.getElementById('db-status').textContent = 'Connecting to database...';
