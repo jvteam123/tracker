@@ -334,23 +334,24 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        // --- *** MODIFICATION START *** ---
-        // Determine if there is a primary category from the QC_ID.
-        const hasPrimaryCategory = !!values[headerMap['qc_id']]?.trim() || !!values[headerMap['category']]?.trim();
+        // --- *** NEW CORRECTED LOGIC *** ---
+        const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
 
-        // Build the sources for fix1_id dynamically to prevent double counting.
-        const fix1Sources = [];
-        if (hasPrimaryCategory) {
-            fix1Sources.push({ cat: 'category' }); // If there's a primary category, count it.
-        } else {
-            // ONLY if there is NO primary category, check for i3qa misses and AFP approvals.
-            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) });
+        const fix1Sources = [
+            // Always count the main category if it exists.
+            { cat: 'category' },
+            // Always count i3qa misses as a separate task.
+            { cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) }
+        ];
+
+        // Only count the AFP1 approval as a task IF there was no primary category.
+        if (!hasPrimaryCategory) {
             fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' });
         }
         
         processFixTech(fix1_id, fix1Sources);
-        // --- *** MODIFICATION END *** ---
-        
+        // --- *** END OF NEW LOGIC *** ---
+
         processFixTech(fix2_id, [
             { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M') },
             { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2' }
@@ -377,7 +378,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         processMiss(values[headerMap['rv1_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
         processMiss(values[headerMap['rv2_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
         processMiss(values[headerMap['rv3_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
-
+        
         // Handle other point types (QC, i3qa, RV) and refix/warning counts
         techIdCols.forEach(colName => {
             const techId = values[headerMap[colName]]?.trim();
@@ -457,7 +458,6 @@ async function loadProjectIntoForm(projectId) {
             document.getElementById('save-project-btn').disabled = true;
         }
     } else {
-        // This is the "new project" or "cleared" state
         document.getElementById('techData').value = '';
         document.getElementById('techData').readOnly = false;
         document.getElementById('project-name').value = '';
@@ -473,7 +473,7 @@ async function loadProjectIntoForm(projectId) {
 
 function displayResults(techStats) {
     const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
-    lastUsedBonusMultiplier = bonusMultiplier; // Store for modal
+    lastUsedBonusMultiplier = bonusMultiplier;
     lastCalculationUsedMultiplier = !!bonusMultiplier && bonusMultiplier !== 1;
 
     document.getElementById('tech-results-container').classList.add('visible');
@@ -528,7 +528,6 @@ function populateProjectSelect() {
         option.textContent = project.name;
         select.appendChild(option);
     });
-    // Restore previous selection if it still exists
     if (projectListCache.some(p => p.id === currentVal)) {
         select.value = currentVal;
     }
@@ -707,7 +706,7 @@ function updateProjectProgress(techStats) {
 
 function updateTlSummary(stats, projectBreakdown) {
     const content = document.getElementById('tl-summary-content');
-    content.innerHTML = ''; // Clear previous content
+    content.innerHTML = '';
     
     if (projectBreakdown && projectBreakdown.length > 1) {
         let grandTotalPoints = 0;
@@ -808,7 +807,6 @@ function applyFilters() {
         }
     }
     
-    // Re-render components with the filtered data
     displayResults(filteredStats);
     updateLeaderboard(filteredStats);
     updateWorkloadChart(filteredStats);
@@ -923,7 +921,6 @@ async function saveReorderModal() {
     }
 }
 
-// Placeholder function to handle file processing
 async function handleDroppedFiles(files) {
     let dbfFile, shpFile;
     for (const file of files) {
@@ -959,7 +956,6 @@ async function handleDroppedFiles(files) {
 }
 
 function setupEventListeners() {
-    // Modal Listeners
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.body.addEventListener('click', (e) => {
@@ -974,7 +970,6 @@ function setupEventListeners() {
         }
     });
 
-    // Team Management Listeners
     document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
     document.getElementById('close-teams-modal-btn').addEventListener('click', closeTeamManagementModal);
     document.getElementById('add-team-btn').addEventListener('click', () => {
@@ -997,12 +992,10 @@ function setupEventListeners() {
     });
      document.getElementById('refresh-teams-btn').addEventListener('click', loadTeamSettings);
 
-    // Reorder Modal Listeners
     document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
     document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
     document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
 
-    // Main Project Management Listeners
     document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
     document.getElementById('project-select').addEventListener('change', (e) => loadProjectIntoForm(e.target.value));
     document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
@@ -1015,7 +1008,6 @@ function setupEventListeners() {
         document.getElementById('save-project-btn').disabled = false;
     });
     
-    // Calculation Listeners
     document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
         const projectId = document.getElementById('project-select').value;
         if (!projectId) return alert("Please select a project.");
@@ -1025,7 +1017,7 @@ function setupEventListeners() {
             const parsed = parseRawData(projectData.rawData, projectData.isIRProject, projectData.name, projectData.gsdValue);
             if (parsed) {
                 currentTechStats = parsed.techStats;
-                applyFilters(); // Apply filters to all components
+                applyFilters();
                 updateProjectProgress(currentTechStats);
                 updateTlSummary(parsed.summaryStats, [{ name: projectData.name, points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
                 updateFix4Breakdown(projectData.rawData);
@@ -1043,7 +1035,7 @@ function setupEventListeners() {
             const parsed = parseRawData(techData, isIR, 'Pasted Data', gsdVal);
             if (parsed) {
                 currentTechStats = parsed.techStats;
-                applyFilters(); // Apply filters to all components
+                applyFilters();
                 updateProjectProgress(currentTechStats);
                 updateTlSummary(parsed.summaryStats, [{ name: 'Pasted Data', points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
                 updateFix4Breakdown(techData);
@@ -1150,11 +1142,9 @@ function setupEventListeners() {
         document.getElementById('results-title').textContent = `Bonus Results for: ${isCustomized ? 'Selected Projects' : 'All Projects'}`;
     });
     
-    // Filter Listeners
     document.getElementById('search-tech-id').addEventListener('input', applyFilters);
     document.getElementById('team-filter-container').addEventListener('change', applyFilters);
     
-    // Other UI Listeners
     document.getElementById('customize-calc-all-cb').addEventListener('change', (e) => {
         const selectEl = document.getElementById('project-select');
         selectEl.multiple = e.target.checked;
@@ -1162,10 +1152,9 @@ function setupEventListeners() {
     });
     document.getElementById('leaderboard-sort-select').addEventListener('change', applyFilters);
 
-    // Drag and Drop Listeners
     const dropZone = document.getElementById('drop-zone');
     dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault(); // This is crucial for drop to work
+        e.preventDefault();
         e.stopPropagation();
         dropZone.classList.add('drag-over');
     });
@@ -1177,7 +1166,7 @@ function setupEventListeners() {
     });
 
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); // FIX: This is the missing piece
+        e.preventDefault();
         e.stopPropagation();
         dropZone.classList.remove('drag-over');
         const files = e.dataTransfer.files;
