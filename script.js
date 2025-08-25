@@ -334,15 +334,18 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        // --- *** NEW CORRECTED LOGIC *** ---
+       // --- *** NEW CORRECTED LOGIC *** ---
         const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
 
-        const fix1Sources = [
-            // Always count the main category if it exists.
-            { cat: 'category' },
-            // Always count i3qa misses as a separate task.
-            { cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) }
-        ];
+        const fix1Sources = [];
+
+        // Only count the main category if it exists.
+        if (hasPrimaryCategory) {
+            fix1Sources.push({ cat: 'category' });
+        }
+        
+        // Always count i3qa misses as a separate task.
+        fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) });
 
         // Only count the AFP1 approval as a task IF there was no primary category.
         if (!hasPrimaryCategory) {
