@@ -1332,7 +1332,7 @@
             }
         }
         
-        function setupEventListeners() {
+       function setupEventListeners() {
             // Modal Listeners
             document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
             document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -1346,6 +1346,28 @@
                 if (techIcon && techIcon.dataset.techId) {
                     openTechSummaryModal(techIcon.dataset.techId);
                 }
+            });
+
+            // --- UPDATED --- Drag and Drop Listeners
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault(); 
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault(); // This was the missing piece!
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                handleDroppedFiles(files);
             });
 
             // Team Management Listeners
