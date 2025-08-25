@@ -134,14 +134,14 @@
             border-color: #3b82f6;
             background-color: #1e3a8a;
         }
-        #tech-results-container, #admin-dashboard, #tl-summary-card, #project-progress-card {
+        #tech-results-container, #admin-dashboard, #tl-summary-card, #project-progress-card, #fix4-breakdown-card {
              max-height: 0;
              overflow: hidden;
              opacity: 0;
              transition: all 0.5s ease-in-out;
         }
-        #tech-results-container.visible, #admin-dashboard.visible, #tl-summary-card.visible, #project-progress-card.visible {
-            max-height: 1500px;
+        #tech-results-container.visible, #admin-dashboard.visible, #tl-summary-card.visible, #project-progress-card.visible, #fix4-breakdown-card.visible {
+            max-height: 1500px; /* Adjust as needed */
             opacity: 1;
         }
         .progress-bar {
@@ -251,7 +251,7 @@
 
                          <div class="flex items-center gap-2">
                             <select id="project-select" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all duration-300">
-                                <option value="">Click Refresh to load projects...</option>
+                                <option value="">Select a project to load...</option>
                             </select>
                              <button id="delete-project-btn" title="Delete Selected Project" class="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-800 transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -363,7 +363,7 @@
                         </div>
                         <div class="mt-4">
                             <button id="calculatePastedDataBtn" class="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors duration-300 shadow-md">
-                                Calculate Pasted Data
+                                Calculate
                             </button>
                         </div>
                     </div>
@@ -375,9 +375,18 @@
                         </div>
                     </div>
 
+                    <div id="fix4-breakdown-card" class="card p-6 rounded-xl">
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">Fix4 Breakdown</h2>
+                        <div id="fix4-breakdown-content" class="space-y-4 text-sm">
+                            <p class="text-xs text-gray-500 italic">Breakdown will be shown here after calculation.</p>
+                        </div>
+                    </div>
+
                     <div id="tl-summary-card" class="card p-6 rounded-xl">
                         <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">TL Summary</h2>
-                        <div id="tl-summary-content" class="space-y-4"></div>
+                        <div id="tl-summary-content" class="space-y-4">
+                            <p class="text-xs text-gray-500 italic">Summary will be shown here after calculation.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -453,23 +462,26 @@
         let currentTechStats = {};
         let lastUsedBonusMultiplier = 1;
         let lastCalculationUsedMultiplier = false;
-        let lastFilterValue = "";
-        let isEditMode = false;
         let teamSettings = {};
         let reorderSortable = null;
         let lastUsedGsdValue = '3in';
 
+        const defaultTeams = {
+            "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
+            "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"]
+        };
+
         // --- DATA FROM DOCUMENTATION ---
         const categoryValues = {
-            1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99, "IR": 1.5 },
-            2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07, "IR": 1.5 },
-            3: { "3in": 7.44, "4in": 7.44, "6in": 7.44, "9in": 2.78, "IR": 1.5 },
-            4: { "3in": 2.29, "4in": 2.29, "6in": 2.29, "9in": 1.57, "IR": 1.5 },
-            5: { "3in": 1.55, "4in": 1.55, "6in": 1.55, "9in": 0.6, "IR": 1.5 },
-            6: { "3in": 1.84, "4in": 1.84, "6in": 1.84, "9in": 0.78, "IR": 1.5 },
-            7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1, "IR": 1.5 },
-            8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74, "IR": 1.5 },
-            9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73, "IR": 1.5 }
+            1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99 },
+            2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07 },
+            3: { "3in": 7.44, "4in": 7.44, "6in": 7.44, "9in": 2.78 },
+            4: { "3in": 2.29, "4in": 2.29, "6in": 2.29, "9in": 1.57 },
+            5: { "3in": 1.55, "4in": 1.55, "6in": 1.55, "9in": 0.6 },
+            6: { "3in": 1.84, "4in": 1.84, "6in": 1.84, "9in": 0.78 },
+            7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1 },
+            8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74 },
+            9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73 }
         };
 
         const irModifierValue = 1.5;
@@ -633,10 +645,14 @@
         async function loadTeamSettings() {
             try {
                 const teamsData = await getFromDB('teams', 'teams');
-                teamSettings = teamsData ? teamsData.settings : {};
+                if (teamsData && Object.keys(teamsData.settings).length > 0) {
+                    teamSettings = teamsData.settings;
+                } else {
+                    teamSettings = defaultTeams;
+                }
             } catch (error) {
                 console.error("Error loading team settings:", error);
-                teamSettings = {};
+                teamSettings = defaultTeams;
             }
             populateTeamFilters();
             populateAdminTeamManagement();
@@ -661,7 +677,7 @@
                 const compressed = pako.deflate(dataAsUint8Array);
                 const base64String = btoa(String.fromCharCode.apply(null, compressed));
 
-                const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: Date.now() };
+                const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: projectData.projectOrder || Date.now() };
                 
                 await putToDB('projects', fullDataToSave);
                 await fetchProjectListSummary();
@@ -708,6 +724,7 @@
                 delete fullProjectDataCache[projectId];
                 await fetchProjectListSummary();
                 showNotification("Project deleted successfully.");
+                loadProjectIntoForm(""); // Clear the form
             } catch (err) {
                 console.error("Failed to delete project:", err);
                 alert("Error deleting project. Check console for details.");
@@ -729,6 +746,7 @@
             const warnCols = headers.filter(h => h.startsWith('r') && h.endsWith('_warn'));
 
             lines.forEach(line => {
+                summaryStats.totalRows++;
                 const values = line.split('\t');
                 const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
                 if (isComboIR) summaryStats.comboTasks++;
@@ -739,103 +757,48 @@
                 const fix1_id = values[headerMap['fix1_id']]?.trim();
                 const fix2_id = values[headerMap['fix2_id']]?.trim();
 
-                let totalRowFixPoints_fix1 = 0;
-                let categoriesInThisRow_fix1 = 0;
-                let totalRowFixPoints_fix2 = 0;
-                let categoriesInThisRow_fix2 = 0;
+                let totalRowFixPoints = 0;
+                let categoriesInThisRow = 0;
 
-                // Rule 1: 'category' credited to fix1_id
-                if (fix1_id && techStats[fix1_id]) {
-                    const catValue = parseInt(values[headerMap['category']]);
-                    if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                        categoriesInThisRow_fix1++;
-                        totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                        techStats[fix1_id].categoryCounts[catValue]++;
-                    }
-                }
-                
-                // Rule: 'i3qa_cat' credited to fix1_id if 'M' or 'C'
-                if (fix1_id && techStats[fix1_id]) {
-                    const i3qa_label = values[headerMap['i3qa_label']]?.trim().toUpperCase();
-                     if (i3qa_label && (i3qa_label.includes('M') || i3qa_label.includes('C'))) {
-                        const catValue = parseInt(values[headerMap['i3qa_cat']]);
-                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                            categoriesInThisRow_fix1++;
-                            totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                            techStats[fix1_id].categoryCounts[catValue]++;
-                        }
-                    }
-                }
+                // Combined logic for fix1_id and fix2_id
+                const processFixTech = (techId, catSources) => {
+                    if (!techId || !techStats[techId]) return;
+                    let techPoints = 0;
+                    let techCategories = 0;
 
-                // Rule 2: 'rv1_cat' & 'rv2_cat' credited to fix2_id if 'M'
-                if (fix2_id && techStats[fix2_id]) {
-                    const rv1_label = values[headerMap['rv1_label']]?.trim().toUpperCase();
-                    const rv2_label = values[headerMap['rv2_label']]?.trim().toUpperCase();
-                    if (rv1_label && rv1_label.includes('M')) {
-                        const catValue = parseInt(values[headerMap['rv1_cat']]);
+                    catSources.forEach(source => {
+                        const labelValue = source.label ? values[headerMap[source.label]]?.trim().toUpperCase() : null;
+                        if (source.condition && !source.condition(labelValue)) return;
+                        
+                        const catValue = parseInt(values[headerMap[source.cat]]);
                         if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                            categoriesInThisRow_fix2++;
-                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                            techStats[fix2_id].categoryCounts[catValue]++;
+                            techCategories++;
+                            techPoints += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                            techStats[techId].categoryCounts[catValue]++;
+                            if(source.isRQA) {
+                                techStats[techId].approvedByRQA.push({ round: source.round, category: catValue, project: currentProjectName });
+                            }
                         }
-                    }
-                    if (rv2_label && rv2_label.includes('M')) {
-                         const catValue = parseInt(values[headerMap['rv2_cat']]);
-                         if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                            categoriesInThisRow_fix2++;
-                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                            techStats[fix2_id].categoryCounts[catValue]++;
-                         }
-                    }
-                }
+                    });
 
-                // Rule 3: 'afp1_cat' credited to fix1_id if 'AA'
-                if (fix1_id && techStats[fix1_id]) {
-                    const statIndex = headerMap['afp1_stat'], catIndex = headerMap['afp1_cat'];
-                    if (statIndex !== undefined && catIndex !== undefined && values[statIndex]?.trim().toUpperCase() === 'AA') {
-                        const catValue = parseInt(values[catIndex]);
-                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                            categoriesInThisRow_fix1++;
-                            totalRowFixPoints_fix1 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                            techStats[fix1_id].categoryCounts[catValue]++;
-                            techStats[fix1_id].approvedByRQACategoryCounts[catValue]++;
-                            techStats[fix1_id].approvedByRQA.push({ round: 'AFP1', category: catValue, project: currentProjectName });
-                        }
-                    }
-                }
-
-                // Rule 4: 'afp2_cat' credited to fix2_id if 'AA'
-                if (fix2_id && techStats[fix2_id]) {
-                    const statIndex = headerMap['afp2_stat'], catIndex = headerMap['afp2_cat'];
-                    if (statIndex !== undefined && catIndex !== undefined && values[statIndex]?.trim().toUpperCase() === 'AA') {
-                        const catValue = parseInt(values[catIndex]);
-                        if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
-                            categoriesInThisRow_fix2++;
-                            totalRowFixPoints_fix2 += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                            techStats[fix2_id].categoryCounts[catValue]++;
-                            techStats[fix2_id].approvedByRQACategoryCounts[catValue]++;
-                            techStats[fix2_id].approvedByRQA.push({ round: 'AFP2', category: catValue, project: currentProjectName });
-                        }
-                    }
-                }
-                
-                // Finalize points for fix1_id
-                if (fix1_id && techStats[fix1_id]) {
-                    techStats[fix1_id].fixTasks += categoriesInThisRow_fix1;
-                    let pointsToAdd = totalRowFixPoints_fix1;
+                    techStats[techId].fixTasks += techCategories;
+                    let pointsToAdd = techPoints;
                     if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= irModifierValue;
-                    techStats[fix1_id].points += pointsToAdd;
-                    techStats[fix1_id].pointsBreakdown.fix += pointsToAdd;
-                }
+                    techStats[techId].points += pointsToAdd;
+                    techStats[techId].pointsBreakdown.fix += pointsToAdd;
+                };
                 
-                // Finalize points for fix2_id
-                if (fix2_id && techStats[fix2_id]) {
-                    techStats[fix2_id].fixTasks += categoriesInThisRow_fix2;
-                    let pointsToAdd = totalRowFixPoints_fix2;
-                    if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= irModifierValue;
-                    techStats[fix2_id].points += pointsToAdd;
-                    techStats[fix2_id].pointsBreakdown.fix += pointsToAdd;
-                }
+                processFixTech(fix1_id, [
+                    { cat: 'category' },
+                    { cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) },
+                    { cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' }
+                ]);
+
+                processFixTech(fix2_id, [
+                    { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M') },
+                    { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M') },
+                    { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2' }
+                ]);
                 
                 // Handle other point types (QC, i3qa, RV) and refix/warning counts
                 techIdCols.forEach(colName => {
@@ -899,9 +862,43 @@
             if (qualityRate >= 77.5) return 0.05; return 0;
         }
 
-        // --- UI MANIPULATION FUNCTIONS ---
+        // --- UI MANIPULATION AND STATE MANAGEMENT ---
+
+        async function loadProjectIntoForm(projectId) {
+            if (projectId) {
+                const projectData = await fetchFullProjectData(projectId);
+                if (projectData) {
+                    document.getElementById('techData').value = projectData.rawData;
+                    document.getElementById('techData').readOnly = true;
+                    document.getElementById('project-name').value = projectData.name;
+                    document.getElementById('project-name').readOnly = true;
+                    document.getElementById('is-ir-project-checkbox').checked = projectData.isIRProject;
+                    document.getElementById('is-ir-project-checkbox').disabled = true;
+                    document.getElementById('gsd-value-select').value = projectData.gsdValue;
+                    document.getElementById('gsd-value-select').disabled = true;
+                    document.getElementById('edit-data-btn').classList.remove('hidden');
+                    document.getElementById('save-project-btn').disabled = true;
+                }
+            } else {
+                // This is the "new project" or "cleared" state
+                document.getElementById('techData').value = '';
+                document.getElementById('techData').readOnly = false;
+                document.getElementById('project-name').value = '';
+                document.getElementById('project-name').readOnly = false;
+                document.getElementById('is-ir-project-checkbox').checked = false;
+                document.getElementById('is-ir-project-checkbox').disabled = false;
+                document.getElementById('gsd-value-select').value = '3in';
+                document.getElementById('gsd-value-select').disabled = false;
+                document.getElementById('edit-data-btn').classList.add('hidden');
+                document.getElementById('save-project-btn').disabled = false;
+            }
+        }
+
         function displayResults(techStats) {
             const bonusMultiplier = parseFloat(document.getElementById('bonusMultiplierDirect').value) || 1;
+            lastUsedBonusMultiplier = bonusMultiplier; // Store for modal
+            lastCalculationUsedMultiplier = !!bonusMultiplier && bonusMultiplier !== 1;
+
             document.getElementById('tech-results-container').classList.add('visible');
             const tbody = document.getElementById('tech-results-body');
             const thead = document.getElementById('results-thead');
@@ -942,27 +939,22 @@
                 `;
                 tbody.appendChild(row);
             });
-            
-            document.getElementById('search-tech-id').addEventListener('input', applyFilters);
-            document.getElementById('team-filter-container').addEventListener('change', applyFilters);
-            document.body.addEventListener('click', (e) => {
-                const icon = e.target.closest('.tech-summary-icon');
-                if (icon) {
-                    const techId = icon.dataset.techId;
-                    if (techId) openTechSummaryModal(techId);
-                }
-            });
         }
         
         function populateProjectSelect() {
             const select = document.getElementById('project-select');
-            select.innerHTML = '<option value="">Select a project...</option>';
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Select/add a project to load...</option>';
             projectListCache.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project.id;
                 option.textContent = project.name;
                 select.appendChild(option);
             });
+            // Restore previous selection if it still exists
+            if (projectListCache.some(p => p.id === currentVal)) {
+                select.value = currentVal;
+            }
             document.getElementById('refresh-projects-btn').disabled = false;
         }
 
@@ -1004,7 +996,7 @@
             const container = document.getElementById('team-filter-container');
             const existingRefreshButton = document.getElementById('refresh-teams-btn');
             container.innerHTML = `<span class="text-sm font-medium text-gray-300">Filter by Team:</span>`;
-            container.appendChild(existingRefreshButton);
+            if(existingRefreshButton) container.appendChild(existingRefreshButton);
             
             Object.keys(teamSettings).sort().forEach(team => {
                 const div = document.createElement('div');
@@ -1024,21 +1016,58 @@
             const sortBy = sortSelect.value;
             tbody.innerHTML = '';
 
+            const getTeamName = (techId) => {
+                for (const team in teamSettings) {
+                    if (teamSettings[team].some(id => id.toUpperCase() === techId.toUpperCase())) {
+                        return team;
+                    }
+                }
+                return 'N/A';
+            };
+
             const techArray = Object.values(techStats).map(tech => {
                  const denominator = tech.fixTasks + tech.refixTasks + tech.warnings.length;
                  return {
                     id: tech.id,
+                    team: getTeamName(tech.id),
                     fixTasks: tech.fixTasks,
                     totalPoints: tech.points,
                     fixQuality: denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0,
                 };
             });
 
-            if (sortBy === 'totalPoints') techArray.sort((a, b) => b.totalPoints - a.totalPoints);
-            else if (sortBy === 'fixQuality') techArray.sort((a, b) => b.fixQuality - a.fixQuality);
-            else techArray.sort((a, b) => b.fixTasks - a.fixTasks);
-            
-            metricHeader.textContent = sortBy === 'totalTasks' ? 'Total Tasks' : (sortBy === 'totalPoints' ? 'Total Points' : 'Fix Quality %');
+            if (sortBy === 'totalPoints') {
+                techArray.sort((a, b) => b.totalPoints - a.totalPoints);
+                metricHeader.textContent = 'Total Points';
+            } else if (sortBy === 'fixQuality') {
+                techArray.sort((a, b) => b.fixQuality - a.fixQuality);
+                metricHeader.textContent = 'Fix Quality %';
+            } else if (sortBy === 'team') {
+                const teamQuality = {};
+                const teamsInFilter = [...new Set(techArray.map(t => t.team))]; 
+
+                for (const teamName of teamsInFilter) {
+                    const teamMembers = techArray.filter(t => t.team === teamName);
+                    if(teamMembers.length > 0) {
+                        const totalFix = teamMembers.reduce((sum, t) => sum + techStats[t.id].fixTasks, 0);
+                        const totalRefix = teamMembers.reduce((sum, t) => sum + techStats[t.id].refixTasks, 0);
+                        const totalWarnings = teamMembers.reduce((sum, t) => sum + techStats[t.id].warnings.length, 0);
+                        const denominator = totalFix + totalRefix + totalWarnings;
+                        teamQuality[teamName] = denominator > 0 ? (totalFix / denominator) * 100 : 0;
+                    }
+                }
+
+                techArray.sort((a, b) => {
+                    const qualityA = teamQuality[a.team] || 0;
+                    const qualityB = teamQuality[b.team] || 0;
+                    if (qualityA !== qualityB) return qualityB - qualityA;
+                    return b.totalPoints - a.totalPoints;
+                });
+                metricHeader.textContent = 'Team Quality %';
+            } else { // Default to totalTasks
+                techArray.sort((a, b) => b.fixTasks - a.fixTasks);
+                metricHeader.textContent = 'Total Tasks';
+            }
             
             if (techArray.length === 0) return tbody.innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>No data to display...</i></td></tr>`;
 
@@ -1047,8 +1076,9 @@
                 let value;
                 if (sortBy === 'totalTasks') value = stat.fixTasks;
                 else if (sortBy === 'totalPoints') value = stat.totalPoints.toFixed(2);
-                else value = `${stat.fixQuality.toFixed(2)}%`;
-
+                else if (sortBy === 'fixQuality') value = `${stat.fixQuality.toFixed(2)}%`;
+                else if (sortBy === 'team') value = `${stat.team} (${(teamQuality[stat.team] || 0).toFixed(2)}%)`;
+                
                 row.innerHTML = `<td class="px-4 py-2">${index + 1}</td><td class="px-4 py-2">${stat.id}</td><td class="px-4 py-2">${value}</td>`;
                 tbody.appendChild(row);
             });
@@ -1100,51 +1130,111 @@
 
         function updateTlSummary(stats, projectBreakdown) {
             const content = document.getElementById('tl-summary-content');
-            if (!stats) return;
-
-            content.innerHTML = `
-                <div class="space-y-3">
-                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total Category Instances:</span><span class="font-bold text-xl text-gray-100">${stats.totalRows}</span></div>
-                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total "Incorrect":</span><span class="font-bold text-xl text-red-400">${stats.totalIncorrect}</span></div>
-                    <div class="flex justify-between items-baseline"><span class="text-gray-400">Total "Miss":</span><span class="font-bold text-xl text-orange-400">${stats.totalMiss}</span></div>
-                </div>`;
+            content.innerHTML = ''; // Clear previous content
             
             if (projectBreakdown && projectBreakdown.length > 1) {
                 let grandTotalPoints = 0;
-                let breakdownHtml = `<details class="mt-6" open><summary class="font-semibold text-gray-200 cursor-pointer">Project Breakdown</summary><ul class="mt-2 border border-gray-700 rounded-lg divide-y divide-gray-700 text-sm overflow-hidden">`;
+                let breakdownHtml = `<details open><summary class="font-semibold text-gray-200 cursor-pointer">Project Breakdown</summary><ul class="mt-2 border border-gray-700 rounded-lg divide-y divide-gray-700 text-sm overflow-hidden">`;
                 projectBreakdown.forEach((proj, index) => {
                     grandTotalPoints += proj.points;
                     const bgColor = index % 2 === 0 ? 'bg-gray-700/50' : 'bg-gray-800/30';
                     breakdownHtml += `<li class="p-3 flex justify-between items-center ${bgColor}"><span class="font-medium text-gray-300">${proj.name}</span><span class="font-mono font-medium text-gray-100">${proj.points.toFixed(3)} pts</span></li>`;
                 });
                 breakdownHtml += `</ul><div class="mt-3 p-3 bg-gray-700 rounded-lg flex justify-between font-bold text-base"><span>Grand Total:</span><span class="font-mono text-gray-100">${grandTotalPoints.toFixed(3)} pts</span></div></details>`;
-                content.insertAdjacentHTML('beforeend', breakdownHtml);
+                content.innerHTML = breakdownHtml;
+            } else {
+                 content.innerHTML = `<p class="text-xs text-gray-500 italic">Project breakdown appears when multiple projects are calculated.</p>`
             }
             document.getElementById('tl-summary-card').classList.add('visible');
+        }
+
+        function updateFix4Breakdown(rawData) {
+            const container = document.getElementById('fix4-breakdown-content');
+            const card = document.getElementById('fix4-breakdown-card');
+            container.innerHTML = '';
+
+            const lines = rawData.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 1) {
+                container.innerHTML = `<p class="text-xs text-gray-500 italic">No data to analyze.</p>`;
+                card.classList.add('visible');
+                return;
+            }
+
+            const headers = lines.shift().split('\t').map(h => h.trim().toLowerCase());
+            const headerMap = {};
+            headers.forEach((h, i) => { headerMap[h] = i; });
+
+            if (headerMap['fix4_id'] === undefined || headerMap['rv3_cat'] === undefined) {
+                 container.innerHTML = `<p class="text-xs text-gray-500 italic">'fix4_id' or 'rv3_cat' columns not found.</p>`;
+                 card.classList.add('visible');
+                 return;
+            }
+
+            const fix4Data = {};
+
+            lines.forEach(line => {
+                const values = line.split('\t');
+                const techId = values[headerMap['fix4_id']]?.trim();
+                const category = parseInt(values[headerMap['rv3_cat']]);
+
+                if (techId && !isNaN(category) && category >= 1 && category <= 9) {
+                    if (!fix4Data[techId]) {
+                        fix4Data[techId] = {};
+                    }
+                    fix4Data[techId][category] = (fix4Data[techId][category] || 0) + 1;
+                }
+            });
+
+            if (Object.keys(fix4Data).length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-500 italic">No relevant Fix4 data found.</p>`;
+                card.classList.add('visible');
+                return;
+            }
+
+            let html = '<div class="space-y-3">';
+            for (const techId in fix4Data) {
+                html += `<div><strong class="text-gray-200">${techId}</strong><ul class="list-disc list-inside ml-4 text-gray-400">`;
+                for (const category in fix4Data[techId]) {
+                    html += `<li>Category ${category}: <span class="font-mono text-gray-300">${fix4Data[techId][category]}</span></li>`;
+                }
+                html += `</ul></div>`;
+            }
+            html += `</div>`;
+            
+            container.innerHTML = html;
+            card.classList.add('visible');
         }
         
         function applyFilters() {
             const searchValue = document.getElementById('search-tech-id').value.toUpperCase();
             const selectedTeams = Array.from(document.querySelectorAll('.team-filter-cb:checked')).map(cb => cb.dataset.team);
-            
-            document.querySelectorAll('#tech-results-body tr').forEach(row => {
-                const techIdCell = row.querySelector('td:first-child');
-                if (!techIdCell) return;
-                
-                const techId = techIdCell.textContent.trim().toUpperCase();
-                let teamName = 'N/A';
+
+            const getTeamName = (techId) => {
                 for (const team in teamSettings) {
-                    if (teamSettings[team].some(id => id.toUpperCase() === techId)) {
-                        teamName = team;
-                        break;
+                    if (teamSettings[team].some(id => id.toUpperCase() === techId.toUpperCase())) {
+                        return team;
                     }
                 }
-                
-                const searchMatch = techId.includes(searchValue);
+                return 'N/A';
+            };
+
+            const filteredStats = {};
+            for (const techId in currentTechStats) {
+                const tech = currentTechStats[techId];
+                const teamName = getTeamName(tech.id);
+
+                const searchMatch = tech.id.toUpperCase().includes(searchValue);
                 const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(teamName);
-                
-                row.style.display = (searchMatch && teamMatch) ? '' : 'none';
-            });
+
+                if (searchMatch && teamMatch) {
+                    filteredStats[techId] = tech;
+                }
+            }
+            
+            // Re-render components with the filtered data
+            displayResults(filteredStats);
+            updateLeaderboard(filteredStats);
+            updateWorkloadChart(filteredStats);
         }
         
         function showNotification(message) {
@@ -1243,15 +1333,24 @@
         }
         
         function setupEventListeners() {
+            // Modal Listeners
             document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
             document.getElementById('modal-close').addEventListener('click', closeModal);
-            document.querySelectorAll('.info-icon').forEach(icon => icon.addEventListener('click', (e) => { e.stopPropagation(); showModal(icon.dataset.key); }));
+            document.body.addEventListener('click', (e) => {
+                const icon = e.target.closest('.info-icon:not(.tech-summary-icon)');
+                if (icon && icon.dataset.key) {
+                    e.stopPropagation();
+                    showModal(icon.dataset.key);
+                }
+                const techIcon = e.target.closest('.tech-summary-icon');
+                if (techIcon && techIcon.dataset.techId) {
+                    openTechSummaryModal(techIcon.dataset.techId);
+                }
+            });
+
+            // Team Management Listeners
             document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
             document.getElementById('close-teams-modal-btn').addEventListener('click', closeTeamManagementModal);
-            document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
-            document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
-            document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
-
             document.getElementById('add-team-btn').addEventListener('click', () => {
                 const newTeamName = document.getElementById('new-team-name').value.trim();
                 if (newTeamName && !teamSettings[newTeamName]) { teamSettings[newTeamName] = []; populateAdminTeamManagement(); document.getElementById('new-team-name').value = ''; }
@@ -1270,39 +1369,16 @@
                 });
                 saveTeamSettings(newSettings);
             });
-            
+             document.getElementById('refresh-teams-btn').addEventListener('click', loadTeamSettings);
+
+            // Reorder Modal Listeners
+            document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
+            document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
+            document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
+
+            // Main Project Management Listeners
             document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
-            document.getElementById('project-select').addEventListener('change', async (e) => {
-                const projectId = e.target.value;
-                if (projectId) {
-                    const projectData = await fetchFullProjectData(projectId);
-                    if (projectData) {
-                        document.getElementById('techData').value = projectData.rawData;
-                        document.getElementById('techData').readOnly = true;
-                        document.getElementById('project-name').value = projectData.name;
-                        document.getElementById('project-name').readOnly = true;
-                        document.getElementById('is-ir-project-checkbox').checked = projectData.isIRProject;
-                        document.getElementById('is-ir-project-checkbox').disabled = true;
-                        document.getElementById('gsd-value-select').value = projectData.gsdValue;
-                        document.getElementById('gsd-value-select').disabled = true;
-                        document.getElementById('edit-data-btn').classList.remove('hidden');
-                        document.getElementById('save-project-btn').disabled = true;
-                        isEditMode = false;
-                    }
-                } else {
-                    document.getElementById('techData').value = '';
-                    document.getElementById('techData').readOnly = false;
-                    document.getElementById('project-name').value = '';
-                    document.getElementById('project-name').readOnly = false;
-                    document.getElementById('is-ir-project-checkbox').checked = false;
-                    document.getElementById('is-ir-project-checkbox').disabled = false;
-                    document.getElementById('gsd-value-select').value = '3in';
-                    document.getElementById('gsd-value-select').disabled = false;
-                    document.getElementById('edit-data-btn').classList.add('hidden');
-                    document.getElementById('save-project-btn').disabled = false;
-                    isEditMode = true;
-                }
-            });
+            document.getElementById('project-select').addEventListener('change', (e) => loadProjectIntoForm(e.target.value));
             document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
             document.getElementById('edit-data-btn').addEventListener('click', () => {
                 document.getElementById('techData').readOnly = false;
@@ -1311,9 +1387,9 @@
                 document.getElementById('gsd-value-select').disabled = false;
                 document.getElementById('edit-data-btn').classList.add('hidden');
                 document.getElementById('save-project-btn').disabled = false;
-                isEditMode = true;
             });
             
+            // Calculation Listeners
             document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
                 const projectId = document.getElementById('project-select').value;
                 if (!projectId) return alert("Please select a project.");
@@ -1323,11 +1399,10 @@
                     const parsed = parseRawData(projectData.rawData, projectData.isIRProject, projectData.name, projectData.gsdValue);
                     if (parsed) {
                         currentTechStats = parsed.techStats;
-                        displayResults(currentTechStats);
-                        updateLeaderboard(currentTechStats);
-                        updateWorkloadChart(currentTechStats);
+                        applyFilters(); // Apply filters to all components
                         updateProjectProgress(currentTechStats);
                         updateTlSummary(parsed.summaryStats, [{ name: projectData.name, points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
+                        updateFix4Breakdown(projectData.rawData);
                         document.getElementById('results-title').textContent = `Bonus Results for: ${projectData.name}`;
                     }
                 }
@@ -1342,28 +1417,46 @@
                     const parsed = parseRawData(techData, isIR, 'Pasted Data', gsdVal);
                     if (parsed) {
                         currentTechStats = parsed.techStats;
-                        displayResults(currentTechStats);
-                        updateLeaderboard(currentTechStats);
-                        updateWorkloadChart(currentTechStats);
+                        applyFilters(); // Apply filters to all components
                         updateProjectProgress(currentTechStats);
                         updateTlSummary(parsed.summaryStats, [{ name: 'Pasted Data', points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
+                        updateFix4Breakdown(techData);
                         document.getElementById('results-title').textContent = `Bonus Results for: Pasted Data`;
                     }
                 } else alert("Please paste data into the text box first.");
             });
             
             document.getElementById('save-project-btn').addEventListener('click', async () => {
-                 const projectName = document.getElementById('project-name').value.trim();
-                 const techData = document.getElementById('techData').value.trim();
-                 if (!projectName || !techData) return alert("Please provide both a project name and project data.");
-                 
-                 const projectId = !isEditMode ? projectName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Date.now() : document.getElementById('project-select').value;
-                 const isIR = document.getElementById('is-ir-project-checkbox').checked;
-                 const gsdVal = document.getElementById('gsd-value-select').value;
-                 const projectData = { id: projectId, name: projectName, rawData: techData, isIRProject: isIR, gsdValue: gsdVal };
-                 await saveProjectToIndexedDB(projectData);
-                 document.getElementById('project-select').value = projectData.id;
-                 document.getElementById('project-select').dispatchEvent(new Event('change'));
+                const saveButton = document.getElementById('save-project-btn');
+                const originalButtonText = saveButton.textContent;
+                const projectName = document.getElementById('project-name').value.trim();
+                const techData = document.getElementById('techData').value.trim();
+
+                if (!projectName || !techData) return alert("Please provide both a project name and project data.");
+
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saving...';
+
+                const existingId = document.getElementById('project-select').value;
+                const isEditing = !!existingId && !document.getElementById('techData').readOnly;
+                
+                const projectId = isEditing ? existingId : projectName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '_' + Date.now();
+
+                const isIR = document.getElementById('is-ir-project-checkbox').checked;
+                const gsdVal = document.getElementById('gsd-value-select').value;
+                const projectData = { id: projectId, name: projectName, rawData: techData, isIRProject: isIR, gsdValue: gsdVal };
+                
+                if (isEditing) {
+                    delete fullProjectDataCache[projectId];
+                }
+
+                await saveProjectToIndexedDB(projectData);
+
+                document.getElementById('project-select').value = projectData.id;
+                await loadProjectIntoForm(projectData.id);
+
+                saveButton.disabled = false;
+                saveButton.textContent = originalButtonText;
             });
             
             document.getElementById('calculate-all-btn').addEventListener('click', async () => {
@@ -1379,12 +1472,17 @@
                 const combinedTechStats = {};
                 const projectBreakdown = [];
                 let combinedSummary = { totalRows: 0, totalIncorrect: 0, totalMiss: 0 };
+                let combinedRawData = '';
 
                 if (projectsToCalculate.filter(Boolean).length > 0) lastUsedGsdValue = projectsToCalculate.filter(Boolean)[0].gsdValue;
 
                 for (const project of projectsToCalculate) {
                     if (!project) continue;
-                    const parsed = parseRawData(project.rawData, project.isIRProject, project.name, project.gsdValue);
+                    
+                    const projectRawData = project.rawData;
+                    combinedRawData += projectRawData + '\n';
+
+                    const parsed = parseRawData(projectRawData, project.isIRProject, project.name, project.gsdValue);
                     if (parsed) {
                         projectBreakdown.push({name: project.name, points: Object.values(parsed.techStats).reduce((s, t) => s + t.points, 0)});
                         combinedSummary.totalRows += parsed.summaryStats.totalRows;
@@ -1393,32 +1491,50 @@
                         
                         for (const techId in parsed.techStats) {
                             const stat = parsed.techStats[techId];
-                            if (!combinedTechStats[techId]) combinedTechStats[techId] = createNewTechStat();
+                            if (!combinedTechStats[techId]) {
+                                combinedTechStats[techId] = createNewTechStat();
+                            }
                             combinedTechStats[techId].id = techId;
                             combinedTechStats[techId].points += stat.points;
                             combinedTechStats[techId].fixTasks += stat.fixTasks;
                             combinedTechStats[techId].refixTasks += stat.refixTasks;
+
                             combinedTechStats[techId].warnings.push(...stat.warnings);
-                            for (const key in stat.pointsBreakdown) combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
+                            combinedTechStats[techId].refixDetails.push(...stat.refixDetails);
+                            combinedTechStats[techId].missedCategories.push(...stat.missedCategories);
+                            combinedTechStats[techId].approvedByRQA.push(...stat.approvedByRQA);
+
+                            for (const key in stat.pointsBreakdown) {
+                                combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
+                            }
+                            for (let i = 1; i <= 9; i++) {
+                                if (stat.categoryCounts[i]) {
+                                    combinedTechStats[techId].categoryCounts[i] += stat.categoryCounts[i];
+                                }
+                            }
                         }
                     }
                 }
                 
                 currentTechStats = combinedTechStats;
-                displayResults(currentTechStats);
-                updateLeaderboard(currentTechStats);
-                updateWorkloadChart(currentTechStats);
+                applyFilters();
                 updateProjectProgress(currentTechStats);
                 updateTlSummary(combinedSummary, projectBreakdown);
+                updateFix4Breakdown(combinedRawData);
                 document.getElementById('results-title').textContent = `Bonus Results for: ${isCustomized ? 'Selected Projects' : 'All Projects'}`;
             });
             
+            // Filter Listeners
+            document.getElementById('search-tech-id').addEventListener('input', applyFilters);
+            document.getElementById('team-filter-container').addEventListener('change', applyFilters);
+            
+            // Other UI Listeners
             document.getElementById('customize-calc-all-cb').addEventListener('change', (e) => {
                 const selectEl = document.getElementById('project-select');
                 selectEl.multiple = e.target.checked;
                 selectEl.size = e.target.checked ? 10 : 1;
             });
-            document.getElementById('leaderboard-sort-select').addEventListener('change', () => updateLeaderboard(currentTechStats));
+            document.getElementById('leaderboard-sort-select').addEventListener('change', applyFilters);
         }
 
         async function main() {
