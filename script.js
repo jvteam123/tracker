@@ -306,7 +306,6 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         const fix3_id = values[headerMap['fix3_id']]?.trim();
         const fix4_id = values[headerMap['fix4_id']]?.trim();
 
-
         // --- POINT CALCULATION ---
         const processFixTech = (techId, catSources) => {
             if (!techId || !techStats[techId]) return;
@@ -335,30 +334,33 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        // --- Updated Point Credit Logic ---
-        // fix1 gets points for initial fix, i3qa misses, and afp1 approvals
-        processFixTech(fix1_id, [
-            { cat: 'category' }, // Initial fix
-            { cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) },
-            { cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' }
-        ]);
+        // --- *** MODIFICATION START *** ---
+        // Determine if there is a primary category from the QC_ID.
+        const hasPrimaryCategory = !!values[headerMap['qc_id']]?.trim() || !!values[headerMap['category']]?.trim();
+
+        // Build the sources for fix1_id dynamically to prevent double counting.
+        const fix1Sources = [];
+        if (hasPrimaryCategory) {
+            fix1Sources.push({ cat: 'category' }); // If there's a primary category, count it.
+        } else {
+            // ONLY if there is NO primary category, check for i3qa misses and AFP approvals.
+            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) });
+            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' });
+        }
         
-        // fix2 gets points for rv1 misses and afp2 approvals
+        processFixTech(fix1_id, fix1Sources);
+        // --- *** MODIFICATION END *** ---
+        
         processFixTech(fix2_id, [
             { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M') },
             { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2' }
         ]);
-
-        // fix3 gets points for rv2 misses
         processFixTech(fix3_id, [
             { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M') }
         ]);
-
-        // fix4 gets points for rv3 misses
         processFixTech(fix4_id, [
             { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M') }
         ]);
-
 
         // --- MISS & REFIX COUNTING ---
         const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
@@ -371,13 +373,11 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             }
         };
         
-        // Attribute misses to the person whose work was being reviewed
         processMiss(values[headerMap['i3qa_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
         processMiss(values[headerMap['rv1_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
         processMiss(values[headerMap['rv2_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
         processMiss(values[headerMap['rv3_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
 
-        
         // Handle other point types (QC, i3qa, RV) and refix/warning counts
         techIdCols.forEach(colName => {
             const techId = values[headerMap[colName]]?.trim();
