@@ -345,22 +345,22 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
 
         if (hasPrimaryCategory) {
             fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+        } else {
+            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         }
-        
         fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
-
-        // **BUG FIX**: This logic was flawed. Now, AFP is always checked.
-        // It's pushed for fix1_id, fix2_id, etc., in their respective blocks.
         
-        processFixTech(fix1_id, [
-            ...fix1Sources,
-            { cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' }
-        ]);
+        processFixTech(fix1_id, fix1Sources);
 
-        processFixTech(fix2_id, [
-            { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' },
-            { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2', sourceType: 'afp' }
-        ]);
+        const hasRv1Miss = values[headerMap['rv1_label']]?.trim().toUpperCase().includes('M');
+        const fix2Sources = [];
+        if(hasRv1Miss){
+            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
+        } else {
+            fix2Sources.push({ cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2', sourceType: 'afp' });
+        }
+        processFixTech(fix2_id, fix2Sources);
+
         processFixTech(fix3_id, [
             { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
         ]);
