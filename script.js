@@ -180,11 +180,15 @@ async function getAllFromDB(storeName) {
 
 // --- CORE LOGIC FUNCTIONS ---
 function createNewTechStat() {
+    const categoryCounts = {};
+    for (let i = 1; i <= 9; i++) {
+        categoryCounts[i] = { primary: 0, i3qa: 0, afp: 0, rv: 0 };
+    }
     return {
         id: '', points: 0, fixTasks: 0, refixTasks: 0, warnings: [],
         refixDetails: [], missedCategories: [], approvedByRQA: [],
         approvedByRQACategoryCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
-        categoryCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
+        categoryCounts: categoryCounts,
         pointsBreakdown: { fix: 0, qc: 0, i3qa: 0, rv: 0 }
     };
 }
@@ -320,7 +324,9 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                 if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
                     techCategories++;
                     techPoints += categoryValues[catValue]?.[gsdForCalculation] || 0;
-                    techStats[techId].categoryCounts[catValue]++;
+                    if (techStats[techId].categoryCounts[catValue] && source.sourceType) {
+                        techStats[techId].categoryCounts[catValue][source.sourceType]++;
+                    }
                     if(source.isRQA) {
                         techStats[techId].approvedByRQA.push({ round: source.round, category: catValue, project: currentProjectName });
                     }
@@ -334,36 +340,30 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-       // --- *** NEW CORRECTED LOGIC *** ---
         const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
-
         const fix1Sources = [];
 
-        // Only count the main category if it exists.
         if (hasPrimaryCategory) {
-            fix1Sources.push({ cat: 'category' });
+            fix1Sources.push({ cat: 'category', sourceType: 'primary' });
         }
         
-        // Always count i3qa misses as a separate task.
-        fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')) });
+        fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
 
-        // Only count the AFP1 approval as a task IF there was no primary category.
         if (!hasPrimaryCategory) {
-            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1' });
+            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         }
         
         processFixTech(fix1_id, fix1Sources);
-        // --- *** END OF NEW LOGIC *** ---
 
         processFixTech(fix2_id, [
-            { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M') },
-            { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2' }
+            { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' },
+            { cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2', sourceType: 'afp' }
         ]);
         processFixTech(fix3_id, [
-            { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M') }
+            { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
         ]);
         processFixTech(fix4_id, [
-            { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M') }
+            { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
         ]);
 
         // --- MISS & REFIX COUNTING ---
@@ -847,22 +847,45 @@ function openTechSummaryModal(techId) {
 
     document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
     
-    const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
+    let categoryHtml = `<div class="text-sm space-y-3">
+        <div class="grid grid-cols-3 gap-x-4 font-semibold text-gray-400 border-b border-gray-600 pb-2">
+            <div>Category</div>
+            <div class="text-center">Tasks Counted</div>
+            <div>How they were counted</div>
+        </div>
+        <div class="space-y-2">`;
     
-    let categoryHtml = '';
-    let totalCategoryCount = 0;
-    const gsd = lastUsedGsdValue || '3in';
-
+    let totalTasksFromCategories = 0;
+    
     for (let i = 1; i <= 9; i++) {
-        const count = tech.categoryCounts[i];
-        if (count > 0) {
-            totalCategoryCount += count;
-            const pointsPerCategory = categoryValues[i]?.[gsd] || 0;
-            categoryHtml += `<li class="flex justify-between p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}"><span>Category ${i}:</span><span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span></li>`;
+        const counts = tech.categoryCounts[i];
+        const totalCategoryTasks = counts.primary + counts.i3qa + counts.afp + counts.rv;
+        
+        if (totalCategoryTasks > 0) {
+            totalTasksFromCategories += totalCategoryTasks;
+            let breakdownParts = [];
+            if (counts.primary > 0) breakdownParts.push(`${counts.primary} from CATEGORY`);
+            if (counts.i3qa > 0) breakdownParts.push(`${counts.i3qa} from i3QA`);
+            if (counts.afp > 0) breakdownParts.push(`${counts.afp} from AFP`);
+            if (counts.rv > 0) breakdownParts.push(`${counts.rv} from RV`);
+            
+            const breakdownText = breakdownParts.join(', ');
+
+            categoryHtml += `
+                <div class="grid grid-cols-3 gap-x-4 items-center bg-gray-900/50 p-2 rounded-md">
+                    <div class="font-medium text-gray-200">Category ${i}</div>
+                    <div class="text-center font-mono font-bold text-lg text-white">${totalCategoryTasks}</div>
+                    <div class="text-xs text-gray-400">${breakdownText}</div>
+                </div>
+            `;
         }
     }
-    if (tech.pointsBreakdown.fix > 0) categoryHtml += `<li class="flex justify-between font-bold border-t-2 border-gray-600 pt-2 mt-2 bg-gray-700 p-2 rounded-md"><span>Total from Categories:</span><span class="font-mono">(${totalCategoryCount} tasks) ${tech.pointsBreakdown.fix.toFixed(2)} pts</span></li>`;
-    if (!categoryHtml) categoryHtml = '<li>No primary fix tasks.</li>';
+    
+    categoryHtml += `</div></div>`;
+
+    if (totalTasksFromCategories === 0) {
+        categoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
+    }
 
     const multiplierDisplay = lastCalculationUsedMultiplier ? `${lastUsedBonusMultiplier.toFixed(2)} (Multiplier)` : '1 (No Multiplier)';
     const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
@@ -873,8 +896,12 @@ function openTechSummaryModal(techId) {
 
     document.getElementById('modal-body').innerHTML = `<div class="space-y-4 text-sm">
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+            <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts</h4>
+            ${categoryHtml}
+        </div>
+        <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
             <h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4>
-            <div class="flex justify-between"><span class="text-gray-400">Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Total Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div>
             <div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>
             ${refixDetailHtml}
             <div class="flex justify-between mt-2"><span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${tech.missedCategories.length}</span></div>
@@ -883,10 +910,6 @@ function openTechSummaryModal(techId) {
             ${approvedByRQADetailHtml}
             <div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>
             ${warningsDetailHtml}
-            <div class="mt-2 text-xs">
-                <h4 class="font-medium text-gray-400 mb-1">Primary Fix Category Counts</h4>
-                <ul class="mt-1 space-y-1 pl-2">${categoryHtml}</ul>
-            </div>
         </div>
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
@@ -1129,8 +1152,12 @@ function setupEventListeners() {
                         combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
                     }
                     for (let i = 1; i <= 9; i++) {
-                        if (stat.categoryCounts[i]) {
-                            combinedTechStats[techId].categoryCounts[i] += stat.categoryCounts[i];
+                         if (stat.categoryCounts[i]) {
+                            const counts = stat.categoryCounts[i];
+                            combinedTechStats[techId].categoryCounts[i].primary += counts.primary;
+                            combinedTechStats[techId].categoryCounts[i].i3qa += counts.i3qa;
+                            combinedTechStats[techId].categoryCounts[i].afp += counts.afp;
+                            combinedTechStats[techId].categoryCounts[i].rv += counts.rv;
                         }
                     }
                 }
