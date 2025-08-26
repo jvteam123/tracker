@@ -342,19 +342,17 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         
         const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
         const fix1Sources = [];
-
         if (hasPrimaryCategory) {
             fix1Sources.push({ cat: 'category', sourceType: 'primary' });
         } else {
             fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         }
         fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
-        
         processFixTech(fix1_id, fix1Sources);
 
         const hasRv1Miss = values[headerMap['rv1_label']]?.trim().toUpperCase().includes('M');
         const fix2Sources = [];
-        if(hasRv1Miss){
+        if (hasRv1Miss) {
             fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
         } else {
             fix2Sources.push({ cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2', sourceType: 'afp' });
