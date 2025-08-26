@@ -340,28 +340,41 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
+        // --- FIX 1 LOGIC ---
+        const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
         const fix1Sources = [];
-        if (hasPrimaryCategory) {
-            fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+        if (afp1_stat === 'AA') {
+            fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         } else {
-            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' });
+            const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
+            if (hasPrimaryCategory) {
+                fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+            }
+            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
         }
-        fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
         processFixTech(fix1_id, fix1Sources);
 
-        const hasRv1Miss = values[headerMap['rv1_label']]?.trim().toUpperCase().includes('M');
+        // --- FIX 2 LOGIC ---
+        const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
         const fix2Sources = [];
-        if (hasRv1Miss) {
-            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
+        if (afp2_stat === 'AA') {
+            fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
         } else {
-            fix2Sources.push({ cat: 'afp2_cat', label: 'afp2_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP2', sourceType: 'afp' });
+            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
         }
         processFixTech(fix2_id, fix2Sources);
 
-        processFixTech(fix3_id, [
-            { cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
-        ]);
+        // --- FIX 3 LOGIC ---
+        const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
+        const fix3Sources = [];
+        if (afp3_stat === 'AA') {
+            fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
+        } else {
+            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
+        }
+        processFixTech(fix3_id, fix3Sources);
+
+        // --- FIX 4 LOGIC ---
         processFixTech(fix4_id, [
             { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
         ]);
