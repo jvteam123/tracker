@@ -847,7 +847,8 @@ function openTechSummaryModal(techId) {
 
     document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
     
-    let categoryHtml = `<div class="text-sm space-y-3">
+    // New detailed category breakdown
+    let detailedCategoryHtml = `<div class="text-sm space-y-3">
         <div class="grid grid-cols-3 gap-x-4 font-semibold text-gray-400 border-b border-gray-600 pb-2">
             <div>Category</div>
             <div class="text-center">Tasks Counted</div>
@@ -871,7 +872,7 @@ function openTechSummaryModal(techId) {
             
             const breakdownText = breakdownParts.join(', ');
 
-            categoryHtml += `
+            detailedCategoryHtml += `
                 <div class="grid grid-cols-3 gap-x-4 items-center bg-gray-900/50 p-2 rounded-md">
                     <div class="font-medium text-gray-200">Category ${i}</div>
                     <div class="text-center font-mono font-bold text-lg text-white">${totalCategoryTasks}</div>
@@ -881,11 +882,28 @@ function openTechSummaryModal(techId) {
         }
     }
     
-    categoryHtml += `</div></div>`;
-
+    detailedCategoryHtml += `</div></div>`;
     if (totalTasksFromCategories === 0) {
-        categoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
+        detailedCategoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
     }
+
+    // Old colored list breakdown
+    const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
+    let oldCategoryHtml = '';
+    let totalCategoryCount = 0;
+    const gsd = lastUsedGsdValue || '3in';
+
+    for (let i = 1; i <= 9; i++) {
+        const counts = tech.categoryCounts[i];
+        const count = counts.primary + counts.i3qa + counts.afp + counts.rv;
+        if (count > 0) {
+            totalCategoryCount += count;
+            const pointsPerCategory = categoryValues[i]?.[gsd] || 0;
+            oldCategoryHtml += `<li class="flex justify-between p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}"><span>Category ${i}:</span><span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span></li>`;
+        }
+    }
+    if (tech.pointsBreakdown.fix > 0) oldCategoryHtml += `<li class="flex justify-between font-bold border-t-2 border-gray-600 pt-2 mt-2 bg-gray-700 p-2 rounded-md"><span>Total from Categories:</span><span class="font-mono">(${totalCategoryCount} tasks) ${tech.pointsBreakdown.fix.toFixed(2)} pts</span></li>`;
+    if (!oldCategoryHtml) oldCategoryHtml = '<li>No primary fix tasks.</li>';
 
     const multiplierDisplay = lastCalculationUsedMultiplier ? `${lastUsedBonusMultiplier.toFixed(2)} (Multiplier)` : '1 (No Multiplier)';
     const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
@@ -896,8 +914,12 @@ function openTechSummaryModal(techId) {
 
     document.getElementById('modal-body').innerHTML = `<div class="space-y-4 text-sm">
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
-            <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts</h4>
-            ${categoryHtml}
+            <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
+            ${detailedCategoryHtml}
+            <div class="mt-4 pt-4 border-t border-gray-600">
+                <h4 class="font-medium text-gray-400 mb-1">Primary Fix Category Counts (Summary)</h4>
+                <ul class="mt-1 space-y-1">${oldCategoryHtml}</ul>
+            </div>
         </div>
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
             <h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4>
