@@ -349,11 +349,13 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         
         fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
 
-        if (!hasPrimaryCategory) {
-            fix1Sources.push({ cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' });
-        }
+        // **BUG FIX**: This logic was flawed. Now, AFP is always checked.
+        // It's pushed for fix1_id, fix2_id, etc., in their respective blocks.
         
-        processFixTech(fix1_id, fix1Sources);
+        processFixTech(fix1_id, [
+            ...fix1Sources,
+            { cat: 'afp1_cat', label: 'afp1_stat', condition: val => val === 'AA', isRQA: true, round: 'AFP1', sourceType: 'afp' }
+        ]);
 
         processFixTech(fix2_id, [
             { cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' },
@@ -847,7 +849,6 @@ function openTechSummaryModal(techId) {
 
     document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
     
-    // New detailed category breakdown
     let detailedCategoryHtml = `<div class="text-sm space-y-3">
         <div class="grid grid-cols-3 gap-x-4 font-semibold text-gray-400 border-b border-gray-600 pb-2">
             <div>Category</div>
@@ -887,7 +888,6 @@ function openTechSummaryModal(techId) {
         detailedCategoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
     }
 
-    // Old colored list breakdown
     const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
     let oldCategoryHtml = '';
     let totalCategoryCount = 0;
