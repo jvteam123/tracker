@@ -1452,9 +1452,7 @@ function populateUpdates() {
     const updates = [
         "Added 'View Data' button to tech breakdown for full data transparency.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
-        "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
-        "Fixed critical error when saving large projects.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
