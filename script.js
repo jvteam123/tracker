@@ -1268,8 +1268,6 @@ function setupEventListeners() {
 function populateUpdates() {
     const updates = [
         "Fixed critical 'Maximum call stack size exceeded' error when saving large projects.",
-        "Added color-coded database status indicator (Green for success, Red for failure).",
-        "Added this 'New Updates' section to the main page.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
