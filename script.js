@@ -1000,6 +1000,7 @@ function openTechSummaryModal(techId) {
 }
 
 function openTechDataView(techId) {
+    closeModal(); // This is the fix: Close the detailed breakdown modal first
     const dataViewModal = document.getElementById('data-view-modal');
     const breakdownContainer = document.getElementById('data-view-breakdown');
     const tableContainer = document.getElementById('data-view-table-container');
