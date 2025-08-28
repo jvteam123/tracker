@@ -8,7 +8,7 @@ let lastCalculationUsedMultiplier = false;
 let teamSettings = {};
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
-
+let projectSelectChangeHandler;
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
     "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"],
@@ -537,6 +537,12 @@ function displayResults(techStats) {
 function populateProjectSelect() {
     const select = document.getElementById('project-select');
     const currentVal = select.value;
+
+    // Temporarily remove the event listener to prevent the loop
+    if (projectSelectChangeHandler) {
+        select.removeEventListener('change', projectSelectChangeHandler);
+    }
+
     select.innerHTML = '<option value="">Select/add a project to load...</option>';
     projectListCache.forEach(project => {
         const option = document.createElement('option');
@@ -544,9 +550,16 @@ function populateProjectSelect() {
         option.textContent = project.name;
         select.appendChild(option);
     });
+
     if (projectListCache.some(p => p.id === currentVal)) {
         select.value = currentVal;
     }
+
+    // Re-add the event listener
+    if (projectSelectChangeHandler) {
+        select.addEventListener('change', projectSelectChangeHandler);
+    }
+
     document.getElementById('refresh-projects-btn').disabled = false;
 }
 
@@ -1056,7 +1069,8 @@ function setupEventListeners() {
     document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
 
     document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
-    document.getElementById('project-select').addEventListener('change', (e) => loadProjectIntoForm(e.target.value));
+    projectSelectChangeHandler = (e) => loadProjectIntoForm(e.target.value);
+    document.getElementById('project-select').addEventListener('change', projectSelectChangeHandler);
     document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
     document.getElementById('edit-data-btn').addEventListener('click', () => {
         document.getElementById('techData').readOnly = false;
