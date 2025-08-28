@@ -200,3 +200,22 @@ details[open] > summary::before {
     color: #f87171; /* red-400 */
     font-weight: 600;
 }
+
+/* Styles for the new Merge modal */
+.drop-zone-modal {
+    border: 2px dashed #4b5563;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    color: #9ca3af;
+    transition: background-color 0.2s, border-color 0.2s;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drop-zone-modal.drag-over {
+    border-color: #2dd4bf; /* teal-400 */
+    background-color: #115e59; /* teal-900 */
+}
