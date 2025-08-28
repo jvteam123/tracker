@@ -1006,29 +1006,23 @@ function openTechDataView(techId) {
     const tech = currentTechStats[techId];
     if (!tech) return;
 
-    // Reset filters
-    document.getElementById('data-view-search').value = '';
-    const filterCheckbox = document.getElementById('filter-parsed-cb');
-    filterCheckbox.checked = false;
-    filterCheckbox.dataset.techId = techId;
-
     // 1. Populate the breakdown
     const summaryModalBody = document.getElementById('modal-body').cloneNode(true);
     breakdownContainer.innerHTML = ''; // Clear previous content
     breakdownContainer.appendChild(summaryModalBody);
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
 
-    // 2. Build the full data table initially
+    // 2. Filter and build the data table
     const techIdUpper = techId.toUpperCase();
     const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
     
-    const techAllLines = currentDataLines.filter(line => {
+    const filteredLines = currentDataLines.filter(line => {
         const values = line.split('\t');
         return techIdCols.some(index => values[index]?.trim().toUpperCase() === techIdUpper);
     });
 
     let tableHtml = `<table class="data-view-table"><thead><tr>${currentDataHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
-    techAllLines.forEach(line => {
+    filteredLines.forEach(line => {
         tableHtml += `<tr>${line.split('\t').map(v => `<td>${v}</td>`).join('')}</tr>`;
     });
     tableHtml += `</tbody></table>`;
@@ -1037,62 +1031,6 @@ function openTechDataView(techId) {
 
     // 3. Show the modal
     dataViewModal.classList.remove('hidden');
-}
-
-function applyDataViewFilters() {
-    const techId = document.getElementById('filter-parsed-cb').dataset.techId;
-    if (!techId) return;
-
-    const searchTerm = document.getElementById('data-view-search').value.toLowerCase();
-    const filterParsed = document.getElementById('filter-parsed-cb').checked;
-    
-    const techIdUpper = techId.toUpperCase();
-    const headerMap = {};
-    currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
-
-    const tableRows = document.querySelectorAll('#data-view-table-container tbody tr');
-
-    tableRows.forEach(row => {
-        const rowText = row.textContent.toLowerCase();
-        const values = Array.from(row.cells).map(cell => cell.textContent.trim());
-
-        const searchMatch = rowText.includes(searchTerm);
-        
-        let parsedMatch = !filterParsed;
-        if (filterParsed) {
-            parsedMatch = false; // Assume it doesn't match until a condition proves otherwise
-            
-            // Core roles that always count
-            const coreRoles = ['qc_id', 'i3qa_id', 'rv1_id', 'rv2_id', 'rv3_id'];
-            if (coreRoles.some(role => values[headerMap[role]]?.toUpperCase() === techIdUpper)) {
-                parsedMatch = true;
-            }
-
-            // Conditional fixer roles
-            if (!parsedMatch) {
-                if (values[headerMap['fix1_id']]?.toUpperCase() === techIdUpper && (values[headerMap['category']] || (values[headerMap['i3qa_label']]?.toUpperCase() || '').includes('M') || (values[headerMap['i3qa_label']]?.toUpperCase() || '').includes('C') || values[headerMap['afp1_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
-                else if (values[headerMap['fix2_id']]?.toUpperCase() === techIdUpper && ((values[headerMap['rv1_label']]?.toUpperCase() || '').includes('M') || values[headerMap['afp2_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
-                else if (values[headerMap['fix3_id']]?.toUpperCase() === techIdUpper && ((values[headerMap['rv2_label']]?.toUpperCase() || '').includes('M') || values[headerMap['afp3_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
-                else if (values[headerMap['fix4_id']]?.toUpperCase() === techIdUpper && (values[headerMap['rv3_label']]?.toUpperCase() || '').includes('M')) parsedMatch = true;
-            }
-
-            // Errors (Refixes/Warnings) attributed to the tech
-            if (!parsedMatch) {
-                 for (let i = 1; i <= 3; i++) {
-                     if (values[headerMap[`fix${i}_id`]]?.toUpperCase() === techIdUpper) {
-                         const rvLabel = values[headerMap[`rv${i}_label`]]?.toUpperCase();
-                         const warnValue = values[headerMap[`r${i}_warn`]];
-                         if ((rvLabel && rvLabel.includes('I')) || (warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue.toUpperCase()))) {
-                             parsedMatch = true;
-                             break;
-                         }
-                     }
-                }
-            }
-        }
-        
-        row.style.display = searchMatch && parsedMatch ? '' : 'none';
-    });
 }
 
 function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
@@ -1214,9 +1152,13 @@ function setupEventListeners() {
     });
     document.getElementById('data-view-close-btn').addEventListener('click', closeDataViewModal);
 
-    document.getElementById('data-view-search').addEventListener('input', applyDataViewFilters);
-    document.getElementById('filter-parsed-cb').addEventListener('change', applyDataViewFilters);
-
+    document.getElementById('data-view-search').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const tableRows = document.querySelectorAll('#data-view-table-container tbody tr');
+        tableRows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+    });
 
     document.body.addEventListener('click', (e) => {
         const icon = e.target.closest('.info-icon:not(.tech-summary-icon)');
@@ -1507,8 +1449,7 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "Fixed 'Filter by parsed Fixpoints' logic to correctly display relevant data.",
-        "Fixed z-index issue where the data view modal appeared behind the details modal.",
+        "Added 'View Data' button to tech breakdown for full data transparency.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
         "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
