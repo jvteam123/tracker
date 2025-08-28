@@ -238,10 +238,6 @@ details[open] > summary::before {
 }
 
 /* New Data View Modal Styles */
-#data-view-modal {
-    z-index: 60; /* This is the fix */
-}
-
 .data-view-content {
     background-color: #1f2937;
     color: #d1d5db;
