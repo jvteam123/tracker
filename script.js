@@ -222,7 +222,6 @@ async function saveTeamSettings(settings) {
     }
 }
 
-// CORRECTED saveProjectToIndexedDB function to handle large data
 async function saveProjectToIndexedDB(projectData) {
     try {
         const textEncoder = new TextEncoder();
@@ -252,6 +251,7 @@ async function saveProjectToIndexedDB(projectData) {
         throw err; // Re-throw the error to be caught by the caller
     }
 }
+
 
 async function fetchProjectListSummary() {
     try {
@@ -1265,15 +1265,28 @@ function setupEventListeners() {
     });
 }
 
+function populateUpdates() {
+    const updates = [
+        "Fixed critical 'Maximum call stack size exceeded' error when saving large projects.",
+        "Added color-coded database status indicator (Green for success, Red for failure).",
+        "Added this 'New Updates' section to the main page.",
+    ];
+    const updatesList = document.getElementById('updates-list');
+    updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
+}
+
 async function main() {
-    document.getElementById('db-status').textContent = 'Connecting to database...';
+    const dbStatusEl = document.getElementById('db-status');
+    dbStatusEl.textContent = 'Connecting to database...';
+    populateUpdates();
+
     try {
         await openDB();
-        document.getElementById('db-status').textContent = 'Database connected successfully.';
+        dbStatusEl.innerHTML = `Status: <span class="status-ok">Connected Successfully</span>`;
         setupEventListeners();
         await Promise.all([ fetchProjectListSummary(), loadTeamSettings() ]);
     } catch (e) {
-        document.getElementById('db-status').textContent = 'Failed to connect to local database. Please check your browser settings.';
+        dbStatusEl.innerHTML = `Status: <span class="status-fail">Failed to connect</span>. Please check browser settings.`;
         console.error(e);
     }
 }
