@@ -1009,6 +1009,7 @@ function openTechDataView(techId) {
     // Reset filters
     document.getElementById('data-view-search').value = '';
     document.getElementById('filter-parsed-cb').checked = false;
+    document.getElementById('filter-parsed-cb').dataset.techId = techId;
 
     // 1. Populate the breakdown
     const summaryModalBody = document.getElementById('modal-body').cloneNode(true);
@@ -1016,9 +1017,6 @@ function openTechDataView(techId) {
     breakdownContainer.appendChild(summaryModalBody);
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
     
-    // Set data-tech-id for the filter checkbox to use
-    document.getElementById('filter-parsed-cb').dataset.techId = techId;
-
     // 2. Build the full data table initially
     const techIdUpper = techId.toUpperCase();
     const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
@@ -1050,39 +1048,42 @@ function applyDataViewFilters() {
     const techIdUpper = techId.toUpperCase();
     const headerMap = {};
     currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
-    
-    const coreLogicCols = [
-        'qc_id', 'i3qa_id', 'fix1_id', 'rv1_id', 'fix2_id', 'rv2_id', 'fix3_id', 'rv3_id', 'fix4_id'
-    ].map(h => headerMap[h]).filter(i => i !== undefined);
 
     const tableRows = document.querySelectorAll('#data-view-table-container tbody tr');
+
     tableRows.forEach(row => {
         const rowText = row.textContent.toLowerCase();
         const values = Array.from(row.cells).map(cell => cell.textContent.trim());
 
+        // Search filter
         const searchMatch = rowText.includes(searchTerm);
-        
+
+        // Parsed Fixpoints filter
         let parsedMatch = true;
         if (filterParsed) {
-            parsedMatch = coreLogicCols.some(index => values[index]?.toUpperCase() === techIdUpper);
-            // Also check for approved fixes where the tech might be the original QCer
-            if (!parsedMatch) {
-                 for(let i = 1; i <= 3; i++) {
-                     const afpStatIndex = headerMap[`afp${i}_stat`];
-                     const fixIdIndex = headerMap[`fix${i}_id`];
-                     if(afpStatIndex !== undefined && fixIdIndex !== undefined) {
-                         if(values[afpStatIndex]?.toUpperCase() === 'AA' && values[fixIdIndex]?.toUpperCase() === techIdUpper) {
-                            parsedMatch = true;
-                            break;
-                         }
-                     }
-                 }
+            parsedMatch = false; // Default to not matching unless a condition is met
+            
+            // Check if tech is involved in any core ID column
+            const idColumns = ['qc_id', 'i3qa_id', 'rv1_id', 'rv2_id', 'rv3_id', 'fix1_id', 'fix2_id', 'fix3_id', 'fix4_id'];
+            if (idColumns.some(col => values[headerMap[col]]?.toUpperCase() === techIdUpper)) {
+                parsedMatch = true;
+            }
+
+            // Check for warnings
+            for (let i = 1; i <= 4; i++) {
+                const fixId = values[headerMap[`fix${i}_id`]]?.toUpperCase();
+                const warnValue = values[headerMap[`r${i}_warn`]];
+                if (fixId === techIdUpper && warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue.toUpperCase())) {
+                    parsedMatch = true;
+                    break;
+                }
             }
         }
         
         row.style.display = searchMatch && parsedMatch ? '' : 'none';
     });
 }
+
 
 function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
 function closeDataViewModal() { document.getElementById('data-view-modal').classList.add('hidden'); }
