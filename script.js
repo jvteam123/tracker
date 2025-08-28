@@ -8,6 +8,7 @@ let lastCalculationUsedMultiplier = false;
 let teamSettings = {};
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
+let isSaving = false; // Flag to prevent recursive event firing
 
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
@@ -231,13 +232,14 @@ async function saveProjectToIndexedDB(projectData) {
         const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: projectData.projectOrder || Date.now() };
         
         await putToDB('projects', fullDataToSave);
-        // The problematic call to fetchProjectListSummary() is removed. This is a key part of the fix.
         showNotification("Project saved/updated successfully!");
     } catch (err) {
         console.error("Error saving project:", err);
         alert("Failed to save project. Check console for details.");
+        throw err; // Re-throw the error to be caught by the caller
     }
 }
+
 
 async function fetchProjectListSummary() {
     try {
@@ -459,6 +461,9 @@ function calculateQualityModifier(qualityRate) {
 
 // --- UI MANIPULATION AND STATE MANAGEMENT ---
 async function loadProjectIntoForm(projectId) {
+    // Prevent this function from running if a save is in progress
+    if (isSaving) return;
+
     if (projectId) {
         const projectData = await fetchFullProjectData(projectId);
         if (projectData) {
@@ -1056,7 +1061,11 @@ function setupEventListeners() {
     document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
 
     document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
-    document.getElementById('project-select').addEventListener('change', (e) => loadProjectIntoForm(e.target.value));
+    document.getElementById('project-select').addEventListener('change', (e) => {
+        if (!isSaving) { // Only run if not in the middle of a save operation
+            loadProjectIntoForm(e.target.value);
+        }
+    });
     document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
     document.getElementById('edit-data-btn').addEventListener('click', () => {
         document.getElementById('techData').readOnly = false;
@@ -1103,14 +1112,18 @@ function setupEventListeners() {
         } else alert("Please paste data into the text box first.");
     });
     
-    // CORRECTED 'save-project-btn' event listener
     document.getElementById('save-project-btn').addEventListener('click', async () => {
+        isSaving = true; // Set the flag to true
         const saveButton = document.getElementById('save-project-btn');
         const originalButtonText = saveButton.textContent;
         const projectName = document.getElementById('project-name').value.trim();
         const techData = document.getElementById('techData').value.trim();
 
-        if (!projectName || !techData) return alert("Please provide both a project name and project data.");
+        if (!projectName || !techData) {
+            alert("Please provide both a project name and project data.");
+            isSaving = false; // Reset flag on error
+            return;
+        }
 
         saveButton.disabled = true;
         saveButton.textContent = 'Saving...';
@@ -1128,20 +1141,20 @@ function setupEventListeners() {
             delete fullProjectDataCache[projectId];
         }
 
-        // Step 1: Save the project data (this no longer causes a loop)
-        await saveProjectToIndexedDB(projectData);
-
-        // Step 2: Manually refresh the project list from the database
-        await fetchProjectListSummary();
-
-        // Step 3: Set the dropdown to the new project and load its data into the form
-        document.getElementById('project-select').value = projectData.id;
-        await loadProjectIntoForm(projectData.id);
-
-        saveButton.disabled = false;
-        saveButton.textContent = originalButtonText;
+        try {
+            await saveProjectToIndexedDB(projectData);
+            await fetchProjectListSummary();
+            document.getElementById('project-select').value = projectData.id;
+            await loadProjectIntoForm(projectData.id);
+        } catch (error) {
+            // Error is already logged in saveProjectToIndexedDB
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = originalButtonText;
+            isSaving = false; // Reset the flag
+        }
     });
-    
+
     document.getElementById('calculate-all-btn').addEventListener('click', async () => {
         const selectedProjectIds = Array.from(document.querySelectorAll('#project-select option:checked')).map(opt => opt.value).filter(Boolean);
         const isCustomized = document.getElementById('customize-calc-all-cb').checked;
