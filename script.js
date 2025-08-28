@@ -253,6 +253,7 @@ async function saveProjectToIndexedDB(projectData) {
     }
 }
 
+
 async function fetchProjectListSummary() {
     try {
         const projects = await getAllFromDB('projects');
@@ -714,12 +715,36 @@ function updateProjectProgress(techStats) {
     const container = document.getElementById('project-progress-content');
     container.innerHTML = '';
     const statsArray = Object.values(techStats);
-    if (statsArray.length === 0) return container.innerHTML = `<p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>`;
+    if (statsArray.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500 italic">Project progress will be shown here after calculation.</p>`;
+        return;
+    }
     
     const totalFixTasks = statsArray.reduce((sum, stat) => sum + stat.fixTasks, 0);
     const totalRefixTasks = statsArray.reduce((sum, stat) => sum + stat.refixTasks, 0);
     const totalWarnings = statsArray.reduce((sum, stat) => sum + stat.warnings.length, 0);
-    const totalFixQuality = ((totalFixTasks + totalRefixTasks + totalWarnings) > 0) ? (totalFixTasks / (totalFixTasks + totalRefixTasks + totalWarnings)) * 100 : 0;
+    const totalDenominator = totalFixTasks + totalRefixTasks + totalWarnings;
+    const totalFixQuality = totalDenominator > 0 ? (totalFixTasks / totalDenominator) * 100 : 0;
+
+    let teamQualityHtml = '';
+    for (const teamName in teamSettings) {
+        const teamMemberIds = teamSettings[teamName].map(id => id.toUpperCase());
+        const teamMembersStats = statsArray.filter(stat => teamMemberIds.includes(stat.id.toUpperCase()));
+
+        if (teamMembersStats.length > 0) {
+            const teamFix = teamMembersStats.reduce((sum, t) => sum + t.fixTasks, 0);
+            const teamRefix = teamMembersStats.reduce((sum, t) => sum + t.refixTasks, 0);
+            const teamWarnings = teamMembersStats.reduce((sum, t) => sum + t.warnings.length, 0);
+            const teamDenominator = teamFix + teamRefix + teamWarnings;
+            const teamQuality = teamDenominator > 0 ? (teamFix / teamDenominator) * 100 : 0;
+            
+            teamQualityHtml += `
+                <div class="team-quality-item">
+                    <span class="font-medium text-gray-300">${teamName}:</span>
+                    <span class="font-bold text-lg ${teamQuality >= 95 ? 'text-green-400' : 'text-yellow-400'}">${teamQuality.toFixed(2)}%</span>
+                </div>`;
+        }
+    }
 
     container.innerHTML = `
         <div class="space-y-2">
@@ -730,6 +755,10 @@ function updateProjectProgress(techStats) {
         <div class="mt-4">
             <p class="text-sm font-medium text-gray-300 mb-2">Overall Project Quality: <span class="font-bold text-lg text-green-400">${totalFixQuality.toFixed(2)}%</span></p>
             <div class="progress-bar h-2.5"><div class="progress-bar-inner h-full" style="width: ${totalFixQuality.toFixed(2)}%; background-color: #34d399;"></div></div>
+        </div>
+        <div class="mt-4 border-t border-gray-700 pt-4">
+            <h4 class="text-sm font-semibold text-gray-200 mb-2">Quality per Team:</h4>
+            <div class="space-y-2">${teamQualityHtml || '<p class="text-xs text-gray-500 italic">No team members found in this dataset.</p>'}</div>
         </div>`;
     document.getElementById('project-progress-card').classList.add('visible');
 }
@@ -1111,7 +1140,7 @@ function setupEventListeners() {
             const headers = Object.keys(properties[0]);
             let tsv = headers.join('\t') + '\n';
             properties.forEach(row => {
-                tsv += headers.map(h => row[h]).join('\t') + '\n';
+                tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : row[h]).join('\t') + '\n';
             });
             document.getElementById('techData').value = tsv;
             showNotification(`${mergedFeatures.length} merged features loaded into text area.`);
@@ -1363,8 +1392,12 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "Added 'Quality per Team' breakdown to the Project Progress card.",
+        "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
         "Fixed critical 'Maximum call stack size exceeded' error when saving large projects.",
+        "Added color-coded database status indicator.",
+        "Added 'New Updates' section to the main page.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
