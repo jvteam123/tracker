@@ -189,3 +189,14 @@ details[open] > summary::before {
     font-size: 0.875rem;
     border: 1px solid #374151;
 }
+
+/* Status indicator colors */
+.status-ok {
+    color: #4ade80; /* green-400 */
+    font-weight: 600;
+}
+
+.status-fail {
+    color: #f87171; /* red-400 */
+    font-weight: 600;
+}
