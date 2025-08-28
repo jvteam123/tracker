@@ -222,12 +222,25 @@ async function saveTeamSettings(settings) {
     }
 }
 
+// CORRECTED saveProjectToIndexedDB function to handle large data
 async function saveProjectToIndexedDB(projectData) {
     try {
         const textEncoder = new TextEncoder();
         const dataAsUint8Array = textEncoder.encode(projectData.rawData);
         const compressed = pako.deflate(dataAsUint8Array);
-        const base64String = btoa(String.fromCharCode.apply(null, compressed));
+
+        // This function safely converts large Uint8Arrays to a Base64 string in chunks
+        const uint8ArrayToBase64 = (array) => {
+            const CHUNK_SIZE = 0x8000; // 32768
+            let result = '';
+            for (let i = 0; i < array.length; i += CHUNK_SIZE) {
+                const chunk = array.subarray(i, i + CHUNK_SIZE);
+                result += String.fromCharCode.apply(null, chunk);
+            }
+            return btoa(result);
+        };
+
+        const base64String = uint8ArrayToBase64(compressed);
 
         const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: projectData.projectOrder || Date.now() };
         
@@ -239,7 +252,6 @@ async function saveProjectToIndexedDB(projectData) {
         throw err; // Re-throw the error to be caught by the caller
     }
 }
-
 
 async function fetchProjectListSummary() {
     try {
@@ -461,9 +473,6 @@ function calculateQualityModifier(qualityRate) {
 
 // --- UI MANIPULATION AND STATE MANAGEMENT ---
 async function loadProjectIntoForm(projectId) {
-    // Prevent this function from running if a save is in progress
-    if (isSaving) return;
-
     if (projectId) {
         const projectData = await fetchFullProjectData(projectId);
         if (projectData) {
@@ -1113,7 +1122,7 @@ function setupEventListeners() {
     });
     
     document.getElementById('save-project-btn').addEventListener('click', async () => {
-        isSaving = true; // Set the flag to true
+        isSaving = true; // Set the flag to true to block change events
         const saveButton = document.getElementById('save-project-btn');
         const originalButtonText = saveButton.textContent;
         const projectName = document.getElementById('project-name').value.trim();
@@ -1147,11 +1156,11 @@ function setupEventListeners() {
             document.getElementById('project-select').value = projectData.id;
             await loadProjectIntoForm(projectData.id);
         } catch (error) {
-            // Error is already logged in saveProjectToIndexedDB
+            // Error is already logged in the save function
         } finally {
             saveButton.disabled = false;
             saveButton.textContent = originalButtonText;
-            isSaving = false; // Reset the flag
+            isSaving = false; // CRITICAL: Reset the flag after all operations are complete
         }
     });
 
