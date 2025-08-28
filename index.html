@@ -235,6 +235,28 @@
         </div>
     </div>
 
+    <div id="data-view-modal" class="modal-overlay hidden">
+        <div class="data-view-content">
+            <div id="data-view-header" class="flex justify-between items-center mb-4">
+                <h3 id="data-view-title" class="text-2xl font-bold text-white"></h3>
+                <button id="data-view-close-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">&times; Close</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div id="data-view-breakdown" class="lg:col-span-1 space-y-4">
+                    </div>
+                <div class="lg:col-span-2">
+                    <div class="flex justify-between items-center mb-2">
+                         <h4 class="text-lg font-semibold text-gray-200">Original Data Rows</h4>
+                         <input type="text" id="data-view-search" class="px-3 py-1 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Search data...">
+                    </div>
+                    <div id="data-view-table-container" class="data-view-table-container">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div id="merge-fixpoints-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="text-xl font-bold text-gray-100 mb-2">Merge Fixpoints</h3>
@@ -281,7 +303,10 @@
 
     <div id="info-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 id="modal-title" class="text-xl font-bold text-gray-100 mb-4"></h3>
+            <div class="flex justify-between items-start">
+                 <h3 id="modal-title" class="text-xl font-bold text-gray-100 mb-4"></h3>
+                 <button id="view-data-btn" class="bg-blue-600 text-white font-bold py-1 px-3 rounded-lg hover:bg-blue-700 text-sm ml-4 whitespace-nowrap">View Data</button>
+            </div>
             <div id="modal-body" class="text-gray-300 space-y-2"></div>
             <button id="modal-close" class="mt-6 w-full bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Close</button>
         </div>
