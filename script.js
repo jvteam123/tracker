@@ -1130,7 +1130,7 @@ function setupEventListeners() {
         await saveProjectToIndexedDB(projectData);
 
         document.getElementById('project-select').value = projectData.id;
-        await loadProjectIntoForm(projectData.id);
+        //await loadProjectIntoForm(projectData.id);
 
         saveButton.disabled = false;
         saveButton.textContent = originalButtonText;
