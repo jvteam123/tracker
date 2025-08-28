@@ -28,6 +28,7 @@
                 </div>
                  <div class="flex gap-4">
                     <button id="how-it-works-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">How It Works</button>
+                    <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Fixpoints</button>
                     <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
                 </div>
             </div>
@@ -45,7 +46,7 @@
                         <p id="db-status" class="text-sm text-gray-400 mb-4">Initializing database...</p>
                     </div>
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">What's New?</h2>
+                        <h2 class="text-xl font-semibold text-gray-100 border-b border-gray-700 pb-3 mb-4">New Updates</h2>
                         <div id="updates-list" class="text-sm text-gray-400 space-y-2">
                             </div>
                     </div>
@@ -230,6 +231,21 @@
                             </tbody>
                     </table>
                  </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="merge-fixpoints-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Merge Fixpoints</h3>
+            <p class="text-sm text-gray-400 mb-4">Drag and drop all team shapefiles (.shp and .dbf files) into the area below. The tool will merge their data into a single table.</p>
+            <div id="merge-drop-zone" class="drop-zone-modal">
+                <p>Drop .shp and .dbf files here</p>
+            </div>
+            <div id="merge-file-list" class="mt-4 text-xs space-y-1"></div>
+            <div class="mt-6 flex justify-end gap-4">
+                <button id="merge-cancel-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                <button id="merge-load-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700 transition-colors" disabled>Load Merged Data into Text Area</button>
             </div>
         </div>
     </div>
