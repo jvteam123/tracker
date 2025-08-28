@@ -1395,9 +1395,6 @@ function populateUpdates() {
         "Added 'Quality per Team' breakdown to the Project Progress card.",
         "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
-        "Fixed critical 'Maximum call stack size exceeded' error when saving large projects.",
-        "Added color-coded database status indicator.",
-        "Added 'New Updates' section to the main page.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
