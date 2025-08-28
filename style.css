@@ -57,10 +57,10 @@ body {
     transform: scale(1);
 }
 /* Scrollbar styles for dark theme */
-#modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar, #team-management-modal .modal-content::-webkit-scrollbar, #workload-chart-container::-webkit-scrollbar, #fix4-breakdown-content::-webkit-scrollbar { width: 8px; }
-#modal-body::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track, #team-management-modal .modal-content::-webkit-scrollbar-track, #workload-chart-container::-webkit-scrollbar-track, #fix4-breakdown-content::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
-#modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb, #team-management-modal .modal-content::-webkit-scrollbar-thumb, #workload-chart-container::-webkit-scrollbar-thumb, #fix4-breakdown-content::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-#modal-body::-webkit-scrollbar-thumb:hover, .table-container::-webkit-scrollbar-thumb:hover, #team-management-modal .modal-content::-webkit-scrollbar-thumb:hover, #workload-chart-container::-webkit-scrollbar-thumb:hover, #fix4-breakdown-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+#modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar, #team-management-modal .modal-content::-webkit-scrollbar, #workload-chart-container::-webkit-scrollbar, #fix4-breakdown-content::-webkit-scrollbar, .data-view-table-container::-webkit-scrollbar { width: 8px; }
+#modal-body::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track, #team-management-modal .modal-content::-webkit-scrollbar-track, #workload-chart-container::-webkit-scrollbar-track, #fix4-breakdown-content::-webkit-scrollbar-track, .data-view-table-container::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
+#modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb, #team-management-modal .modal-content::-webkit-scrollbar-thumb, #workload-chart-container::-webkit-scrollbar-thumb, #fix4-breakdown-content::-webkit-scrollbar-thumb, .data-view-table-container::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+#modal-body::-webkit-scrollbar-thumb:hover, .table-container::-webkit-scrollbar-thumb:hover, #team-management-modal .modal-content::-webkit-scrollbar-thumb:hover, #workload-chart-container::-webkit-scrollbar-thumb:hover, #fix4-breakdown-content::-webkit-scrollbar-thumb:hover, .data-view-table-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
 button:disabled {
     opacity: 0.5;
@@ -235,4 +235,54 @@ details[open] > summary::before {
     padding: 0.5rem;
     border-radius: 0.375rem; /* rounded-md */
     background-color: rgba(31, 41, 55, 0.5); /* bg-gray-800/50 */
+}
+
+/* New Data View Modal Styles */
+.data-view-content {
+    background-color: #1f2937;
+    color: #d1d5db;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    width: 95%;
+    height: 95%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid #374151;
+    display: flex;
+    flex-direction: column;
+}
+
+.data-view-table-container {
+    overflow: auto;
+    height: calc(95vh - 150px); /* Adjust height based on header */
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+}
+
+#data-view-breakdown {
+    max-height: calc(95vh - 120px);
+    overflow-y: auto;
+    padding-right: 1rem;
+}
+
+.data-view-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.data-view-table th, .data-view-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #374151;
+    white-space: nowrap;
+}
+
+.data-view-table thead {
+    position: sticky;
+    top: 0;
+    background-color: #111827;
+}
+
+.data-view-table tbody tr:hover {
+    background-color: #374151;
 }
