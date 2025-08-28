@@ -57,10 +57,10 @@ body {
     transform: scale(1);
 }
 /* Scrollbar styles for dark theme */
-#modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar, #team-management-modal .modal-content::-webkit-scrollbar, #workload-chart-container::-webkit-scrollbar { width: 8px; }
-#modal-body::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track, #team-management-modal .modal-content::-webkit-scrollbar-track, #workload-chart-container::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
-#modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb, #team-management-modal .modal-content::-webkit-scrollbar-thumb, #workload-chart-container::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-#modal-body::-webkit-scrollbar-thumb:hover, .table-container::-webkit-scrollbar-thumb:hover, #team-management-modal .modal-content::-webkit-scrollbar-thumb:hover, #workload-chart-container::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+#modal-body::-webkit-scrollbar, .table-container::-webkit-scrollbar, #team-management-modal .modal-content::-webkit-scrollbar, #workload-chart-container::-webkit-scrollbar, #fix4-breakdown-content::-webkit-scrollbar { width: 8px; }
+#modal-body::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track, #team-management-modal .modal-content::-webkit-scrollbar-track, #workload-chart-container::-webkit-scrollbar-track, #fix4-breakdown-content::-webkit-scrollbar-track { background: #374151; border-radius: 4px; }
+#modal-body::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb, #team-management-modal .modal-content::-webkit-scrollbar-thumb, #workload-chart-container::-webkit-scrollbar-thumb, #fix4-breakdown-content::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+#modal-body::-webkit-scrollbar-thumb:hover, .table-container::-webkit-scrollbar-thumb:hover, #team-management-modal .modal-content::-webkit-scrollbar-thumb:hover, #workload-chart-container::-webkit-scrollbar-thumb:hover, #fix4-breakdown-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
 button:disabled {
     opacity: 0.5;
@@ -218,4 +218,11 @@ details[open] > summary::before {
 .drop-zone-modal.drag-over {
     border-color: #2dd4bf; /* teal-400 */
     background-color: #115e59; /* teal-900 */
+}
+
+/* Fix4 Breakdown UI Fix */
+#fix4-breakdown-content {
+    max-height: 250px; /* Or any height you prefer */
+    overflow-y: auto;
+    padding-right: 0.5rem; /* space for the scrollbar */
 }
