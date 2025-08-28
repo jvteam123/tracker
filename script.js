@@ -9,6 +9,7 @@ let teamSettings = {};
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
 let isSaving = false; // Flag to prevent recursive event firing
+let mergedFeatures = []; // To store features from dropped files in the merge modal
 
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
@@ -251,7 +252,6 @@ async function saveProjectToIndexedDB(projectData) {
         throw err; // Re-throw the error to be caught by the caller
     }
 }
-
 
 async function fetchProjectListSummary() {
     try {
@@ -1028,6 +1028,53 @@ async function handleDroppedFiles(files) {
     }
 }
 
+async function handleMergeDrop(files) {
+    const fileList = document.getElementById('merge-file-list');
+    const loadBtn = document.getElementById('merge-load-btn');
+    const shpFiles = new Map();
+    const dbfFiles = new Map();
+
+    for (const file of files) {
+        const name = file.name.split('.').slice(0, -1).join('.');
+        if (file.name.endsWith('.shp')) {
+            shpFiles.set(name, file);
+        } else if (file.name.endsWith('.dbf')) {
+            dbfFiles.set(name, file);
+        }
+    }
+
+    fileList.innerHTML = '<p>Processing files...</p>';
+    mergedFeatures = []; // Clear previous merges
+
+    for (const [name, shpFile] of shpFiles) {
+        if (dbfFiles.has(name)) {
+            const dbfFile = dbfFiles.get(name);
+            try {
+                const shpBuffer = await shpFile.arrayBuffer();
+                const dbfBuffer = await dbfFile.arrayBuffer();
+                const geojson = await shapefile.read(shpBuffer, dbfBuffer);
+                if (geojson && geojson.features) {
+                    mergedFeatures.push(...geojson.features);
+                    fileList.innerHTML += `<p class="text-green-400">✓ Merged ${shpFile.name} & ${dbfFile.name} (${geojson.features.length} features)</p>`;
+                }
+            } catch (error) {
+                console.error(`Error processing ${name}:`, error);
+                fileList.innerHTML += `<p class="text-red-400">✗ Error with ${name}.shp/.dbf pair.</p>`;
+            }
+        } else {
+            fileList.innerHTML += `<p class="text-yellow-400">! Missing .dbf for ${name}.shp.</p>`;
+        }
+    }
+
+    if (mergedFeatures.length > 0) {
+        loadBtn.disabled = false;
+        fileList.innerHTML += `<p class="font-bold mt-2">Total Features Merged: ${mergedFeatures.length}</p>`;
+    } else {
+        fileList.innerHTML += `<p class="font-bold mt-2 text-red-400">No data was merged. Please check your files.</p>`;
+    }
+}
+
+
 function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
     document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -1042,6 +1089,55 @@ function setupEventListeners() {
             openTechSummaryModal(techIcon.dataset.techId);
         }
     });
+
+    // Merge Fixpoints Modal Listeners
+    const mergeModal = document.getElementById('merge-fixpoints-modal');
+    const mergeDropZone = document.getElementById('merge-drop-zone');
+
+    document.getElementById('merge-fixpoints-btn').addEventListener('click', () => {
+        mergedFeatures = []; // Reset on open
+        document.getElementById('merge-file-list').innerHTML = '';
+        document.getElementById('merge-load-btn').disabled = true;
+        mergeModal.classList.remove('hidden');
+    });
+
+    document.getElementById('merge-cancel-btn').addEventListener('click', () => {
+        mergeModal.classList.add('hidden');
+    });
+
+    document.getElementById('merge-load-btn').addEventListener('click', () => {
+        if (mergedFeatures.length > 0) {
+            const properties = mergedFeatures.map(f => f.properties);
+            const headers = Object.keys(properties[0]);
+            let tsv = headers.join('\t') + '\n';
+            properties.forEach(row => {
+                tsv += headers.map(h => row[h]).join('\t') + '\n';
+            });
+            document.getElementById('techData').value = tsv;
+            showNotification(`${mergedFeatures.length} merged features loaded into text area.`);
+            mergeModal.classList.add('hidden');
+        }
+    });
+    
+    mergeDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        mergeDropZone.classList.add('drag-over');
+    });
+
+    mergeDropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        mergeDropZone.classList.remove('drag-over');
+    });
+
+    mergeDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        mergeDropZone.classList.remove('drag-over');
+        handleMergeDrop(e.dataTransfer.files);
+    });
+
 
     document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
     document.getElementById('close-teams-modal-btn').addEventListener('click', closeTeamManagementModal);
@@ -1267,7 +1363,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
         "Fixed critical 'Maximum call stack size exceeded' error when saving large projects.",
+        "Added color-coded database status indicator (Green for success, Red for failure).",
+        "Added this 'New Updates' section to the main page.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
