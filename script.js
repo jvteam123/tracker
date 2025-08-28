@@ -10,6 +10,8 @@ let reorderSortable = null;
 let lastUsedGsdValue = '3in';
 let isSaving = false; // Flag to prevent recursive event firing
 let mergedFeatures = []; // To store features from dropped files in the merge modal
+let currentDataHeaders = []; // To store headers of the currently parsed data
+let currentDataLines = []; // To store lines of the currently parsed data
 
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
@@ -229,9 +231,8 @@ async function saveProjectToIndexedDB(projectData) {
         const dataAsUint8Array = textEncoder.encode(projectData.rawData);
         const compressed = pako.deflate(dataAsUint8Array);
 
-        // This function safely converts large Uint8Arrays to a Base64 string in chunks
         const uint8ArrayToBase64 = (array) => {
-            const CHUNK_SIZE = 0x8000; // 32768
+            const CHUNK_SIZE = 0x8000; 
             let result = '';
             for (let i = 0; i < array.length; i += CHUNK_SIZE) {
                 const chunk = array.subarray(i, i + CHUNK_SIZE);
@@ -249,7 +250,7 @@ async function saveProjectToIndexedDB(projectData) {
     } catch (err) {
         console.error("Error saving project:", err);
         alert("Failed to save project. Check console for details.");
-        throw err; // Re-throw the error to be caught by the caller
+        throw err;
     }
 }
 
@@ -290,7 +291,7 @@ async function deleteProjectFromIndexedDB(projectId) {
         delete fullProjectDataCache[projectId];
         await fetchProjectListSummary();
         showNotification("Project deleted successfully.");
-        loadProjectIntoForm(""); // Clear the form
+        loadProjectIntoForm(""); 
     } catch (err) {
         console.error("Failed to delete project:", err);
         alert("Error deleting project. Check console for details.");
@@ -303,21 +304,22 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const lines = data.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 1) return null;
 
-    const headers = lines.shift().split('\t').map(h => h.trim().toLowerCase());
+    currentDataLines = lines.slice(1); // Store lines for data view
+    currentDataHeaders = lines[0].split('\t').map(h => h.trim()); // Store headers
     const headerMap = {};
-    headers.forEach((h, i) => { headerMap[h] = i; });
+    currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
     
     const summaryStats = { totalRows: 0, comboTasks: 0, totalIncorrect: 0, totalMiss: 0 };
-    const techIdCols = headers.filter(h => h.endsWith('_id'));
-    const warnCols = headers.filter(h => h.startsWith('r') && h.endsWith('_warn'));
+    const techIdCols = currentDataHeaders.filter(h => h.toLowerCase().endsWith('_id'));
+    const warnCols = currentDataHeaders.filter(h => h.toLowerCase().startsWith('r') && h.toLowerCase().endsWith('_warn'));
 
-    lines.forEach(line => {
+    currentDataLines.forEach(line => {
         summaryStats.totalRows++;
         const values = line.split('\t');
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
         
-        const allTechsInRow = new Set(techIdCols.map(col => values[headerMap[col]]?.trim()).filter(Boolean));
+        const allTechsInRow = new Set(techIdCols.map(col => values[headerMap[col.toLowerCase()]]?.trim()).filter(Boolean));
         allTechsInRow.forEach(techId => { if (!techStats[techId]) { techStats[techId] = createNewTechStat(); techStats[techId].id = techId; } });
 
         const fix1_id = values[headerMap['fix1_id']]?.trim();
@@ -412,9 +414,9 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         
         // Handle other point types (QC, i3qa, RV) and refix/warning counts
         techIdCols.forEach(colName => {
-            const techId = values[headerMap[colName]]?.trim();
+            const techId = values[headerMap[colName.toLowerCase()]]?.trim();
             if (techId && techStats[techId]) {
-                if (colName.startsWith('fix')) {
+                if (colName.toLowerCase().startsWith('fix')) {
                     const roundMatch = colName.match(/\d+/);
                     if (roundMatch) {
                         const round = roundMatch[0];
@@ -427,14 +429,14 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                             techStats[techId].refixDetails.push({ round: `RV${round}`, project: currentProjectName, category: refixCategory });
                         }
                     }
-                } else if (colName.startsWith('qc')) {
+                } else if (colName.toLowerCase().startsWith('qc')) {
                     techStats[techId].points += 1 / 8; techStats[techId].pointsBreakdown.qc += 1 / 8;
-                } else if (colName.startsWith('i3qa')) {
+                } else if (colName.toLowerCase().startsWith('i3qa')) {
                     techStats[techId].points += 1 / 12; techStats[techId].pointsBreakdown.i3qa += 1 / 12;
-                } else if (colName.startsWith('rv')) {
+                } else if (colName.toLowerCase().startsWith('rv')) {
                     let points = 0;
-                    if (colName === 'rv1_id') points = isComboIR ? 0.25 : 0.2;
-                    else if (colName === 'rv2_id') points = 0.5;
+                    if (colName.toLowerCase() === 'rv1_id') points = isComboIR ? 0.25 : 0.2;
+                    else if (colName.toLowerCase() === 'rv2_id') points = 0.5;
                     techStats[techId].points += points;
                     techStats[techId].pointsBreakdown.rv += points;
                 }
@@ -442,7 +444,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         });
         
         warnCols.forEach(colName => {
-            const warnValue = values[headerMap[colName]]?.trim().toUpperCase();
+            const warnValue = values[headerMap[colName.toLowerCase()]]?.trim().toUpperCase();
             if (warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue)) {
                 const round = colName.match(/\d+/)[0];
                 const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
@@ -452,6 +454,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     });
     return { techStats, summaryStats };
 }
+
 
 function calculateQualityModifier(qualityRate) {
     if (qualityRate >= 100) return 1.20; if (qualityRate >= 99.5) return 1.18; if (qualityRate >= 99) return 1.16;
@@ -895,6 +898,8 @@ function openTechSummaryModal(techId) {
     if (!tech) return;
 
     const modal = document.getElementById('info-modal');
+    document.getElementById('view-data-btn').dataset.techId = techId; // Set techId for the view data button
+
     const warningsCount = tech.warnings.length;
     const denominator = tech.fixTasks + tech.refixTasks + warningsCount;
     const fixQuality = denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0;
@@ -994,7 +999,42 @@ function openTechSummaryModal(techId) {
     modal.classList.remove('hidden');
 }
 
+function openTechDataView(techId) {
+    const dataViewModal = document.getElementById('data-view-modal');
+    const breakdownContainer = document.getElementById('data-view-breakdown');
+    const tableContainer = document.getElementById('data-view-table-container');
+    const tech = currentTechStats[techId];
+    if (!tech) return;
+
+    // 1. Populate the breakdown
+    const summaryModalBody = document.getElementById('modal-body').cloneNode(true);
+    breakdownContainer.innerHTML = ''; // Clear previous content
+    breakdownContainer.appendChild(summaryModalBody);
+    document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
+
+    // 2. Filter and build the data table
+    const techIdUpper = techId.toUpperCase();
+    const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
+    
+    const filteredLines = currentDataLines.filter(line => {
+        const values = line.split('\t');
+        return techIdCols.some(index => values[index]?.trim().toUpperCase() === techIdUpper);
+    });
+
+    let tableHtml = `<table class="data-view-table"><thead><tr>${currentDataHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+    filteredLines.forEach(line => {
+        tableHtml += `<tr>${line.split('\t').map(v => `<td>${v}</td>`).join('')}</tr>`;
+    });
+    tableHtml += `</tbody></table>`;
+    
+    tableContainer.innerHTML = tableHtml;
+
+    // 3. Show the modal
+    dataViewModal.classList.remove('hidden');
+}
+
 function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
+function closeDataViewModal() { document.getElementById('data-view-modal').classList.add('hidden'); }
 function closeTeamManagementModal() { document.getElementById('team-management-modal').classList.add('hidden'); }
 function openTeamManagementModal() { populateAdminTeamManagement(); document.getElementById('team-management-modal').classList.remove('hidden'); }
 function closeReorderModal() { if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; } document.getElementById('reorder-modal').classList.add('hidden'); }
@@ -1041,7 +1081,7 @@ async function handleDroppedFiles(files) {
                 const headers = Object.keys(properties[0]);
                 let tsv = headers.join('\t') + '\n';
                 properties.forEach(row => {
-                    tsv += headers.map(h => row[h]).join('\t') + '\n';
+                    tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : row[h]).join('\t') + '\n';
                 });
                 document.getElementById('techData').value = tsv;
                 showNotification(`${files.length} files processed. Data loaded into text area.`);
@@ -1107,6 +1147,19 @@ async function handleMergeDrop(files) {
 function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
     document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('view-data-btn').addEventListener('click', (e) => {
+        openTechDataView(e.target.dataset.techId);
+    });
+    document.getElementById('data-view-close-btn').addEventListener('click', closeDataViewModal);
+
+    document.getElementById('data-view-search').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const tableRows = document.querySelectorAll('#data-view-table-container tbody tr');
+        tableRows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        });
+    });
+
     document.body.addEventListener('click', (e) => {
         const icon = e.target.closest('.info-icon:not(.tech-summary-icon)');
         if (icon && icon.dataset.key) {
@@ -1137,7 +1190,10 @@ function setupEventListeners() {
     document.getElementById('merge-load-btn').addEventListener('click', () => {
         if (mergedFeatures.length > 0) {
             const properties = mergedFeatures.map(f => f.properties);
-            const headers = Object.keys(properties[0]);
+            const allHeaders = new Set();
+            properties.forEach(p => Object.keys(p).forEach(h => allHeaders.add(h)));
+            const headers = [...allHeaders];
+
             let tsv = headers.join('\t') + '\n';
             properties.forEach(row => {
                 tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : row[h]).join('\t') + '\n';
@@ -1297,22 +1353,23 @@ function setupEventListeners() {
         if (isCustomized && selectedProjectIds.length === 0) return alert("Please select projects from the list to calculate.");
         if (projectsToCalcIds.length === 0) return alert("No projects to calculate.");
 
-        const projectsToCalculate = await Promise.all(projectsToCalcIds.map(id => fetchFullProjectData(id)));
+        let combinedRawData = '';
+        const projectsToCalculate = await Promise.all(projectsToCalcIds.map(async (id) => {
+            const proj = await fetchFullProjectData(id);
+            if (proj) combinedRawData += proj.rawData + '\n';
+            return proj;
+        }));
 
         const combinedTechStats = {};
         const projectBreakdown = [];
         let combinedSummary = { totalRows: 0, totalIncorrect: 0, totalMiss: 0 };
-        let combinedRawData = '';
 
         if (projectsToCalculate.filter(Boolean).length > 0) lastUsedGsdValue = projectsToCalculate.filter(Boolean)[0].gsdValue;
 
         for (const project of projectsToCalculate) {
             if (!project) continue;
             
-            const projectRawData = project.rawData;
-            combinedRawData += projectRawData + '\n';
-
-            const parsed = parseRawData(projectRawData, project.isIRProject, project.name, project.gsdValue);
+            const parsed = parseRawData(project.rawData, project.isIRProject, project.name, project.gsdValue);
             if (parsed) {
                 projectBreakdown.push({name: project.name, points: Object.values(parsed.techStats).reduce((s, t) => s + t.points, 0)});
                 combinedSummary.totalRows += parsed.summaryStats.totalRows;
@@ -1392,9 +1449,11 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "Added 'View Data' button to tech breakdown for full data transparency.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
         "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
+        "Fixed critical error when saving large projects.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
