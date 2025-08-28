@@ -1008,15 +1008,16 @@ function openTechDataView(techId) {
 
     // Reset filters
     document.getElementById('data-view-search').value = '';
-    document.getElementById('filter-parsed-cb').checked = false;
-    document.getElementById('filter-parsed-cb').dataset.techId = techId;
+    const filterCheckbox = document.getElementById('filter-parsed-cb');
+    filterCheckbox.checked = false;
+    filterCheckbox.dataset.techId = techId;
 
     // 1. Populate the breakdown
     const summaryModalBody = document.getElementById('modal-body').cloneNode(true);
     breakdownContainer.innerHTML = ''; // Clear previous content
     breakdownContainer.appendChild(summaryModalBody);
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
-    
+
     // 2. Build the full data table initially
     const techIdUpper = techId.toUpperCase();
     const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
@@ -1055,27 +1056,37 @@ function applyDataViewFilters() {
         const rowText = row.textContent.toLowerCase();
         const values = Array.from(row.cells).map(cell => cell.textContent.trim());
 
-        // Search filter
         const searchMatch = rowText.includes(searchTerm);
-
-        // Parsed Fixpoints filter
-        let parsedMatch = true;
+        
+        let parsedMatch = !filterParsed;
         if (filterParsed) {
-            parsedMatch = false; // Default to not matching unless a condition is met
+            parsedMatch = false; // Assume it doesn't match until a condition proves otherwise
             
-            // Check if tech is involved in any core ID column
-            const idColumns = ['qc_id', 'i3qa_id', 'rv1_id', 'rv2_id', 'rv3_id', 'fix1_id', 'fix2_id', 'fix3_id', 'fix4_id'];
-            if (idColumns.some(col => values[headerMap[col]]?.toUpperCase() === techIdUpper)) {
+            // Core roles that always count
+            const coreRoles = ['qc_id', 'i3qa_id', 'rv1_id', 'rv2_id', 'rv3_id'];
+            if (coreRoles.some(role => values[headerMap[role]]?.toUpperCase() === techIdUpper)) {
                 parsedMatch = true;
             }
 
-            // Check for warnings
-            for (let i = 1; i <= 4; i++) {
-                const fixId = values[headerMap[`fix${i}_id`]]?.toUpperCase();
-                const warnValue = values[headerMap[`r${i}_warn`]];
-                if (fixId === techIdUpper && warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue.toUpperCase())) {
-                    parsedMatch = true;
-                    break;
+            // Conditional fixer roles
+            if (!parsedMatch) {
+                if (values[headerMap['fix1_id']]?.toUpperCase() === techIdUpper && (values[headerMap['category']] || (values[headerMap['i3qa_label']]?.toUpperCase() || '').includes('M') || (values[headerMap['i3qa_label']]?.toUpperCase() || '').includes('C') || values[headerMap['afp1_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
+                else if (values[headerMap['fix2_id']]?.toUpperCase() === techIdUpper && ((values[headerMap['rv1_label']]?.toUpperCase() || '').includes('M') || values[headerMap['afp2_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
+                else if (values[headerMap['fix3_id']]?.toUpperCase() === techIdUpper && ((values[headerMap['rv2_label']]?.toUpperCase() || '').includes('M') || values[headerMap['afp3_stat']]?.toUpperCase() === 'AA')) parsedMatch = true;
+                else if (values[headerMap['fix4_id']]?.toUpperCase() === techIdUpper && (values[headerMap['rv3_label']]?.toUpperCase() || '').includes('M')) parsedMatch = true;
+            }
+
+            // Errors (Refixes/Warnings) attributed to the tech
+            if (!parsedMatch) {
+                 for (let i = 1; i <= 3; i++) {
+                     if (values[headerMap[`fix${i}_id`]]?.toUpperCase() === techIdUpper) {
+                         const rvLabel = values[headerMap[`rv${i}_label`]]?.toUpperCase();
+                         const warnValue = values[headerMap[`r${i}_warn`]];
+                         if ((rvLabel && rvLabel.includes('I')) || (warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue.toUpperCase()))) {
+                             parsedMatch = true;
+                             break;
+                         }
+                     }
                 }
             }
         }
@@ -1083,7 +1094,6 @@ function applyDataViewFilters() {
         row.style.display = searchMatch && parsedMatch ? '' : 'none';
     });
 }
-
 
 function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
 function closeDataViewModal() { document.getElementById('data-view-modal').classList.add('hidden'); }
@@ -1497,7 +1507,7 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "Added 'Filter by parsed Fixpoints' checkbox to the full data view.",
+        "Fixed 'Filter by parsed Fixpoints' logic to correctly display relevant data.",
         "Fixed z-index issue where the data view modal appeared behind the details modal.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
         "Fixed UI layout issue with the 'Fix4 Breakdown' card.",
