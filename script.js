@@ -889,6 +889,8 @@ function showModal(key) {
     if (info) {
         document.getElementById('modal-title').textContent = info.title;
         document.getElementById('modal-body').innerHTML = info.body;
+        // **FIX:** Hide the view data button for generic info modals
+        document.getElementById('view-data-btn').classList.add('hidden');
         document.getElementById('info-modal').classList.remove('hidden');
     }
 }
@@ -1000,6 +1002,10 @@ function openTechSummaryModal(techId) {
     document.getElementById('view-data-btn').dataset.techId = techId;
     document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
     document.getElementById('modal-body').innerHTML = generateTechBreakdownHTML(tech);
+    
+    // **FIX:** Show the view data button specifically for tech breakdowns
+    document.getElementById('view-data-btn').classList.remove('hidden');
+
     modal.classList.remove('hidden');
 }
 
@@ -1186,7 +1192,6 @@ function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('view-data-btn').addEventListener('click', (e) => {
-        // **FIX:** Close the summary modal *before* opening the data view modal
         closeModal();
         openTechDataView(e.target.dataset.techId);
     });
