@@ -396,21 +396,28 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
         ]);
 
-        // --- MISS & REFIX COUNTING ---
-        const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
-            if (techIdToBlame && techStats[techIdToBlame]) {
-                const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
-                if (labelValue && labelValue.includes('M')) {
-                     const category = values[headerMap[catKey]]?.trim() || 'N/A';
-                     techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
-                }
-            }
-        };
-        
-        processMiss(values[headerMap['i3qa_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
-        processMiss(values[headerMap['rv1_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
-        processMiss(values[headerMap['rv2_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
-        processMiss(values[headerMap['rv3_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
+       // --- CORRECTED MISS & REFIX COUNTING ---
+const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
+    if (techIdToBlame && techStats[techIdToBlame]) {
+        const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
+        if (labelValue && labelValue.includes('M')) {
+             const category = values[headerMap[catKey]]?.trim() || 'N/A';
+             techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
+        }
+    }
+};
+
+// Blame FIX1_ID for misses found by i3qa
+processMiss(values[headerMap['fix1_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
+
+// Blame FIX2_ID for misses found in RV1
+processMiss(values[headerMap['fix2_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
+
+// Blame FIX3_ID for misses found in RV2
+processMiss(values[headerMap['fix3_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
+
+// Blame FIX4_ID for misses found in RV3
+processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
         
         // Handle other point types (QC, i3qa, RV) and refix/warning counts
         techIdCols.forEach(colName => {
