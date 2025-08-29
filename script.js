@@ -7,6 +7,7 @@ let lastUsedBonusMultiplier = 1;
 let lastCalculationUsedMultiplier = false;
 let teamSettings = {};
 let bonusTiers = []; // To hold the bonus tier settings
+let calculationSettings = {}; // NEW: To hold all calculation logic values
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
 let isSaving = false; // Flag to prevent recursive event firing
@@ -23,7 +24,6 @@ const defaultTeams = {
     "Team 64": ["4474HS", "4492CP", "4421AT", "7237ML", "7233JP", "7316NT", "7245SC", "4476JR", "7246AJ", "7241DM", "4435AC", "7242FV", "2274JD"]
 };
 
-// NEW: Default bonus tiers
 const defaultBonusTiers = [
     { quality: 100, bonus: 1.20 }, { quality: 99.5, bonus: 1.18 }, { quality: 99, bonus: 1.16 },
     { quality: 98.5, bonus: 1.14 }, { quality: 98, bonus: 1.12 }, { quality: 97.5, bonus: 1.10 },
@@ -43,21 +43,29 @@ const defaultBonusTiers = [
     { quality: 77.5, bonus: 0.05 }
 ];
 
-
-// --- DATA FROM DOCUMENTATION ---
-const categoryValues = {
-    1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99 },
-    2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07 },
-    3: { "3in": 7.44, "4in": 7.44, "6in": 7.44, "9in": 2.78 },
-    4: { "3in": 2.29, "4in": 2.29, "6in": 2.29, "9in": 1.57 },
-    5: { "3in": 1.55, "4in": 1.55, "6in": 1.55, "9in": 0.6 },
-    6: { "3in": 1.84, "4in": 1.84, "6in": 1.84, "9in": 0.78 },
-    7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1 },
-    8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74 },
-    9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73 }
+// NEW: Default Calculation Logic Settings
+const defaultCalculationSettings = {
+    irModifierValue: 1.5,
+    points: {
+        qc: 1 / 8,
+        i3qa: 1 / 12,
+        rv1: 0.2,
+        rv1_combo: 0.25,
+        rv2: 0.5
+    },
+    categoryValues: {
+        1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99 },
+        2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07 },
+        3: { "3in": 7.44, "4in": 7.44, "6in": 7.44, "9in": 2.78 },
+        4: { "3in": 2.29, "4in": 2.29, "6in": 2.29, "9in": 1.57 },
+        5: { "3in": 1.55, "4in": 1.55, "6in": 1.55, "9in": 0.6 },
+        6: { "3in": 1.84, "4in": 1.84, "6in": 1.84, "9in": 0.78 },
+        7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1 },
+        8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74 },
+        9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73 }
+    }
 };
 
-const irModifierValue = 1.5;
 const calculationInfo = {
     howItWorks: {
         title: 'How It Works: A Complete Guide',
@@ -89,7 +97,7 @@ const calculationInfo = {
                             <li><strong class="text-gray-300">Pasted Data:</strong> If you don't want to save the data, simply paste it, set the options, and click <strong class="text-purple-400">Calculate Pasted Data</strong>.</li>
                             <li><strong class="text-gray-300">Multiple Projects:</strong> Check the "Select specific projects" box, hold Ctrl/Cmd and click to select multiple projects from the list, then click <strong class="text-green-400">Calculate All Projects</strong>. To calculate every saved project, simply leave the box unchecked and click the same button.</li>
                             <li><strong class="text-gray-300">Bonus Multiplier:</strong> Enter a value in the "Bonus Multiplier (PHP)" field to apply a multiplier to the final payout for all technicians. For example, 1.1 means a 10% bonus.</li>
-                             <li><strong class="text-gray-300">Bonus Tiers:</strong> Use the <strong class="text-purple-400">Edit Bonus Tiers</strong> button to customize the relationship between Fix Quality % and the % of Bonus Earned.</li>
+                             <li><strong class="text-gray-300">Bonus Tiers & Logic:</strong> Use the <strong class="text-purple-400">Edit Bonus Tiers</strong> and <strong class="text-red-400">Calculation Settings</strong> buttons to customize the entire calculation logic.</li>
                         </ul>
                     </div>
                      <div>
@@ -107,15 +115,13 @@ const calculationInfo = {
             <details class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
                 <summary class="font-semibold text-base text-gray-100 cursor-pointer">How The Calculation Works</summary>
                 <div class="mt-3 pt-3 border-t border-gray-600 space-y-4">
-                    <p>The calculation is a four-step process based on the official documentation.</p>
+                    <p>The calculation is a four-step process based on the official documentation. All numerical values can be customized in the <strong class="text-red-400">Calculation Settings</strong>.</p>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 1: Point Calculation</h4>
                         <p class="text-gray-400">The tool first calculates the <strong class="text-gray-300">Total Points</strong> for each technician by summing up points from different task types:</p>
                         <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
-                            <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value. If the project is marked as "IR", the total points for a fix task row are multiplied by 1.5.</li>
-                            <li><strong class="text-gray-300">QC Tasks:</strong> 1/8 (0.125) points per task.</li>
-                            <li><strong class="text-gray-300">i3qa Tasks:</strong> 1/12 (~0.083) points per task.</li>
-                            <li><strong class="text-gray-300">RV Tasks:</strong> Points vary (e.g., 0.2, 0.25, 0.5) based on the review round and whether it's a "combo" task.</li>
+                            <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value, as defined in the settings. If the project is marked as "IR", the total points for a fix task row are multiplied by the customizable IR Modifier.</li>
+                            <li><strong class="text-gray-300">QC, i3qa, RV Tasks:</strong> Each task is awarded a specific point value, which can be edited in the settings.</li>
                         </ul>
                     </div>
                      <div>
@@ -126,13 +132,7 @@ const calculationInfo = {
                     </div>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 3: Bonus Earned Percentage</h4>
-                        <p class="text-gray-400">The <strong class="text-gray-300">Fix Quality %</strong> is used to find the <strong class="text-gray-300">% of Bonus Earned</strong> from a predefined tiered table. This table is fully customizable via the <strong class="text-purple-400">Edit Bonus Tiers</strong> button. For example:</p>
-                        <ul class="list-['-_'] list-inside ml-4 text-gray-400">
-                            <li>A quality of <strong class="text-green-400">100%</strong> might earn <strong class="text-green-400">120%</strong> of the bonus.</li>
-                            <li>A quality of <strong class="text-yellow-400">95%</strong> might earn <strong class="text-yellow-400">100%</strong> of the bonus.</li>
-                            <li>A quality of <strong class="text-orange-400">82.5%</strong> might earn <strong class="text-orange-400">55%</strong> of the bonus.</li>
-                            <li>A quality below a certain threshold might earn <strong class="text-red-400">0%</strong> of the bonus.</li>
-                        </ul>
+                        <p class="text-gray-400">The <strong class="text-gray-300">Fix Quality %</strong> is used to find the <strong class="text-gray-300">% of Bonus Earned</strong> from a predefined tiered table. This table is fully customizable via the <strong class="text-purple-400">Edit Bonus Tiers</strong> button.</p>
                     </div>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 4: Final Payout</h4>
@@ -144,22 +144,23 @@ const calculationInfo = {
         </div>`
     },
     bonusMultiplier: { title: 'Bonus Multiplier (PHP)', body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>` },
-    totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician.</p><p>For Fix tasks, points are derived from a table of category values. The GSD setting can change the points for certain categories. An "IR" project applies a 1.5x multiplier to the sum of all fix categories in a single task row.</p>`},
+    totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician. All point values are customizable in the 'Calculation Settings' modal.</p>`},
     fixQuality: { title: 'Fix Quality % Calculation', body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`},
-    bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. This table is customizable via the "Edit Bonus Tiers" button. For example, a quality of 100% might earn 120% of the bonus, while 82.5% earns 55%, and so on. Below a certain threshold, no bonus is earned.</p>`},
+    bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. This table is customizable via the "Edit Bonus Tiers" button.</p>`},
     totalBonus: { title: 'Final Payout (PHP) Calculation', body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`}
 };
 
 // --- IndexedDB Helper Functions ---
 async function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('BonusCalculatorDB', 1);
+        const request = indexedDB.open('BonusCalculatorDB', 2); // Version updated for new stores
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('teams')) db.createObjectStore('teams', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('bonusTiers')) db.createObjectStore('bonusTiers', { keyPath: 'id' }); // NEW
+            if (!db.objectStoreNames.contains('bonusTiers')) db.createObjectStore('bonusTiers', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('calculationSettings')) db.createObjectStore('calculationSettings', { keyPath: 'id' }); // NEW
         };
         request.onsuccess = (event) => { db = event.target.result; resolve(db); };
         request.onerror = (event) => { console.error("IndexedDB error:", event.target.error); reject(event.target.error); };
@@ -221,7 +222,8 @@ function createNewTechStat() {
     };
 }
 
-// --- Bonus Tier Functions (NEW) ---
+// --- Settings and Tiers Functions ---
+
 async function loadBonusTiers() {
     try {
         const savedTiers = await getFromDB('bonusTiers', 'customTiers');
@@ -259,12 +261,11 @@ async function saveBonusTiers() {
         return;
     }
 
-    // Sort by quality descending to ensure correct evaluation
     newTiers.sort((a, b) => b.quality - a.quality);
 
     try {
         await putToDB('bonusTiers', { id: 'customTiers', tiers: newTiers });
-        bonusTiers = newTiers; // Update global variable
+        bonusTiers = newTiers; 
         showNotification("Bonus tiers saved successfully.");
         closeBonusTierModal();
     } catch (error) {
@@ -301,6 +302,80 @@ function addBonusTierRow(quality = '', bonus = '') {
     row.querySelector('.delete-tier-btn').addEventListener('click', (e) => {
         e.target.closest('.tier-row').remove();
     });
+}
+
+async function loadCalculationSettings() {
+    try {
+        const savedSettings = await getFromDB('calculationSettings', 'customSettings');
+        if (savedSettings) {
+            calculationSettings = savedSettings.settings;
+        } else {
+            calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings)); // Deep copy
+        }
+    } catch (error) {
+        console.error("Error loading calculation settings:", error);
+        calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings)); // Deep copy
+    }
+}
+
+async function saveCalculationSettings() {
+    const newSettings = {
+        irModifierValue: parseFloat(document.getElementById('setting-ir-modifier').value),
+        points: {
+            qc: parseFloat(document.getElementById('setting-qc-points').value),
+            i3qa: parseFloat(document.getElementById('setting-i3qa-points').value),
+            rv1: parseFloat(document.getElementById('setting-rv1-points').value),
+            rv1_combo: parseFloat(document.getElementById('setting-rv1-combo-points').value),
+            rv2: parseFloat(document.getElementById('setting-rv2-points').value)
+        },
+        categoryValues: {}
+    };
+
+    const tbody = document.getElementById('category-points-tbody');
+    for (let i = 1; i <= 9; i++) {
+        const row = tbody.querySelector(`tr[data-category="${i}"]`);
+        newSettings.categoryValues[i] = {
+            "3in": parseFloat(row.querySelector('input[data-gsd="3in"]').value),
+            "4in": parseFloat(row.querySelector('input[data-gsd="4in"]').value),
+            "6in": parseFloat(row.querySelector('input[data-gsd="6in"]').value),
+            "9in": parseFloat(row.querySelector('input[data-gsd="9in"]').value),
+        };
+    }
+
+    try {
+        await putToDB('calculationSettings', { id: 'customSettings', settings: newSettings });
+        calculationSettings = newSettings;
+        showNotification("Calculation settings saved successfully.");
+        closeCalcSettingsModal();
+    } catch (error) {
+        console.error("Error saving calculation settings:", error);
+        alert("Failed to save calculation settings.");
+    }
+}
+
+function populateCalcSettingsEditor() {
+    document.getElementById('setting-ir-modifier').value = calculationSettings.irModifierValue;
+    document.getElementById('setting-qc-points').value = calculationSettings.points.qc;
+    document.getElementById('setting-i3qa-points').value = calculationSettings.points.i3qa;
+    document.getElementById('setting-rv1-points').value = calculationSettings.points.rv1;
+    document.getElementById('setting-rv1-combo-points').value = calculationSettings.points.rv1_combo;
+    document.getElementById('setting-rv2-points').value = calculationSettings.points.rv2;
+
+    const tbody = document.getElementById('category-points-tbody');
+    tbody.innerHTML = '';
+    for (let i = 1; i <= 9; i++) {
+        const row = document.createElement('tr');
+        row.dataset.category = i;
+        row.className = "bg-gray-800/50";
+        row.innerHTML = `
+            <td class="p-2 font-semibold">Category ${i}</td>
+            <td class="p-2"><input type="number" step="0.01" class="w-full p-1" data-gsd="3in" value="${calculationSettings.categoryValues[i]['3in']}"></td>
+            <td class="p-2"><input type="number" step="0.01" class="w-full p-1" data-gsd="4in" value="${calculationSettings.categoryValues[i]['4in']}"></td>
+            <td class="p-2"><input type="number" step="0.01" class="w-full p-1" data-gsd="6in" value="${calculationSettings.categoryValues[i]['6in']}"></td>
+            <td class="p-2"><input type="number" step="0.01" class="w-full p-1" data-gsd="9in" value="${calculationSettings.categoryValues[i]['9in']}"></td>
+        `;
+        tbody.appendChild(row);
+    }
 }
 
 
@@ -411,8 +486,8 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const lines = data.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 1) return null;
 
-    currentDataLines = lines.slice(1); // Store lines for data view
-    currentDataHeaders = lines[0].split('\t').map(h => h.trim()); // Store headers
+    currentDataLines = lines.slice(1);
+    currentDataHeaders = lines[0].split('\t').map(h => h.trim());
     const headerMap = {};
     currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
     
@@ -434,7 +509,6 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         const fix3_id = values[headerMap['fix3_id']]?.trim();
         const fix4_id = values[headerMap['fix4_id']]?.trim();
 
-        // --- POINT CALCULATION ---
         const processFixTech = (techId, catSources) => {
             if (!techId || !techStats[techId]) return;
             let techPoints = 0;
@@ -447,7 +521,8 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                 const catValue = parseInt(values[headerMap[source.cat]]);
                 if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
                     techCategories++;
-                    techPoints += categoryValues[catValue]?.[gsdForCalculation] || 0;
+                    // UPDATED: Use dynamic calculation settings
+                    techPoints += calculationSettings.categoryValues[catValue]?.[gsdForCalculation] || 0;
                     if (techStats[techId].categoryCounts[catValue] && source.sourceType) {
                         techStats[techId].categoryCounts[catValue][source.sourceType]++;
                     }
@@ -459,26 +534,23 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
 
             techStats[techId].fixTasks += techCategories;
             let pointsToAdd = techPoints;
-            if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= irModifierValue;
+            if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= calculationSettings.irModifierValue; // UPDATED
             techStats[techId].points += pointsToAdd;
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        // --- FIX 1 LOGIC ---
         const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
         const fix1Sources = [];
         if (afp1_stat === 'AA') {
             fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         } else {
-            const hasPrimaryCategory = !!values[headerMap['category']]?.trim();
-            if (hasPrimaryCategory) {
+            if (!!values[headerMap['category']]?.trim()) {
                 fix1Sources.push({ cat: 'category', sourceType: 'primary' });
             }
             fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
         }
         processFixTech(fix1_id, fix1Sources);
 
-        // --- FIX 2 LOGIC ---
         const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
         const fix2Sources = [];
         if (afp2_stat === 'AA') {
@@ -488,7 +560,6 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         }
         processFixTech(fix2_id, fix2Sources);
 
-        // --- FIX 3 LOGIC ---
         const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
         const fix3Sources = [];
         if (afp3_stat === 'AA') {
@@ -497,36 +568,24 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
         }
         processFixTech(fix3_id, fix3Sources);
-
-        // --- FIX 4 LOGIC ---
-        processFixTech(fix4_id, [
-            { cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }
-        ]);
-
-       // --- CORRECTED MISS & REFIX COUNTING ---
-const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
-    if (techIdToBlame && techStats[techIdToBlame]) {
-        const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
-        if (labelValue && labelValue.includes('M')) {
-             const category = values[headerMap[catKey]]?.trim() || 'N/A';
-             techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
-        }
-    }
-};
-
-// Blame FIX1_ID for misses found by i3qa
-processMiss(values[headerMap['fix1_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
-
-// Blame FIX2_ID for misses found in RV1
-processMiss(values[headerMap['fix2_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
-
-// Blame FIX3_ID for misses found in RV2
-processMiss(values[headerMap['fix3_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
-
-// Blame FIX4_ID for misses found in RV3
-processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
         
-        // Handle other point types (QC, i3qa, RV) and refix/warning counts
+        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }]);
+
+        const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
+            if (techIdToBlame && techStats[techIdToBlame]) {
+                const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
+                if (labelValue && labelValue.includes('M')) {
+                    const category = values[headerMap[catKey]]?.trim() || 'N/A';
+                    techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
+                }
+            }
+        };
+
+        processMiss(values[headerMap['fix1_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
+        processMiss(values[headerMap['fix2_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
+        processMiss(values[headerMap['fix3_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
+        processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
+        
         techIdCols.forEach(colName => {
             const techId = values[headerMap[colName.toLowerCase()]]?.trim();
             if (techId && techStats[techId]) {
@@ -544,13 +603,13 @@ processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3')
                         }
                     }
                 } else if (colName.toLowerCase().startsWith('qc')) {
-                    techStats[techId].points += 1 / 8; techStats[techId].pointsBreakdown.qc += 1 / 8;
+                    techStats[techId].points += calculationSettings.points.qc; techStats[techId].pointsBreakdown.qc += calculationSettings.points.qc;
                 } else if (colName.toLowerCase().startsWith('i3qa')) {
-                    techStats[techId].points += 1 / 12; techStats[techId].pointsBreakdown.i3qa += 1 / 12;
+                    techStats[techId].points += calculationSettings.points.i3qa; techStats[techId].pointsBreakdown.i3qa += calculationSettings.points.i3qa;
                 } else if (colName.toLowerCase().startsWith('rv')) {
                     let points = 0;
-                    if (colName.toLowerCase() === 'rv1_id') points = isComboIR ? 0.25 : 0.2;
-                    else if (colName.toLowerCase() === 'rv2_id') points = 0.5;
+                    if (colName.toLowerCase() === 'rv1_id') points = isComboIR ? calculationSettings.points.rv1_combo : calculationSettings.points.rv1;
+                    else if (colName.toLowerCase() === 'rv2_id') points = calculationSettings.points.rv2;
                     techStats[techId].points += points;
                     techStats[techId].pointsBreakdown.rv += points;
                 }
@@ -570,15 +629,13 @@ processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3')
 }
 
 
-// UPDATED: This function now uses the bonusTiers array
 function calculateQualityModifier(qualityRate) {
-    // bonusTiers should already be sorted high to low
     for (const tier of bonusTiers) {
         if (qualityRate >= tier.quality) {
             return tier.bonus;
         }
     }
-    return 0; // Return 0 if quality is below the lowest tier
+    return 0;
 }
 
 // --- UI MANIPULATION AND STATE MANAGEMENT ---
@@ -596,7 +653,7 @@ async function loadProjectIntoForm(projectId) {
             document.getElementById('gsd-value-select').disabled = true;
             document.getElementById('edit-data-btn').classList.remove('hidden');
             document.getElementById('save-project-btn').disabled = true;
-            document.getElementById('cancel-edit-btn').classList.add('hidden'); // **FIX:** Hide cancel button
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
         }
     } else {
         document.getElementById('techData').value = '';
@@ -609,7 +666,7 @@ async function loadProjectIntoForm(projectId) {
         document.getElementById('gsd-value-select').disabled = false;
         document.getElementById('edit-data-btn').classList.add('hidden');
         document.getElementById('save-project-btn').disabled = false;
-        document.getElementById('cancel-edit-btn').classList.add('hidden'); // **FIX:** Hide cancel button
+        document.getElementById('cancel-edit-btn').classList.add('hidden');
     }
 }
 
@@ -997,13 +1054,11 @@ function showModal(key) {
     if (info) {
         document.getElementById('modal-title').textContent = info.title;
         document.getElementById('modal-body').innerHTML = info.body;
-        // **FIX:** Hide the view data button for generic info modals
         document.getElementById('view-data-btn').classList.add('hidden');
         document.getElementById('info-modal').classList.remove('hidden');
     }
 }
 
-// Function to generate the detailed breakdown HTML for a technician
 function generateTechBreakdownHTML(tech) {
     const warningsCount = tech.warnings.length;
     const denominator = tech.fixTasks + tech.refixTasks + warningsCount;
@@ -1060,7 +1115,7 @@ function generateTechBreakdownHTML(tech) {
         const count = counts.primary + counts.i3qa + counts.afp + counts.rv;
         if (count > 0) {
             totalCategoryCount += count;
-            const pointsPerCategory = categoryValues[i]?.[gsd] || 0;
+            const pointsPerCategory = calculationSettings.categoryValues[i]?.[gsd] || 0;
             oldCategoryHtml += `<li class="flex justify-between p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}"><span>Category ${i}:</span><span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span></li>`;
         }
     }
@@ -1071,7 +1126,6 @@ function generateTechBreakdownHTML(tech) {
     const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
     const refixDetailHtml = tech.refixDetails.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.refixDetails.map(r => `<li>Task: <span class="font-mono font-semibold">${r.round}</span> <span class="font-semibold text-red-400">(Cat: ${r.category})</span> (Project: ${r.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No refixes.</p>`;
     
-    // **FIX:** Create a more detailed breakdown for misses
     const i3qaMisses = tech.missedCategories.filter(m => m.round === 'i3qa');
     const rvMisses = tech.missedCategories.filter(m => m.round.startsWith('RV'));
     let missesDetailHtml = '';
@@ -1088,7 +1142,6 @@ function generateTechBreakdownHTML(tech) {
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
 
-    // --- Start of replacement ---
 return `<div class="space-y-4 text-sm">
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
         <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
@@ -1131,7 +1184,6 @@ return `<div class="space-y-4 text-sm">
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
     <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
 </div>`;
-// --- End of replacement ---
 }
 
 
@@ -1143,10 +1195,7 @@ function openTechSummaryModal(techId) {
     document.getElementById('view-data-btn').dataset.techId = techId;
     document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
     document.getElementById('modal-body').innerHTML = generateTechBreakdownHTML(tech);
-    
-    // **FIX:** Show the view data button specifically for tech breakdowns
     document.getElementById('view-data-btn').classList.remove('hidden');
-
     modal.classList.remove('hidden');
 }
 
@@ -1158,11 +1207,9 @@ function openTechDataView(techId) {
     const tech = currentTechStats[techId];
     if (!tech) return;
 
-    // 1. **FIX:** Regenerate the breakdown content from scratch with current data
     breakdownContainer.innerHTML = generateTechBreakdownHTML(tech);
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
 
-    // 2. Filter and build the data table (This part was already correct)
     const techIdUpper = techId.toUpperCase();
     const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
     
@@ -1172,14 +1219,10 @@ function openTechDataView(techId) {
     });
 
     const columnsToKeep = [
-        'fix1_id', 'fix2_id', 'fix3_id', 'fix4_id',
-        'qc1_id', 'qc2_id', 'qc3_id',
-        'i3qa_id',
-        'rv1_id', 'rv2_id',
+        'fix1_id', 'fix2_id', 'fix3_id', 'fix4_id', 'qc1_id', 'qc2_id', 'qc3_id', 'i3qa_id', 'rv1_id', 'rv2_id',
         'category', 'i3qa_cat', 'afp1_cat', 'afp2_cat', 'afp3_cat', 'rv1_cat', 'rv2_cat', 'rv3_cat',
         'i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label',
-        'afp1_stat', 'afp2_stat', 'afp3_stat',
-        'combo?',
+        'afp1_stat', 'afp2_stat', 'afp3_stat', 'combo?',
         'r1_warn', 'r2_warn', 'r3_warn', 'r4_warn'
     ];
 
@@ -1195,10 +1238,7 @@ function openTechDataView(techId) {
     });
 
     tableHtml += `</tbody></table>`;
-    
     tableContainer.innerHTML = tableHtml;
-
-    // 3. Show the modal
     dataViewModal.classList.remove('hidden');
 }
 
@@ -1208,12 +1248,10 @@ function closeDataViewModal() { document.getElementById('data-view-modal').class
 function closeTeamManagementModal() { document.getElementById('team-management-modal').classList.add('hidden'); }
 function openTeamManagementModal() { populateAdminTeamManagement(); document.getElementById('team-management-modal').classList.remove('hidden'); }
 function closeReorderModal() { if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; } document.getElementById('reorder-modal').classList.add('hidden'); }
-// NEW Modal Controls
-function openBonusTierModal() {
-    populateBonusTierEditor();
-    document.getElementById('bonus-tier-modal').classList.remove('hidden');
-}
+function openBonusTierModal() { populateBonusTierEditor(); document.getElementById('bonus-tier-modal').classList.remove('hidden'); }
 function closeBonusTierModal() { document.getElementById('bonus-tier-modal').classList.add('hidden'); }
+function openCalcSettingsModal() { populateCalcSettingsEditor(); document.getElementById('calculation-settings-modal').classList.remove('hidden'); }
+function closeCalcSettingsModal() { document.getElementById('calculation-settings-modal').classList.add('hidden'); }
 
 
 async function saveReorderModal() {
@@ -1240,20 +1278,12 @@ async function saveReorderModal() {
     }
 }
 
-// **FIX:** New function to reset UI elements
 function resetUIForNewCalculation() {
-    // Hide and clear results table
     document.getElementById('tech-results-container').classList.remove('visible');
     document.getElementById('tech-results-body').innerHTML = '';
     document.getElementById('results-title').textContent = 'Technician Bonus Results';
-
-    // Clear leaderboard
     document.getElementById('leaderboard-body').innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>Calculate a project to see data...</i></td></tr>`;
-
-    // Clear workload chart
     document.getElementById('workload-chart-container').innerHTML = `<p class="text-gray-500 italic text-sm text-center">Calculate a project to see chart...</p>`;
-
-    // Hide and clear summary cards
     const cardsToReset = ['project-progress-card', 'tl-summary-card', 'fix4-breakdown-card'];
     cardsToReset.forEach(cardId => {
         const card = document.getElementById(cardId);
@@ -1264,17 +1294,14 @@ function resetUIForNewCalculation() {
         }
     });
     
-    // Clear project name and data text area
     document.getElementById('project-name').value = '';
     document.getElementById('techData').value = '';
-    loadProjectIntoForm(""); // Reset form state
+    loadProjectIntoForm("");
 }
 
 
 async function handleDroppedFiles(files) {
-    // **FIX:** Call the UI reset function on new file drop
     resetUIForNewCalculation();
-
     let dbfFile, shpFile;
     for (const file of files) {
         if (file.name.endsWith('.dbf')) dbfFile = file;
@@ -1324,7 +1351,7 @@ async function handleMergeDrop(files) {
     }
 
     fileList.innerHTML = '<p>Processing files...</p>';
-    mergedFeatures = []; // Clear previous merges
+    mergedFeatures = [];
 
     for (const [name, shpFile] of shpFiles) {
         if (dbfFiles.has(name)) {
@@ -1384,12 +1411,11 @@ function setupEventListeners() {
         }
     });
 
-    // Merge Fixpoints Modal Listeners
     const mergeModal = document.getElementById('merge-fixpoints-modal');
     const mergeDropZone = document.getElementById('merge-drop-zone');
 
     document.getElementById('merge-fixpoints-btn').addEventListener('click', () => {
-        mergedFeatures = []; // Reset on open
+        mergedFeatures = [];
         document.getElementById('merge-file-list').innerHTML = '';
         document.getElementById('merge-load-btn').disabled = true;
         mergeModal.classList.remove('hidden');
@@ -1416,24 +1442,9 @@ function setupEventListeners() {
         }
     });
     
-    mergeDropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        mergeDropZone.classList.add('drag-over');
-    });
-
-    mergeDropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        mergeDropZone.classList.remove('drag-over');
-    });
-
-    mergeDropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        mergeDropZone.classList.remove('drag-over');
-        handleMergeDrop(e.dataTransfer.files);
-    });
+    mergeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.add('drag-over'); });
+    mergeDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); });
+    mergeDropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); handleMergeDrop(e.dataTransfer.files); });
 
 
     document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
@@ -1456,9 +1467,8 @@ function setupEventListeners() {
         });
         saveTeamSettings(newSettings);
     });
-     document.getElementById('refresh-teams-btn').addEventListener('click', loadTeamSettings);
+    document.getElementById('refresh-teams-btn').addEventListener('click', loadTeamSettings);
 
-    // NEW Bonus Tier Modal Listeners
     document.getElementById('edit-bonus-tiers-btn').addEventListener('click', openBonusTierModal);
     document.getElementById('close-bonus-tier-modal-btn').addEventListener('click', closeBonusTierModal);
     document.getElementById('save-bonus-tiers-btn').addEventListener('click', saveBonusTiers);
@@ -1470,6 +1480,16 @@ function setupEventListeners() {
         }
     });
 
+    document.getElementById('calculation-settings-btn').addEventListener('click', openCalcSettingsModal);
+    document.getElementById('close-calc-settings-modal-btn').addEventListener('click', closeCalcSettingsModal);
+    document.getElementById('save-calc-settings-btn').addEventListener('click', saveCalculationSettings);
+    document.getElementById('reset-calc-settings-btn').addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset all calculation settings to their defaults?")) {
+            calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings));
+            populateCalcSettingsEditor();
+        }
+    });
+
 
     document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
     document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
@@ -1477,7 +1497,7 @@ function setupEventListeners() {
 
     document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
     document.getElementById('project-select').addEventListener('change', (e) => {
-        if (!isSaving) { // Only run if not in the middle of a save operation
+        if (!isSaving) {
             loadProjectIntoForm(e.target.value);
         }
     });
@@ -1490,14 +1510,13 @@ function setupEventListeners() {
         document.getElementById('gsd-value-select').disabled = false;
         document.getElementById('edit-data-btn').classList.add('hidden');
         document.getElementById('save-project-btn').disabled = false;
-        document.getElementById('cancel-edit-btn').classList.remove('hidden'); // **FIX:** Show cancel button
+        document.getElementById('cancel-edit-btn').classList.remove('hidden');
     });
     
-    // **FIX:** Add event listener for the new cancel button
     document.getElementById('cancel-edit-btn').addEventListener('click', () => {
         const projectId = document.getElementById('project-select').value;
         if (projectId) {
-            loadProjectIntoForm(projectId); // Reload original data
+            loadProjectIntoForm(projectId);
         }
     });
 
@@ -1544,7 +1563,7 @@ function setupEventListeners() {
     });
     
     document.getElementById('save-project-btn').addEventListener('click', async () => {
-        isSaving = true; // Set the flag to true to block change events
+        isSaving = true;
         const saveButton = document.getElementById('save-project-btn');
         const originalButtonText = saveButton.textContent;
         const projectName = document.getElementById('project-name').value.trim();
@@ -1552,7 +1571,7 @@ function setupEventListeners() {
 
         if (!projectName || !techData) {
             alert("Please provide both a project name and project data.");
-            isSaving = false; // Reset flag on error
+            isSaving = false;
             return;
         }
 
@@ -1578,11 +1597,11 @@ function setupEventListeners() {
             document.getElementById('project-select').value = projectData.id;
             await loadProjectIntoForm(projectData.id);
         } catch (error) {
-            // Error is already logged in the save function
+            // Error logged in save function
         } finally {
             saveButton.disabled = false;
             saveButton.textContent = originalButtonText;
-            isSaving = false; // CRITICAL: Reset the flag after all operations are complete
+            isSaving = false;
         }
     });
 
@@ -1670,33 +1689,17 @@ function setupEventListeners() {
     document.getElementById('leaderboard-sort-select').addEventListener('change', applyFilters);
 
     const dropZone = document.getElementById('drop-zone');
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.add('drag-over');
-    });
-
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('drag-over');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        handleDroppedFiles(files);
-    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-over'); });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-over'); handleDroppedFiles(e.dataTransfer.files); });
 }
 
 function populateUpdates() {
     const updates = [
+        "**New Feature**: Added a 'Calculation Settings' editor for full logic control.",
         "**New Feature**: Added a fully customizable 'Bonus Tier Editor'.",
         "Added 'View Data' button to tech breakdown for full data transparency.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
-        "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
@@ -1711,7 +1714,12 @@ async function main() {
         await openDB();
         dbStatusEl.innerHTML = `Status: <span class="status-ok">Connected Successfully</span>`;
         setupEventListeners();
-        await Promise.all([ fetchProjectListSummary(), loadTeamSettings(), loadBonusTiers() ]); // Added loadBonusTiers
+        await Promise.all([ 
+            fetchProjectListSummary(), 
+            loadTeamSettings(), 
+            loadBonusTiers(),
+            loadCalculationSettings() // NEW
+        ]);
     } catch (e) {
         dbStatusEl.innerHTML = `Status: <span class="status-fail">Failed to connect</span>. Please check browser settings.`;
         console.error(e);
