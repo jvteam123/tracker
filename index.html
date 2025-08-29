@@ -31,7 +31,8 @@
                     <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Fixpoints</button>
                     <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
                     <button id="edit-bonus-tiers-btn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">Edit Bonus Tiers</button>
-                    <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Calculation Settings</button>
+                    <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Point Settings</button>
+                    <button id="counting-settings-btn" class="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700">Counting Settings</button>
                 </div>
             </div>
             
@@ -158,7 +159,7 @@
                                 <input id="is-ir-project-checkbox" type="checkbox" class="h-4 w-4 text-indigo-500 focus:ring-indigo-600 bg-gray-700 border-gray-600 rounded">
                                 <label for="is-ir-project-checkbox" class="ml-3 block text-sm font-medium text-yellow-300">
                                     Mark Project as IR (for Fix Tasks)
-                                    <span class="block text-xs text-yellow-400">Applies 1.5x points multiplier to the sum of all categories in a Fix Task row.</span>
+                                    <span class="block text-xs text-yellow-400">Applies a customizable multiplier to the sum of all categories in a Fix Task row.</span>
                                 </label>
                             </div>
                             <div class="flex items-center">
@@ -310,7 +311,7 @@
             <h3 class="text-xl font-bold text-gray-100 mb-2">Bonus Tier Editor</h3>
             <p class="text-sm text-gray-400 mb-4">Customize the bonus percentages based on Fix Quality. Changes are saved locally and will be used for all future calculations. Tiers are evaluated from top to bottom.</p>
             <div id="bonus-tier-editor-container" class="space-y-2 max-h-96 overflow-y-auto pr-2">
-                </div>
+            </div>
             <button id="add-bonus-tier-btn" class="mt-4 w-full bg-blue-600/50 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600/80 transition-colors text-sm">Add New Tier</button>
             <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
                 <button id="reset-bonus-tiers-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
@@ -324,9 +325,8 @@
     
     <div id="calculation-settings-modal" class="modal-overlay hidden">
         <div class="modal-content max-w-4xl">
-            <h3 class="text-xl font-bold text-gray-100 mb-2">Calculation Logic Settings</h3>
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Point Settings</h3>
             <p class="text-sm text-gray-400 mb-4">Modify the core values used in point calculations. Changes are saved locally.</p>
-
             <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
                 <div class="card p-4 rounded-lg">
                     <h4 class="font-semibold text-gray-200 mb-3">General & Task Points</h4>
@@ -357,7 +357,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="card p-4 rounded-lg">
                     <h4 class="font-semibold text-gray-200 mb-3">Fix Task Category Points</h4>
                     <div id="category-points-editor" class="overflow-x-auto">
@@ -371,13 +370,11 @@
                                     <th class="p-2">9in Value</th>
                                 </tr>
                             </thead>
-                            <tbody id="category-points-tbody">
-                                </tbody>
+                            <tbody id="category-points-tbody"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
-
             <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
                 <button id="reset-calc-settings-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
                 <div>
@@ -387,7 +384,78 @@
             </div>
         </div>
     </div>
+    
+    <div id="counting-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-4xl">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Task Counting Logic Settings</h3>
+            <p class="text-sm text-gray-400 mb-4">Define which columns and values are used to count tasks, refixes, misses, and warnings. All inputs are case-insensitive.</p>
+            <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
+                
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">Task-ID Column Definitions</h4>
+                    <p class="text-xs text-gray-400 mb-3">Enter the exact column headers (comma-separated) that contain Tech IDs for each task type.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <label for="setting-qc-cols" class="block font-medium text-gray-400">QC Task Columns</label>
+                            <input type="text" id="setting-qc-cols" class="mt-1 w-full p-2" placeholder="e.g., qc1_id, qc2_id">
+                        </div>
+                        <div>
+                            <label for="setting-i3qa-cols" class="block font-medium text-gray-400">i3qa Task Columns</label>
+                            <input type="text" id="setting-i3qa-cols" class="mt-1 w-full p-2" placeholder="e.g., i3qa_id">
+                        </div>
+                        <div>
+                            <label for="setting-rv1-cols" class="block font-medium text-gray-400">RV1 Task Columns</label>
+                            <input type="text" id="setting-rv1-cols" class="mt-1 w-full p-2" placeholder="e.g., rv1_id">
+                        </div>
+                        <div>
+                            <label for="setting-rv2-cols" class="block font-medium text-gray-400">RV2 Task Columns</label>
+                            <input type="text" id="setting-rv2-cols" class="mt-1 w-full p-2" placeholder="e.g., rv2_id">
+                        </div>
+                    </div>
+                </div>
 
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">Event Trigger Definitions</h4>
+                    <p class="text-xs text-gray-400 mb-3">Define the labels that trigger an event and which columns to check for those labels.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        <div>
+                            <label for="setting-refix-labels" class="block font-medium text-gray-400">Refix Labels</label>
+                            <input type="text" id="setting-refix-labels" class="mt-1 w-full p-2" placeholder="e.g., I, Incorrect">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setting-refix-cols" class="block font-medium text-gray-400">Columns to Check for Refixes</label>
+                            <input type="text" id="setting-refix-cols" class="mt-1 w-full p-2" placeholder="e.g., rv1_label, rv2_label, rv3_label">
+                        </div>
+
+                        <div>
+                            <label for="setting-miss-labels" class="block font-medium text-gray-400">Miss Labels</label>
+                            <input type="text" id="setting-miss-labels" class="mt-1 w-full p-2" placeholder="e.g., M, Miss">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setting-miss-cols" class="block font-medium text-gray-400">Columns to Check for Misses</label>
+                            <input type="text" id="setting-miss-cols" class="mt-1 w-full p-2" placeholder="e.g., i3qa_label, rv1_label, rv2_label, rv3_label">
+                        </div>
+
+                        <div>
+                            <label for="setting-warning-labels" class="block font-medium text-gray-400">Warning Labels</label>
+                            <input type="text" id="setting-warning-labels" class="mt-1 w-full p-2" placeholder="e.g., B, C, D, E, F, G, I">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setting-warning-cols" class="block font-medium text-gray-400">Columns to Check for Warnings</label>
+                            <input type="text" id="setting-warning-cols" class="mt-1 w-full p-2" placeholder="e.g., r1_warn, r2_warn, r3_warn, r4_warn">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
+                <button id="reset-counting-settings-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
+                <div>
+                    <button id="close-counting-settings-modal-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button id="save-counting-settings-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 ml-2">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="info-modal" class="modal-overlay hidden">
         <div class="modal-content">
