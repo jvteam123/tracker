@@ -26,10 +26,11 @@
                     <h1 class="text-2xl md:text-3xl font-bold text-white">PCS Advanced Bonus Calculator</h1>
                     <p class="mt-2 text-gray-400">Save, load, and calculate bonuses for multiple projects locally.</p>
                 </div>
-                 <div class="flex gap-4">
+                 <div class="flex flex-wrap gap-4">
                     <button id="how-it-works-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">How It Works</button>
                     <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Fixpoints</button>
                     <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
+                    <button id="edit-bonus-tiers-btn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">Edit Bonus Tiers</button>
                 </div>
             </div>
             
@@ -259,7 +260,6 @@
         </div>
     </div>
 
-
     <div id="merge-fixpoints-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="text-xl font-bold text-gray-100 mb-2">Merge Fixpoints</h3>
@@ -300,6 +300,23 @@
             <div class="mt-6 flex justify-end gap-4">
                 <button id="reorder-cancel-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
                 <button id="reorder-save-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Save Order</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bonus-tier-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-2xl">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Bonus Tier Editor</h3>
+            <p class="text-sm text-gray-400 mb-4">Customize the bonus percentages based on Fix Quality. Changes are saved locally and will be used for all future calculations. Tiers are evaluated from top to bottom.</p>
+            <div id="bonus-tier-editor-container" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                </div>
+            <button id="add-bonus-tier-btn" class="mt-4 w-full bg-blue-600/50 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600/80 transition-colors text-sm">Add New Tier</button>
+            <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
+                <button id="reset-bonus-tiers-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
+                <div>
+                    <button id="close-bonus-tier-modal-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button id="save-bonus-tiers-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 ml-2">Save Tiers</button>
+                </div>
             </div>
         </div>
     </div>
