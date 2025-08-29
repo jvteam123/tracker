@@ -964,7 +964,21 @@ function generateTechBreakdownHTML(tech) {
     const multiplierDisplay = lastCalculationUsedMultiplier ? `${lastUsedBonusMultiplier.toFixed(2)} (Multiplier)` : '1 (No Multiplier)';
     const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
     const refixDetailHtml = tech.refixDetails.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.refixDetails.map(r => `<li>Task: <span class="font-mono font-semibold">${r.round}</span> <span class="font-semibold text-red-400">(Cat: ${r.category})</span> (Project: ${r.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No refixes.</p>`;
-    const missesDetailHtml = tech.missedCategories.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.missedCategories.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No misses.</p>`;
+    
+    // **FIX:** Create a more detailed breakdown for misses
+    const i3qaMisses = tech.missedCategories.filter(m => m.round === 'i3qa');
+    const rvMisses = tech.missedCategories.filter(m => m.round.startsWith('RV'));
+    let missesDetailHtml = '';
+    if (i3qaMisses.length > 0) {
+        missesDetailHtml += `<p class="text-xs text-gray-400 mt-1 font-semibold">from i3qa:</p><ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5 pl-4">${i3qaMisses.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>`;
+    }
+    if (rvMisses.length > 0) {
+        missesDetailHtml += `<p class="text-xs text-gray-400 mt-1 font-semibold">from RV:</p><ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5 pl-4">${rvMisses.map(m => `<li>Task: <span class="font-mono font-semibold">${m.round}</span> <span class="font-semibold text-orange-400">(Cat: ${m.category})</span> (Project: ${m.project})</li>`).join('')}</ul>`;
+    }
+    if (tech.missedCategories.length === 0) {
+        missesDetailHtml = `<p class="text-xs text-gray-500 italic mt-1 pl-4">No misses.</p>`;
+    }
+    
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
 
