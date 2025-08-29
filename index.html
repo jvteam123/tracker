@@ -26,11 +26,12 @@
                     <h1 class="text-2xl md:text-3xl font-bold text-white">PCS Advanced Bonus Calculator</h1>
                     <p class="mt-2 text-gray-400">Save, load, and calculate bonuses for multiple projects locally.</p>
                 </div>
-                 <div class="flex flex-wrap gap-4">
+                 <div class="flex flex-wrap gap-4 justify-end">
                     <button id="how-it-works-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">How It Works</button>
                     <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Fixpoints</button>
                     <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
                     <button id="edit-bonus-tiers-btn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">Edit Bonus Tiers</button>
+                    <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Calculation Settings</button>
                 </div>
             </div>
             
@@ -320,6 +321,73 @@
             </div>
         </div>
     </div>
+    
+    <div id="calculation-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-4xl">
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Calculation Logic Settings</h3>
+            <p class="text-sm text-gray-400 mb-4">Modify the core values used in point calculations. Changes are saved locally.</p>
+
+            <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">General & Task Points</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <label for="setting-ir-modifier" class="block font-medium text-gray-400">IR Modifier</label>
+                            <input type="number" step="0.1" id="setting-ir-modifier" class="mt-1 w-full p-2">
+                        </div>
+                        <div>
+                            <label for="setting-qc-points" class="block font-medium text-gray-400">QC Task Points</label>
+                            <input type="number" step="0.01" id="setting-qc-points" class="mt-1 w-full p-2">
+                        </div>
+                        <div>
+                            <label for="setting-i3qa-points" class="block font-medium text-gray-400">i3qa Task Points</label>
+                            <input type="number" step="0.01" id="setting-i3qa-points" class="mt-1 w-full p-2">
+                        </div>
+                        <div>
+                            <label for="setting-rv1-points" class="block font-medium text-gray-400">RV1 Task Points</label>
+                            <input type="number" step="0.01" id="setting-rv1-points" class="mt-1 w-full p-2">
+                        </div>
+                        <div>
+                            <label for="setting-rv1-combo-points" class="block font-medium text-gray-400">RV1 Combo Points</label>
+                            <input type="number" step="0.01" id="setting-rv1-combo-points" class="mt-1 w-full p-2">
+                        </div>
+                        <div>
+                            <label for="setting-rv2-points" class="block font-medium text-gray-400">RV2 Task Points</label>
+                            <input type="number" step="0.01" id="setting-rv2-points" class="mt-1 w-full p-2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">Fix Task Category Points</h4>
+                    <div id="category-points-editor" class="overflow-x-auto">
+                        <table class="min-w-full text-sm text-left">
+                            <thead class="bg-gray-900/50">
+                                <tr>
+                                    <th class="p-2">Category</th>
+                                    <th class="p-2">3in Value</th>
+                                    <th class="p-2">4in Value</th>
+                                    <th class="p-2">6in Value</th>
+                                    <th class="p-2">9in Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-points-tbody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
+                <button id="reset-calc-settings-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
+                <div>
+                    <button id="close-calc-settings-modal-btn" class="bg-gray-600 text-gray-200 font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancel</button>
+                    <button id="save-calc-settings-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 ml-2">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <div id="info-modal" class="modal-overlay hidden">
         <div class="modal-content">
