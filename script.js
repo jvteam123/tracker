@@ -1385,6 +1385,8 @@ function setupEventListeners() {
     document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
         const projectId = document.getElementById('project-select').value;
         if (!projectId) return alert("Please select a project.");
+        
+        showNotification('Calculating selected project...');
         const projectData = await fetchFullProjectData(projectId);
         if (projectData) {
             lastUsedGsdValue = projectData.gsdValue;
@@ -1396,6 +1398,7 @@ function setupEventListeners() {
                 updateTlSummary(parsed.summaryStats, [{ name: projectData.name, points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
                 updateFix4Breakdown(projectData.rawData);
                 document.getElementById('results-title').textContent = `Bonus Results for: ${projectData.name}`;
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             }
         }
     });
@@ -1405,7 +1408,9 @@ function setupEventListeners() {
         const isIR = document.getElementById('is-ir-project-checkbox').checked;
         const gsdVal = document.getElementById('gsd-value-select').value;
         lastUsedGsdValue = gsdVal;
+        
         if (techData) {
+            showNotification('Calculating pasted data...');
             const parsed = parseRawData(techData, isIR, 'Pasted Data', gsdVal);
             if (parsed) {
                 currentTechStats = parsed.techStats;
@@ -1414,6 +1419,7 @@ function setupEventListeners() {
                 updateTlSummary(parsed.summaryStats, [{ name: 'Pasted Data', points: Object.values(currentTechStats).reduce((sum, tech) => sum + tech.points, 0) }]);
                 updateFix4Breakdown(techData);
                 document.getElementById('results-title').textContent = `Bonus Results for: Pasted Data`;
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             }
         } else alert("Please paste data into the text box first.");
     });
@@ -1468,6 +1474,8 @@ function setupEventListeners() {
         let projectsToCalcIds = isCustomized ? selectedProjectIds : projectListCache.map(p => p.id);
         if (isCustomized && selectedProjectIds.length === 0) return alert("Please select projects from the list to calculate.");
         if (projectsToCalcIds.length === 0) return alert("No projects to calculate.");
+
+        showNotification('Calculating projects...');
 
         let combinedRawData = '';
         const projectsToCalculate = await Promise.all(projectsToCalcIds.map(async (id) => {
@@ -1529,6 +1537,7 @@ function setupEventListeners() {
         updateTlSummary(combinedSummary, projectBreakdown);
         updateFix4Breakdown(combinedRawData);
         document.getElementById('results-title').textContent = `Bonus Results for: ${isCustomized ? 'Selected Projects' : 'All Projects'}`;
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     });
     
     document.getElementById('search-tech-id').addEventListener('input', applyFilters);
