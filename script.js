@@ -893,21 +893,14 @@ function showModal(key) {
     }
 }
 
-function openTechSummaryModal(techId) {
-    const tech = currentTechStats[techId];
-    if (!tech) return;
-
-    const modal = document.getElementById('info-modal');
-    document.getElementById('view-data-btn').dataset.techId = techId; // Set techId for the view data button
-
+// Function to generate the detailed breakdown HTML for a technician
+function generateTechBreakdownHTML(tech) {
     const warningsCount = tech.warnings.length;
     const denominator = tech.fixTasks + tech.refixTasks + warningsCount;
     const fixQuality = denominator > 0 ? (tech.fixTasks / denominator) * 100 : 0;
     const qualityModifier = calculateQualityModifier(fixQuality);
     const finalPayout = tech.points * lastUsedBonusMultiplier * qualityModifier;
 
-    document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
-    
     let detailedCategoryHtml = `<div class="text-sm space-y-3">
         <div class="grid grid-cols-3 gap-x-4 font-semibold text-gray-400 border-b border-gray-600 pb-2">
             <div>Category</div>
@@ -971,7 +964,7 @@ function openTechSummaryModal(techId) {
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
 
-    document.getElementById('modal-body').innerHTML = `<div class="space-y-4 text-sm">
+    return `<div class="space-y-4 text-sm">
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
             <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
             ${detailedCategoryHtml}
@@ -996,24 +989,33 @@ function openTechSummaryModal(techId) {
         <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
         <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
     </div>`;
+}
+
+
+function openTechSummaryModal(techId) {
+    const tech = currentTechStats[techId];
+    if (!tech) return;
+
+    const modal = document.getElementById('info-modal');
+    document.getElementById('view-data-btn').dataset.techId = techId;
+    document.getElementById('modal-title').innerHTML = `Detailed Breakdown for Tech ID: <span class="text-blue-400">${techId}</span>`;
+    document.getElementById('modal-body').innerHTML = generateTechBreakdownHTML(tech);
     modal.classList.remove('hidden');
 }
 
+
 function openTechDataView(techId) {
-    closeModal(); // This is the fix: Close the detailed breakdown modal first
     const dataViewModal = document.getElementById('data-view-modal');
     const breakdownContainer = document.getElementById('data-view-breakdown');
     const tableContainer = document.getElementById('data-view-table-container');
     const tech = currentTechStats[techId];
     if (!tech) return;
 
-    // 1. Populate the breakdown
-    const summaryModalBody = document.getElementById('modal-body').cloneNode(true);
-    breakdownContainer.innerHTML = ''; // Clear previous content
-    breakdownContainer.appendChild(summaryModalBody);
+    // 1. **FIX:** Regenerate the breakdown content from scratch with current data
+    breakdownContainer.innerHTML = generateTechBreakdownHTML(tech);
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
 
-    // 2. Filter and build the data table
+    // 2. Filter and build the data table (This part was already correct)
     const techIdUpper = techId.toUpperCase();
     const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
     
@@ -1033,6 +1035,7 @@ function openTechDataView(techId) {
     // 3. Show the modal
     dataViewModal.classList.remove('hidden');
 }
+
 
 function closeModal() { document.getElementById('info-modal').classList.add('hidden'); }
 function closeDataViewModal() { document.getElementById('data-view-modal').classList.add('hidden'); }
@@ -1064,7 +1067,41 @@ async function saveReorderModal() {
     }
 }
 
+// **FIX:** New function to reset UI elements
+function resetUIForNewCalculation() {
+    // Hide and clear results table
+    document.getElementById('tech-results-container').classList.remove('visible');
+    document.getElementById('tech-results-body').innerHTML = '';
+    document.getElementById('results-title').textContent = 'Technician Bonus Results';
+
+    // Clear leaderboard
+    document.getElementById('leaderboard-body').innerHTML = `<tr><td class="px-4 py-2 text-gray-400" colspan="3"><i>Calculate a project to see data...</i></td></tr>`;
+
+    // Clear workload chart
+    document.getElementById('workload-chart-container').innerHTML = `<p class="text-gray-500 italic text-sm text-center">Calculate a project to see chart...</p>`;
+
+    // Hide and clear summary cards
+    const cardsToReset = ['project-progress-card', 'tl-summary-card', 'fix4-breakdown-card'];
+    cardsToReset.forEach(cardId => {
+        const card = document.getElementById(cardId);
+        card.classList.remove('visible');
+        const content = card.querySelector('[id$="-content"]');
+        if (content) {
+            content.innerHTML = `<p class="text-xs text-gray-500 italic">Summary will be shown here after calculation.</p>`;
+        }
+    });
+    
+    // Clear project name and data text area
+    document.getElementById('project-name').value = '';
+    document.getElementById('techData').value = '';
+    loadProjectIntoForm(""); // Reset form state
+}
+
+
 async function handleDroppedFiles(files) {
+    // **FIX:** Call the UI reset function on new file drop
+    resetUIForNewCalculation();
+
     let dbfFile, shpFile;
     for (const file of files) {
         if (file.name.endsWith('.dbf')) dbfFile = file;
@@ -1149,6 +1186,8 @@ function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('view-data-btn').addEventListener('click', (e) => {
+        // **FIX:** Close the summary modal *before* opening the data view modal
+        closeModal();
         openTechDataView(e.target.dataset.techId);
     });
     document.getElementById('data-view-close-btn').addEventListener('click', closeDataViewModal);
