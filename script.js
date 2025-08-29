@@ -996,8 +996,14 @@ function generateTechBreakdownHTML(tech) {
             <div class="flex justify-between"><span class="text-gray-400">Total Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div>
             <div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>
             ${refixDetailHtml}
-            <div class="flex justify-between mt-2"><span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${tech.missedCategories.length}</span></div>
-            ${missesDetailHtml}
+            <details class="mt-2">
+                <summary class="flex justify-between cursor-pointer">
+                    <span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${tech.missedCategories.length}</span>
+                </summary>
+                <div class="border-t border-gray-600 mt-2 pt-2">
+                    ${missesDetailHtml}
+                </div>
+            </details>
             <div class="flex justify-between mt-2"><span class="text-gray-400">Approved by RQA (AA):</span><span class="font-bold text-green-400">${approvedByRQACount}</span></div>
             ${approvedByRQADetailHtml}
             <div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>
