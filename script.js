@@ -989,37 +989,50 @@ function generateTechBreakdownHTML(tech) {
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
 
-    return `<div class="space-y-4 text-sm">
-        <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
-            <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
-            ${detailedCategoryHtml}
-            <div class="mt-4 pt-4 border-t border-gray-600">
-                <h4 class="font-medium text-gray-400 mb-1">Primary Fix Category Counts (Summary)</h4>
-                <ul class="mt-1 space-y-1">${oldCategoryHtml}</ul>
+    // --- Start of replacement ---
+return `<div class="space-y-4 text-sm">
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+        <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
+        ${detailedCategoryHtml}
+        <div class="mt-4 pt-4 border-t border-gray-600">
+            <h4 class="font-medium text-gray-400 mb-1">Primary Fix Category Counts (Summary)</h4>
+            <ul class="mt-1 space-y-1">${oldCategoryHtml}</ul>
+        </div>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+        <h4 class="font-semibold text-base text-gray-200 mb-3">Core Stats</h4>
+        <div class="core-stats-grid">
+            <div class="stat-item">
+                <div class="stat-item-header"><span>Total Primary Fix Tasks</span></div>
+                <div class="stat-item-value text-green-400">${tech.fixTasks}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item-header"><span>Approved by RQA (AA)</span></div>
+                <div class="stat-item-value text-cyan-400">${approvedByRQACount}</div>
+                <details class="stat-item-details"><summary>View ${approvedByRQACount} tasks</summary>${approvedByRQADetailHtml}</details>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item-header"><span>Refix Tasks</span></div>
+                <div class="stat-item-value text-red-400">${tech.refixTasks}</div>
+                <details class="stat-item-details"><summary>View ${tech.refixTasks} tasks</summary>${refixDetailHtml}</details>
+            </div>
+            <div class="stat-item">
+                <div class="stat-item-header"><span>Misses (M)</span></div>
+                <div class="stat-item-value text-orange-400">${tech.missedCategories.length}</div>
+                <details class="stat-item-details"><summary>View ${tech.missedCategories.length} misses</summary>${missesDetailHtml}</details>
+            </div>
+             <div class="stat-item col-span-2">
+                <div class="stat-item-header"><span>Warnings</span></div>
+                <div class="stat-item-value text-yellow-400">${tech.warnings.length}</div>
+                <details class="stat-item-details"><summary>View ${tech.warnings.length} warnings</summary>${warningsDetailHtml}</details>
             </div>
         </div>
-        <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
-            <h4 class="font-semibold text-base text-gray-200 mb-2">Core Stats</h4>
-            <div class="flex justify-between"><span class="text-gray-400">Total Primary Fix Tasks:</span><span class="font-bold">${tech.fixTasks}</span></div>
-            <div class="flex justify-between"><span class="text-gray-400">Refix Tasks:</span><span class="font-bold">${tech.refixTasks}</span></div>
-            ${refixDetailHtml}
-            <details class="mt-2">
-                <summary class="flex justify-between cursor-pointer">
-                    <span class="text-gray-400">Misses (M):</span><span class="font-bold text-orange-400">${tech.missedCategories.length}</span>
-                </summary>
-                <div class="border-t border-gray-600 mt-2 pt-2">
-                    ${missesDetailHtml}
-                </div>
-            </details>
-            <div class="flex justify-between mt-2"><span class="text-gray-400">Approved by RQA (AA):</span><span class="font-bold text-green-400">${approvedByRQACount}</span></div>
-            ${approvedByRQADetailHtml}
-            <div class="flex justify-between mt-2"><span class="text-gray-400">Warnings:</span><span class="font-bold text-red-400">${tech.warnings.length}</span></div>
-            ${warningsDetailHtml}
-        </div>
-        <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
-        <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
-        <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
-    </div>`;
+    </div>
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
+    <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
+</div>`;
+// --- End of replacement ---
 }
 
 
