@@ -490,6 +490,7 @@ async function loadProjectIntoForm(projectId) {
             document.getElementById('gsd-value-select').disabled = true;
             document.getElementById('edit-data-btn').classList.remove('hidden');
             document.getElementById('save-project-btn').disabled = true;
+            document.getElementById('cancel-edit-btn').classList.add('hidden'); // **FIX:** Hide cancel button
         }
     } else {
         document.getElementById('techData').value = '';
@@ -502,6 +503,7 @@ async function loadProjectIntoForm(projectId) {
         document.getElementById('gsd-value-select').disabled = false;
         document.getElementById('edit-data-btn').classList.add('hidden');
         document.getElementById('save-project-btn').disabled = false;
+        document.getElementById('cancel-edit-btn').classList.add('hidden'); // **FIX:** Hide cancel button
     }
 }
 
@@ -1302,6 +1304,7 @@ function setupEventListeners() {
         }
     });
     document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
+    
     document.getElementById('edit-data-btn').addEventListener('click', () => {
         document.getElementById('techData').readOnly = false;
         document.getElementById('project-name').readOnly = false;
@@ -1309,8 +1312,17 @@ function setupEventListeners() {
         document.getElementById('gsd-value-select').disabled = false;
         document.getElementById('edit-data-btn').classList.add('hidden');
         document.getElementById('save-project-btn').disabled = false;
+        document.getElementById('cancel-edit-btn').classList.remove('hidden'); // **FIX:** Show cancel button
     });
     
+    // **FIX:** Add event listener for the new cancel button
+    document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+        const projectId = document.getElementById('project-select').value;
+        if (projectId) {
+            loadProjectIntoForm(projectId); // Reload original data
+        }
+    });
+
     document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
         const projectId = document.getElementById('project-select').value;
         if (!projectId) return alert("Please select a project.");
