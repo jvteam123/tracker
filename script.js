@@ -6,6 +6,7 @@ let currentTechStats = {};
 let lastUsedBonusMultiplier = 1;
 let lastCalculationUsedMultiplier = false;
 let teamSettings = {};
+let bonusTiers = []; // To hold the bonus tier settings
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
 let isSaving = false; // Flag to prevent recursive event firing
@@ -21,6 +22,27 @@ const defaultTeams = {
     "Team 114": ["7042NB", "7234CS", "7313MB", "7036RB", "4478JV", "7239EO", "4477PT", "7251JD", "4135RC", "7315CR", "7243JC"],
     "Team 64": ["4474HS", "4492CP", "4421AT", "7237ML", "7233JP", "7316NT", "7245SC", "4476JR", "7246AJ", "7241DM", "4435AC", "7242FV", "2274JD"]
 };
+
+// NEW: Default bonus tiers
+const defaultBonusTiers = [
+    { quality: 100, bonus: 1.20 }, { quality: 99.5, bonus: 1.18 }, { quality: 99, bonus: 1.16 },
+    { quality: 98.5, bonus: 1.14 }, { quality: 98, bonus: 1.12 }, { quality: 97.5, bonus: 1.10 },
+    { quality: 97, bonus: 1.08 }, { quality: 96.5, bonus: 1.06 }, { quality: 96, bonus: 1.04 },
+    { quality: 95.5, bonus: 1.02 }, { quality: 95, bonus: 1.00 }, { quality: 94.5, bonus: 0.99 },
+    { quality: 94, bonus: 0.98 }, { quality: 93.5, bonus: 0.97 }, { quality: 93, bonus: 0.96 },
+    { quality: 92.5, bonus: 0.95 }, { quality: 92, bonus: 0.94 }, { quality: 91.5, bonus: 0.93 },
+    { quality: 91, bonus: 0.91 }, { quality: 90.5, bonus: 0.90 }, { quality: 90, bonus: 0.88 },
+    { quality: 89.5, bonus: 0.87 }, { quality: 89, bonus: 0.85 }, { quality: 88.5, bonus: 0.83 },
+    { quality: 88, bonus: 0.80 }, { quality: 87.5, bonus: 0.78 }, { quality: 87, bonus: 0.75 },
+    { quality: 86.5, bonus: 0.73 }, { quality: 86, bonus: 0.70 }, { quality: 85.5, bonus: 0.68 },
+    { quality: 85, bonus: 0.66 }, { quality: 84.5, bonus: 0.64 }, { quality: 84, bonus: 0.62 },
+    { quality: 83.5, bonus: 0.60 }, { quality: 83, bonus: 0.57 }, { quality: 82.5, bonus: 0.55 },
+    { quality: 82, bonus: 0.50 }, { quality: 81.5, bonus: 0.45 }, { quality: 81, bonus: 0.40 },
+    { quality: 80.5, bonus: 0.35 }, { quality: 80, bonus: 0.30 }, { quality: 79.5, bonus: 0.25 },
+    { quality: 79, bonus: 0.20 }, { quality: 78.5, bonus: 0.15 }, { quality: 78, bonus: 0.10 },
+    { quality: 77.5, bonus: 0.05 }
+];
+
 
 // --- DATA FROM DOCUMENTATION ---
 const categoryValues = {
@@ -67,6 +89,7 @@ const calculationInfo = {
                             <li><strong class="text-gray-300">Pasted Data:</strong> If you don't want to save the data, simply paste it, set the options, and click <strong class="text-purple-400">Calculate Pasted Data</strong>.</li>
                             <li><strong class="text-gray-300">Multiple Projects:</strong> Check the "Select specific projects" box, hold Ctrl/Cmd and click to select multiple projects from the list, then click <strong class="text-green-400">Calculate All Projects</strong>. To calculate every saved project, simply leave the box unchecked and click the same button.</li>
                             <li><strong class="text-gray-300">Bonus Multiplier:</strong> Enter a value in the "Bonus Multiplier (PHP)" field to apply a multiplier to the final payout for all technicians. For example, 1.1 means a 10% bonus.</li>
+                             <li><strong class="text-gray-300">Bonus Tiers:</strong> Use the <strong class="text-purple-400">Edit Bonus Tiers</strong> button to customize the relationship between Fix Quality % and the % of Bonus Earned.</li>
                         </ul>
                     </div>
                      <div>
@@ -103,12 +126,12 @@ const calculationInfo = {
                     </div>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 3: Bonus Earned Percentage</h4>
-                        <p class="text-gray-400">The <strong class="text-gray-300">Fix Quality %</strong> is used to find the <strong class="text-gray-300">% of Bonus Earned</strong> from a predefined tiered table. For example:</p>
+                        <p class="text-gray-400">The <strong class="text-gray-300">Fix Quality %</strong> is used to find the <strong class="text-gray-300">% of Bonus Earned</strong> from a predefined tiered table. This table is fully customizable via the <strong class="text-purple-400">Edit Bonus Tiers</strong> button. For example:</p>
                         <ul class="list-['-_'] list-inside ml-4 text-gray-400">
-                            <li>A quality of <strong class="text-green-400">100%</strong> earns <strong class="text-green-400">120%</strong> of the bonus.</li>
-                            <li>A quality of <strong class="text-yellow-400">95%</strong> earns <strong class="text-yellow-400">100%</strong> of the bonus.</li>
-                            <li>A quality of <strong class="text-orange-400">82.5%</strong> earns <strong class="text-orange-400">55%</strong> of the bonus.</li>
-                            <li>A quality below <strong class="text-red-400">77.5%</strong> earns <strong class="text-red-400">0%</strong> of the bonus.</li>
+                            <li>A quality of <strong class="text-green-400">100%</strong> might earn <strong class="text-green-400">120%</strong> of the bonus.</li>
+                            <li>A quality of <strong class="text-yellow-400">95%</strong> might earn <strong class="text-yellow-400">100%</strong> of the bonus.</li>
+                            <li>A quality of <strong class="text-orange-400">82.5%</strong> might earn <strong class="text-orange-400">55%</strong> of the bonus.</li>
+                            <li>A quality below a certain threshold might earn <strong class="text-red-400">0%</strong> of the bonus.</li>
                         </ul>
                     </div>
                      <div>
@@ -123,7 +146,7 @@ const calculationInfo = {
     bonusMultiplier: { title: 'Bonus Multiplier (PHP)', body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>` },
     totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician.</p><p>For Fix tasks, points are derived from a table of category values. The GSD setting can change the points for certain categories. An "IR" project applies a 1.5x multiplier to the sum of all fix categories in a single task row.</p>`},
     fixQuality: { title: 'Fix Quality % Calculation', body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`},
-    bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. For example, a quality of 100% earns 120% of the bonus, while 82.5% earns 55%, and so on. Below 77.5%, no bonus is earned.</p>`},
+    bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. This table is customizable via the "Edit Bonus Tiers" button. For example, a quality of 100% might earn 120% of the bonus, while 82.5% earns 55%, and so on. Below a certain threshold, no bonus is earned.</p>`},
     totalBonus: { title: 'Final Payout (PHP) Calculation', body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`}
 };
 
@@ -136,6 +159,7 @@ async function openDB() {
             if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('teams')) db.createObjectStore('teams', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('bonusTiers')) db.createObjectStore('bonusTiers', { keyPath: 'id' }); // NEW
         };
         request.onsuccess = (event) => { db = event.target.result; resolve(db); };
         request.onerror = (event) => { console.error("IndexedDB error:", event.target.error); reject(event.target.error); };
@@ -196,6 +220,89 @@ function createNewTechStat() {
         pointsBreakdown: { fix: 0, qc: 0, i3qa: 0, rv: 0 }
     };
 }
+
+// --- Bonus Tier Functions (NEW) ---
+async function loadBonusTiers() {
+    try {
+        const savedTiers = await getFromDB('bonusTiers', 'customTiers');
+        if (savedTiers && savedTiers.tiers.length > 0) {
+            bonusTiers = savedTiers.tiers;
+        } else {
+            bonusTiers = defaultBonusTiers;
+        }
+    } catch (error) {
+        console.error("Error loading bonus tiers:", error);
+        bonusTiers = defaultBonusTiers;
+    }
+}
+
+async function saveBonusTiers() {
+    const editor = document.getElementById('bonus-tier-editor-container');
+    const rows = editor.querySelectorAll('.tier-row');
+    const newTiers = [];
+    let isValid = true;
+    rows.forEach(row => {
+        const qualityInput = row.querySelector('.tier-quality-input');
+        const bonusInput = row.querySelector('.tier-bonus-input');
+        const quality = parseFloat(qualityInput.value);
+        const bonus = parseFloat(bonusInput.value);
+
+        if (isNaN(quality) || isNaN(bonus)) {
+            isValid = false;
+        } else {
+            newTiers.push({ quality: quality, bonus: bonus / 100 });
+        }
+    });
+
+    if (!isValid) {
+        alert("Please ensure all fields are valid numbers.");
+        return;
+    }
+
+    // Sort by quality descending to ensure correct evaluation
+    newTiers.sort((a, b) => b.quality - a.quality);
+
+    try {
+        await putToDB('bonusTiers', { id: 'customTiers', tiers: newTiers });
+        bonusTiers = newTiers; // Update global variable
+        showNotification("Bonus tiers saved successfully.");
+        closeBonusTierModal();
+    } catch (error) {
+        console.error("Error saving bonus tiers: ", error);
+        alert("Failed to save bonus tiers.");
+    }
+}
+
+function populateBonusTierEditor() {
+    const container = document.getElementById('bonus-tier-editor-container');
+    container.innerHTML = `
+        <div class="grid grid-cols-3 gap-4 font-semibold text-gray-400 pb-2 border-b border-gray-600">
+            <span>Min. Quality %</span>
+            <span>Bonus Earned %</span>
+            <span>Action</span>
+        </div>`;
+    
+    bonusTiers.forEach(tier => {
+        addBonusTierRow(tier.quality, tier.bonus * 100);
+    });
+}
+
+function addBonusTierRow(quality = '', bonus = '') {
+    const container = document.getElementById('bonus-tier-editor-container');
+    const row = document.createElement('div');
+    row.className = 'tier-row grid grid-cols-3 gap-4 items-center';
+    row.innerHTML = `
+        <input type="number" step="0.5" class="tier-quality-input w-full p-2" value="${quality}">
+        <input type="number" step="1" class="tier-bonus-input w-full p-2" value="${bonus}">
+        <button class="delete-tier-btn bg-red-600/80 text-white font-bold py-2 px-3 rounded-lg hover:bg-red-700 text-sm">Delete</button>
+    `;
+    container.appendChild(row);
+
+    row.querySelector('.delete-tier-btn').addEventListener('click', (e) => {
+        e.target.closest('.tier-row').remove();
+    });
+}
+
 
 async function loadTeamSettings() {
     try {
@@ -463,23 +570,15 @@ processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3')
 }
 
 
+// UPDATED: This function now uses the bonusTiers array
 function calculateQualityModifier(qualityRate) {
-    if (qualityRate >= 100) return 1.20; if (qualityRate >= 99.5) return 1.18; if (qualityRate >= 99) return 1.16;
-    if (qualityRate >= 98.5) return 1.14; if (qualityRate >= 98) return 1.12; if (qualityRate >= 97.5) return 1.10;
-    if (qualityRate >= 97) return 1.08; if (qualityRate >= 96.5) return 1.06; if (qualityRate >= 96) return 1.04;
-    if (qualityRate >= 95.5) return 1.02; if (qualityRate >= 95) return 1.00; if (qualityRate >= 94.5) return 0.99;
-    if (qualityRate >= 94) return 0.98; if (qualityRate >= 93.5) return 0.97; if (qualityRate >= 93) return 0.96;
-    if (qualityRate >= 92.5) return 0.95; if (qualityRate >= 92) return 0.94; if (qualityRate >= 91.5) return 0.93;
-    if (qualityRate >= 91) return 0.91; if (qualityRate >= 90.5) return 0.90; if (qualityRate >= 90) return 0.88;
-    if (qualityRate >= 89.5) return 0.87; if (qualityRate >= 89) return 0.85; if (qualityRate >= 88.5) return 0.83;
-    if (qualityRate >= 88) return 0.80; if (qualityRate >= 87.5) return 0.78; if (qualityRate >= 87) return 0.75;
-    if (qualityRate >= 86.5) return 0.73; if (qualityRate >= 86) return 0.70; if (qualityRate >= 85.5) return 0.68;
-    if (qualityRate >= 85) return 0.66; if (qualityRate >= 84.5) return 0.64; if (qualityRate >= 84) return 0.62;
-    if (qualityRate >= 83.5) return 0.60; if (qualityRate >= 83) return 0.57; if (qualityRate >= 82.5) return 0.55;
-    if (qualityRate >= 82) return 0.50; if (qualityRate >= 81.5) return 0.45; if (qualityRate >= 81) return 0.40;
-    if (qualityRate >= 80.5) return 0.35; if (qualityRate >= 80) return 0.30; if (qualityRate >= 79.5) return 0.25;
-    if (qualityRate >= 79) return 0.20; if (qualityRate >= 78.5) return 0.15; if (qualityRate >= 78) return 0.10;
-    if (qualityRate >= 77.5) return 0.05; return 0;
+    // bonusTiers should already be sorted high to low
+    for (const tier of bonusTiers) {
+        if (qualityRate >= tier.quality) {
+            return tier.bonus;
+        }
+    }
+    return 0; // Return 0 if quality is below the lowest tier
 }
 
 // --- UI MANIPULATION AND STATE MANAGEMENT ---
@@ -1109,6 +1208,13 @@ function closeDataViewModal() { document.getElementById('data-view-modal').class
 function closeTeamManagementModal() { document.getElementById('team-management-modal').classList.add('hidden'); }
 function openTeamManagementModal() { populateAdminTeamManagement(); document.getElementById('team-management-modal').classList.remove('hidden'); }
 function closeReorderModal() { if (reorderSortable) { reorderSortable.destroy(); reorderSortable = null; } document.getElementById('reorder-modal').classList.add('hidden'); }
+// NEW Modal Controls
+function openBonusTierModal() {
+    populateBonusTierEditor();
+    document.getElementById('bonus-tier-modal').classList.remove('hidden');
+}
+function closeBonusTierModal() { document.getElementById('bonus-tier-modal').classList.add('hidden'); }
+
 
 async function saveReorderModal() {
     if (!reorderSortable) return;
@@ -1352,6 +1458,19 @@ function setupEventListeners() {
     });
      document.getElementById('refresh-teams-btn').addEventListener('click', loadTeamSettings);
 
+    // NEW Bonus Tier Modal Listeners
+    document.getElementById('edit-bonus-tiers-btn').addEventListener('click', openBonusTierModal);
+    document.getElementById('close-bonus-tier-modal-btn').addEventListener('click', closeBonusTierModal);
+    document.getElementById('save-bonus-tiers-btn').addEventListener('click', saveBonusTiers);
+    document.getElementById('add-bonus-tier-btn').addEventListener('click', () => addBonusTierRow());
+    document.getElementById('reset-bonus-tiers-btn').addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset the bonus tiers to their default values?")) {
+            bonusTiers = defaultBonusTiers;
+            populateBonusTierEditor();
+        }
+    });
+
+
     document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
     document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
     document.getElementById('reorder-cancel-btn').addEventListener('click', closeReorderModal);
@@ -1574,6 +1693,7 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "**New Feature**: Added a fully customizable 'Bonus Tier Editor'.",
         "Added 'View Data' button to tech breakdown for full data transparency.",
         "Added 'Quality per Team' breakdown to the Project Progress card.",
         "Added new 'Merge Fixpoints' feature to combine multiple shapefiles.",
@@ -1591,7 +1711,7 @@ async function main() {
         await openDB();
         dbStatusEl.innerHTML = `Status: <span class="status-ok">Connected Successfully</span>`;
         setupEventListeners();
-        await Promise.all([ fetchProjectListSummary(), loadTeamSettings() ]);
+        await Promise.all([ fetchProjectListSummary(), loadTeamSettings(), loadBonusTiers() ]); // Added loadBonusTiers
     } catch (e) {
         dbStatusEl.innerHTML = `Status: <span class="status-fail">Failed to connect</span>. Please check browser settings.`;
         console.error(e);
