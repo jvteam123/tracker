@@ -1072,10 +1072,29 @@ function openTechDataView(techId) {
         return techIdCols.some(index => values[index]?.trim().toUpperCase() === techIdUpper);
     });
 
-    let tableHtml = `<table class="data-view-table"><thead><tr>${currentDataHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+    const columnsToKeep = [
+        'fix1_id', 'fix2_id', 'fix3_id', 'fix4_id',
+        'qc1_id', 'qc2_id', 'qc3_id',
+        'i3qa_id',
+        'rv1_id', 'rv2_id',
+        'category', 'i3qa_cat', 'afp1_cat', 'afp2_cat', 'afp3_cat', 'rv1_cat', 'rv2_cat', 'rv3_cat',
+        'i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label',
+        'afp1_stat', 'afp2_stat', 'afp3_stat',
+        'combo?',
+        'r1_warn', 'r2_warn', 'r3_warn', 'r4_warn'
+    ];
+
+    const headerIndicesToKeep = currentDataHeaders.map((h, i) => columnsToKeep.includes(h.toLowerCase()) ? i : -1).filter(i => i !== -1);
+    const filteredHeaders = headerIndicesToKeep.map(i => currentDataHeaders[i]);
+
+    let tableHtml = `<table class="data-view-table"><thead><tr>${filteredHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+
     filteredLines.forEach(line => {
-        tableHtml += `<tr>${line.split('\t').map(v => `<td>${v}</td>`).join('')}</tr>`;
+        const values = line.split('\t');
+        const filteredValues = headerIndicesToKeep.map(i => values[i]);
+        tableHtml += `<tr>${filteredValues.map(v => `<td>${v}</td>`).join('')}</tr>`;
     });
+
     tableHtml += `</tbody></table>`;
     
     tableContainer.innerHTML = tableHtml;
