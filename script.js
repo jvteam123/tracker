@@ -7,7 +7,8 @@ let lastUsedBonusMultiplier = 1;
 let lastCalculationUsedMultiplier = false;
 let teamSettings = {};
 let bonusTiers = []; // To hold the bonus tier settings
-let calculationSettings = {}; // NEW: To hold all calculation logic values
+let calculationSettings = {}; // To hold all calculation logic values
+let countingSettings = {}; // NEW: To hold all task counting rules
 let reorderSortable = null;
 let lastUsedGsdValue = '3in';
 let isSaving = false; // Flag to prevent recursive event firing
@@ -43,16 +44,9 @@ const defaultBonusTiers = [
     { quality: 77.5, bonus: 0.05 }
 ];
 
-// NEW: Default Calculation Logic Settings
 const defaultCalculationSettings = {
     irModifierValue: 1.5,
-    points: {
-        qc: 1 / 8,
-        i3qa: 1 / 12,
-        rv1: 0.2,
-        rv1_combo: 0.25,
-        rv2: 0.5
-    },
+    points: { qc: 1 / 8, i3qa: 1 / 12, rv1: 0.2, rv1_combo: 0.25, rv2: 0.5 },
     categoryValues: {
         1: { "3in": 2.19, "4in": 2.19, "6in": 2.19, "9in": 0.99 },
         2: { "3in": 5.86, "4in": 5.86, "6in": 5.86, "9in": 2.07 },
@@ -63,6 +57,29 @@ const defaultCalculationSettings = {
         7: { "3in": 1, "4in": 1, "6in": 1, "9in": 1 },
         8: { "3in": 3.74, "4in": 3.74, "6in": 3.74, "9in": 3.74 },
         9: { "3in": 1.73, "4in": 1.73, "6in": 1.73, "9in": 1.73 }
+    }
+};
+
+const defaultCountingSettings = {
+    taskColumns: {
+        qc: ['qc1_id', 'qc2_id', 'qc3_id'],
+        i3qa: ['i3qa_id'],
+        rv1: ['rv1_id'],
+        rv2: ['rv2_id']
+    },
+    triggers: {
+        refix: {
+            labels: ['i'],
+            columns: ['rv1_label', 'rv2_label', 'rv3_label']
+        },
+        miss: {
+            labels: ['m'],
+            columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label']
+        },
+        warning: {
+            labels: ['b', 'c', 'd', 'e', 'f', 'g', 'i'],
+            columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
+        }
     }
 };
 
@@ -97,7 +114,7 @@ const calculationInfo = {
                             <li><strong class="text-gray-300">Pasted Data:</strong> If you don't want to save the data, simply paste it, set the options, and click <strong class="text-purple-400">Calculate Pasted Data</strong>.</li>
                             <li><strong class="text-gray-300">Multiple Projects:</strong> Check the "Select specific projects" box, hold Ctrl/Cmd and click to select multiple projects from the list, then click <strong class="text-green-400">Calculate All Projects</strong>. To calculate every saved project, simply leave the box unchecked and click the same button.</li>
                             <li><strong class="text-gray-300">Bonus Multiplier:</strong> Enter a value in the "Bonus Multiplier (PHP)" field to apply a multiplier to the final payout for all technicians. For example, 1.1 means a 10% bonus.</li>
-                             <li><strong class="text-gray-300">Bonus Tiers & Logic:</strong> Use the <strong class="text-purple-400">Edit Bonus Tiers</strong> and <strong class="text-red-400">Calculation Settings</strong> buttons to customize the entire calculation logic.</li>
+                             <li><strong class="text-gray-300">Customize Everything:</strong> Use the <strong class="text-purple-400">Edit Bonus Tiers</strong>, <strong class="text-red-400">Point Settings</strong>, and <strong class="text-orange-400">Counting Settings</strong> buttons to customize the entire calculation logic.</li>
                         </ul>
                     </div>
                      <div>
@@ -115,20 +132,20 @@ const calculationInfo = {
             <details class="bg-gray-900/50 p-3 rounded-lg border border-gray-700">
                 <summary class="font-semibold text-base text-gray-100 cursor-pointer">How The Calculation Works</summary>
                 <div class="mt-3 pt-3 border-t border-gray-600 space-y-4">
-                    <p>The calculation is a four-step process based on the official documentation. All numerical values can be customized in the <strong class="text-red-400">Calculation Settings</strong>.</p>
+                    <p>The calculation is a four-step process based on the official documentation. All numerical values and counting logic can be customized in the settings.</p>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 1: Point Calculation</h4>
-                        <p class="text-gray-400">The tool first calculates the <strong class="text-gray-300">Total Points</strong> for each technician by summing up points from different task types:</p>
+                        <p class="text-gray-400">The tool first calculates the <strong class="text-gray-300">Total Points</strong> for each technician by summing up points from different task types, as defined in the <strong class="text-orange-400">Counting Settings</strong>:</p>
                         <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
-                            <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value, as defined in the settings. If the project is marked as "IR", the total points for a fix task row are multiplied by the customizable IR Modifier.</li>
-                            <li><strong class="text-gray-300">QC, i3qa, RV Tasks:</strong> Each task is awarded a specific point value, which can be edited in the settings.</li>
+                            <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value. All point values are defined in the <strong class="text-red-400">Point Settings</strong>. If the project is marked as "IR", the total points for a fix task row are multiplied by the customizable IR Modifier.</li>
+                            <li><strong class="text-gray-300">QC, i3qa, RV Tasks:</strong> Each task is awarded a specific point value, which can be edited in the <strong class="text-red-400">Point Settings</strong>.</li>
                         </ul>
                     </div>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 2: Fix Quality Percentage</h4>
                         <p class="text-gray-400">A technician's quality is crucial. It's calculated with the formula:</p>
                         <div class="code-block my-2 text-gray-300">Fix Quality % = (Fix Tasks / (Fix Tasks + Refix Tasks + Warnings)) * 100</div>
-                        <p class="text-gray-400">A higher percentage indicates better performance.</p>
+                        <p class="text-gray-400">What counts as a "Refix" or "Warning" is defined in the <strong class="text-orange-400">Counting Settings</strong>.</p>
                     </div>
                      <div>
                         <h4 class="font-bold text-gray-200">Step 3: Bonus Earned Percentage</h4>
@@ -144,8 +161,8 @@ const calculationInfo = {
         </div>`
     },
     bonusMultiplier: { title: 'Bonus Multiplier (PHP)', body: `<p>An optional multiplier for the final payout. Enter a number (e.g., 1.25 for a 25% bonus) to adjust the final calculated bonus for all technicians.</p>` },
-    totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician. All point values are customizable in the 'Calculation Settings' modal.</p>`},
-    fixQuality: { title: 'Fix Quality % Calculation', body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code></p><p>A higher percentage indicates fewer errors.</p>`},
+    totalPoints: { title: 'Total Points Calculation', body: `<p>Points are calculated for each individual task based on its type (Fix, QC, i3qa, RV) and category, then summed for each technician. All point values are customizable in the 'Point Settings' modal.</p>`},
+    fixQuality: { title: 'Fix Quality % Calculation', body: `<p>This measures a technician's accuracy. It's calculated using the formula: <code>[# of Fix Tasks] / ([# of Fix Tasks] + [# of Refix Tasks] + [# of Warnings])</code>. What constitutes a refix or warning is defined in the 'Counting Settings' modal.</p>`},
     bonusEarned: { title: '% of Bonus Earned Calculation', body: `<p>This percentage is determined by looking up the <strong>Fix Quality %</strong> in a tiered table. This table is customizable via the "Edit Bonus Tiers" button.</p>`},
     totalBonus: { title: 'Final Payout (PHP) Calculation', body: `<p>The final amount a technician receives. It's calculated with the formula: <code>Total Points * Bonus Multiplier * % of Bonus Earned</code></p>`}
 };
@@ -153,14 +170,15 @@ const calculationInfo = {
 // --- IndexedDB Helper Functions ---
 async function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('BonusCalculatorDB', 2); // Version updated for new stores
+        const request = indexedDB.open('BonusCalculatorDB', 3);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('teams')) db.createObjectStore('teams', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
             if (!db.objectStoreNames.contains('bonusTiers')) db.createObjectStore('bonusTiers', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('calculationSettings')) db.createObjectStore('calculationSettings', { keyPath: 'id' }); // NEW
+            if (!db.objectStoreNames.contains('calculationSettings')) db.createObjectStore('calculationSettings', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('countingSettings')) db.createObjectStore('countingSettings', { keyPath: 'id' });
         };
         request.onsuccess = (event) => { db = event.target.result; resolve(db); };
         request.onerror = (event) => { console.error("IndexedDB error:", event.target.error); reject(event.target.error); };
@@ -223,15 +241,10 @@ function createNewTechStat() {
 }
 
 // --- Settings and Tiers Functions ---
-
 async function loadBonusTiers() {
     try {
         const savedTiers = await getFromDB('bonusTiers', 'customTiers');
-        if (savedTiers && savedTiers.tiers.length > 0) {
-            bonusTiers = savedTiers.tiers;
-        } else {
-            bonusTiers = defaultBonusTiers;
-        }
+        bonusTiers = (savedTiers && savedTiers.tiers.length > 0) ? savedTiers.tiers : defaultBonusTiers;
     } catch (error) {
         console.error("Error loading bonus tiers:", error);
         bonusTiers = defaultBonusTiers;
@@ -244,25 +257,15 @@ async function saveBonusTiers() {
     const newTiers = [];
     let isValid = true;
     rows.forEach(row => {
-        const qualityInput = row.querySelector('.tier-quality-input');
-        const bonusInput = row.querySelector('.tier-bonus-input');
-        const quality = parseFloat(qualityInput.value);
-        const bonus = parseFloat(bonusInput.value);
-
-        if (isNaN(quality) || isNaN(bonus)) {
-            isValid = false;
-        } else {
-            newTiers.push({ quality: quality, bonus: bonus / 100 });
-        }
+        const quality = parseFloat(row.querySelector('.tier-quality-input').value);
+        const bonus = parseFloat(row.querySelector('.tier-bonus-input').value);
+        if (isNaN(quality) || isNaN(bonus)) isValid = false;
+        else newTiers.push({ quality, bonus: bonus / 100 });
     });
 
-    if (!isValid) {
-        alert("Please ensure all fields are valid numbers.");
-        return;
-    }
+    if (!isValid) return alert("Please ensure all fields are valid numbers.");
 
     newTiers.sort((a, b) => b.quality - a.quality);
-
     try {
         await putToDB('bonusTiers', { id: 'customTiers', tiers: newTiers });
         bonusTiers = newTiers; 
@@ -276,16 +279,8 @@ async function saveBonusTiers() {
 
 function populateBonusTierEditor() {
     const container = document.getElementById('bonus-tier-editor-container');
-    container.innerHTML = `
-        <div class="grid grid-cols-3 gap-4 font-semibold text-gray-400 pb-2 border-b border-gray-600">
-            <span>Min. Quality %</span>
-            <span>Bonus Earned %</span>
-            <span>Action</span>
-        </div>`;
-    
-    bonusTiers.forEach(tier => {
-        addBonusTierRow(tier.quality, tier.bonus * 100);
-    });
+    container.innerHTML = `<div class="grid grid-cols-3 gap-4 font-semibold text-gray-400 pb-2 border-b border-gray-600"><span>Min. Quality %</span><span>Bonus Earned %</span><span>Action</span></div>`;
+    bonusTiers.forEach(tier => addBonusTierRow(tier.quality, tier.bonus * 100));
 }
 
 function addBonusTierRow(quality = '', bonus = '') {
@@ -298,23 +293,16 @@ function addBonusTierRow(quality = '', bonus = '') {
         <button class="delete-tier-btn bg-red-600/80 text-white font-bold py-2 px-3 rounded-lg hover:bg-red-700 text-sm">Delete</button>
     `;
     container.appendChild(row);
-
-    row.querySelector('.delete-tier-btn').addEventListener('click', (e) => {
-        e.target.closest('.tier-row').remove();
-    });
+    row.querySelector('.delete-tier-btn').addEventListener('click', (e) => e.target.closest('.tier-row').remove());
 }
 
 async function loadCalculationSettings() {
     try {
         const savedSettings = await getFromDB('calculationSettings', 'customSettings');
-        if (savedSettings) {
-            calculationSettings = savedSettings.settings;
-        } else {
-            calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings)); // Deep copy
-        }
+        calculationSettings = savedSettings ? savedSettings.settings : JSON.parse(JSON.stringify(defaultCalculationSettings));
     } catch (error) {
         console.error("Error loading calculation settings:", error);
-        calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings)); // Deep copy
+        calculationSettings = JSON.parse(JSON.stringify(defaultCalculationSettings));
     }
 }
 
@@ -330,7 +318,6 @@ async function saveCalculationSettings() {
         },
         categoryValues: {}
     };
-
     const tbody = document.getElementById('category-points-tbody');
     for (let i = 1; i <= 9; i++) {
         const row = tbody.querySelector(`tr[data-category="${i}"]`);
@@ -341,7 +328,6 @@ async function saveCalculationSettings() {
             "9in": parseFloat(row.querySelector('input[data-gsd="9in"]').value),
         };
     }
-
     try {
         await putToDB('calculationSettings', { id: 'customSettings', settings: newSettings });
         calculationSettings = newSettings;
@@ -360,7 +346,6 @@ function populateCalcSettingsEditor() {
     document.getElementById('setting-rv1-points').value = calculationSettings.points.rv1;
     document.getElementById('setting-rv1-combo-points').value = calculationSettings.points.rv1_combo;
     document.getElementById('setting-rv2-points').value = calculationSettings.points.rv2;
-
     const tbody = document.getElementById('category-points-tbody');
     tbody.innerHTML = '';
     for (let i = 1; i <= 9; i++) {
@@ -378,15 +363,61 @@ function populateCalcSettingsEditor() {
     }
 }
 
+async function loadCountingSettings() {
+    try {
+        const savedSettings = await getFromDB('countingSettings', 'customCounting');
+        countingSettings = savedSettings ? savedSettings.settings : JSON.parse(JSON.stringify(defaultCountingSettings));
+    } catch (error) {
+        console.error("Error loading counting settings:", error);
+        countingSettings = JSON.parse(JSON.stringify(defaultCountingSettings));
+    }
+}
+
+async function saveCountingSettings() {
+    const getValues = (id) => document.getElementById(id).value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+    const newSettings = {
+        taskColumns: {
+            qc: getValues('setting-qc-cols'),
+            i3qa: getValues('setting-i3qa-cols'),
+            rv1: getValues('setting-rv1-cols'),
+            rv2: getValues('setting-rv2-cols'),
+        },
+        triggers: {
+            refix: { labels: getValues('setting-refix-labels'), columns: getValues('setting-refix-cols') },
+            miss: { labels: getValues('setting-miss-labels'), columns: getValues('setting-miss-cols') },
+            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') }
+        }
+    };
+    try {
+        await putToDB('countingSettings', { id: 'customCounting', settings: newSettings });
+        countingSettings = newSettings;
+        showNotification("Counting logic saved successfully.");
+        closeCountingSettingsModal();
+    } catch (error) {
+        console.error("Error saving counting settings:", error);
+        alert("Failed to save counting settings.");
+    }
+}
+
+function populateCountingSettingsEditor() {
+    const setValues = (id, arr) => { document.getElementById(id).value = arr.join(', '); };
+    setValues('setting-qc-cols', countingSettings.taskColumns.qc);
+    setValues('setting-i3qa-cols', countingSettings.taskColumns.i3qa);
+    setValues('setting-rv1-cols', countingSettings.taskColumns.rv1);
+    setValues('setting-rv2-cols', countingSettings.taskColumns.rv2);
+    setValues('setting-refix-labels', countingSettings.triggers.refix.labels);
+    setValues('setting-refix-cols', countingSettings.triggers.refix.columns);
+    setValues('setting-miss-labels', countingSettings.triggers.miss.labels);
+    setValues('setting-miss-cols', countingSettings.triggers.miss.columns);
+    setValues('setting-warning-labels', countingSettings.triggers.warning.labels);
+    setValues('setting-warning-cols', countingSettings.triggers.warning.columns);
+}
 
 async function loadTeamSettings() {
     try {
         const teamsData = await getFromDB('teams', 'teams');
-        if (teamsData && Object.keys(teamsData.settings).length > 0) {
-            teamSettings = teamsData.settings;
-        } else {
-            teamSettings = defaultTeams;
-        }
+        teamSettings = (teamsData && Object.keys(teamsData.settings).length > 0) ? teamsData.settings : defaultTeams;
     } catch (error) {
         console.error("Error loading team settings:", error);
         teamSettings = defaultTeams;
@@ -412,21 +443,15 @@ async function saveProjectToIndexedDB(projectData) {
         const textEncoder = new TextEncoder();
         const dataAsUint8Array = textEncoder.encode(projectData.rawData);
         const compressed = pako.deflate(dataAsUint8Array);
-
         const uint8ArrayToBase64 = (array) => {
-            const CHUNK_SIZE = 0x8000; 
             let result = '';
-            for (let i = 0; i < array.length; i += CHUNK_SIZE) {
-                const chunk = array.subarray(i, i + CHUNK_SIZE);
-                result += String.fromCharCode.apply(null, chunk);
+            for (let i = 0; i < array.length; i += 0x8000) {
+                result += String.fromCharCode.apply(null, array.subarray(i, i + 0x8000));
             }
             return btoa(result);
         };
-
         const base64String = uint8ArrayToBase64(compressed);
-
         const fullDataToSave = { ...projectData, rawData: base64String, projectOrder: projectData.projectOrder || Date.now() };
-        
         await putToDB('projects', fullDataToSave);
         showNotification("Project saved/updated successfully!");
     } catch (err) {
@@ -435,7 +460,6 @@ async function saveProjectToIndexedDB(projectData) {
         throw err;
     }
 }
-
 
 async function fetchProjectListSummary() {
     try {
@@ -480,7 +504,7 @@ async function deleteProjectFromIndexedDB(projectId) {
     }
 }
 
-// --- FINALIZED CALCULATION LOGIC ---
+// --- REFACTORED CALCULATION LOGIC ---
 function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Data", gsdForCalculation = "3in") {
     const techStats = {};
     const lines = data.split('\n').filter(line => line.trim() !== '');
@@ -492,8 +516,16 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
     
     const summaryStats = { totalRows: 0, comboTasks: 0, totalIncorrect: 0, totalMiss: 0 };
-    const techIdCols = currentDataHeaders.filter(h => h.toLowerCase().endsWith('_id'));
-    const warnCols = currentDataHeaders.filter(h => h.toLowerCase().startsWith('r') && h.toLowerCase().endsWith('_warn'));
+    const allIdCols = currentDataHeaders.filter(h => h.toLowerCase().endsWith('_id'));
+    
+    // --- Build dynamic column maps from settings ---
+    const qcCols = countingSettings.taskColumns.qc.map(c => headerMap[c]).filter(i => i !== undefined);
+    const i3qaCols = countingSettings.taskColumns.i3qa.map(c => headerMap[c]).filter(i => i !== undefined);
+    const rv1Cols = countingSettings.taskColumns.rv1.map(c => headerMap[c]).filter(i => i !== undefined);
+    const rv2Cols = countingSettings.taskColumns.rv2.map(c => headerMap[c]).filter(i => i !== undefined);
+    const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
 
     currentDataLines.forEach(line => {
         summaryStats.totalRows++;
@@ -501,7 +533,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
         
-        const allTechsInRow = new Set(techIdCols.map(col => values[headerMap[col.toLowerCase()]]?.trim()).filter(Boolean));
+        const allTechsInRow = new Set(allIdCols.map(col => values[headerMap[col.toLowerCase()]]?.trim()).filter(Boolean));
         allTechsInRow.forEach(techId => { if (!techStats[techId]) { techStats[techId] = createNewTechStat(); techStats[techId].id = techId; } });
 
         const fix1_id = values[headerMap['fix1_id']]?.trim();
@@ -509,19 +541,17 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         const fix3_id = values[headerMap['fix3_id']]?.trim();
         const fix4_id = values[headerMap['fix4_id']]?.trim();
 
+        // --- Fix Task Point Calculation (Remains largely the same, but uses settings for values) ---
         const processFixTech = (techId, catSources) => {
             if (!techId || !techStats[techId]) return;
             let techPoints = 0;
             let techCategories = 0;
-
             catSources.forEach(source => {
                 const labelValue = source.label ? values[headerMap[source.label]]?.trim().toUpperCase() : null;
                 if (source.condition && !source.condition(labelValue)) return;
-                
                 const catValue = parseInt(values[headerMap[source.cat]]);
                 if (!isNaN(catValue) && catValue >= 1 && catValue <= 9) {
                     techCategories++;
-                    // UPDATED: Use dynamic calculation settings
                     techPoints += calculationSettings.categoryValues[catValue]?.[gsdForCalculation] || 0;
                     if (techStats[techId].categoryCounts[catValue] && source.sourceType) {
                         techStats[techId].categoryCounts[catValue][source.sourceType]++;
@@ -531,14 +561,13 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                     }
                 }
             });
-
             techStats[techId].fixTasks += techCategories;
             let pointsToAdd = techPoints;
-            if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= calculationSettings.irModifierValue; // UPDATED
+            if (isFixTaskIR && pointsToAdd > 0) pointsToAdd *= calculationSettings.irModifierValue;
             techStats[techId].points += pointsToAdd;
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
-        
+
         const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
         const fix1Sources = [];
         if (afp1_stat === 'AA') {
@@ -547,7 +576,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             if (!!values[headerMap['category']]?.trim()) {
                 fix1Sources.push({ cat: 'category', sourceType: 'primary' });
             }
-            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && (val.includes('M') || val.includes('C')), sourceType: 'i3qa' });
+            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
         }
         processFixTech(fix1_id, fix1Sources);
 
@@ -556,7 +585,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         if (afp2_stat === 'AA') {
             fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
         } else {
-            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
+            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
         }
         processFixTech(fix2_id, fix2Sources);
 
@@ -565,63 +594,82 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         if (afp3_stat === 'AA') {
             fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
         } else {
-            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && val.includes('M'), sourceType: 'rv' });
+            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
         }
         processFixTech(fix3_id, fix3Sources);
         
-        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && val.includes('M'), sourceType: 'rv' }]);
+        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
 
-        const processMiss = (techIdToBlame, labelKey, catKey, roundName) => {
-            if (techIdToBlame && techStats[techIdToBlame]) {
-                const labelValue = values[headerMap[labelKey]]?.trim().toUpperCase();
-                if (labelValue && labelValue.includes('M')) {
-                    const category = values[headerMap[catKey]]?.trim() || 'N/A';
-                    techStats[techIdToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
-                }
-            }
-        };
-
-        processMiss(values[headerMap['fix1_id']]?.trim(), 'i3qa_label', 'i3qa_cat', 'i3qa');
-        processMiss(values[headerMap['fix2_id']]?.trim(), 'rv1_label', 'rv1_cat', 'RV1');
-        processMiss(values[headerMap['fix3_id']]?.trim(), 'rv2_label', 'rv2_cat', 'RV2');
-        processMiss(values[headerMap['fix4_id']]?.trim(), 'rv3_label', 'rv3_cat', 'RV3');
-        
-        techIdCols.forEach(colName => {
+        // --- Dynamic Event Counting ---
+        allIdCols.forEach(colName => {
             const techId = values[headerMap[colName.toLowerCase()]]?.trim();
-            if (techId && techStats[techId]) {
-                if (colName.toLowerCase().startsWith('fix')) {
-                    const roundMatch = colName.match(/\d+/);
-                    if (roundMatch) {
-                        const round = roundMatch[0];
-                        const rvLabelIndex = headerMap[`rv${round}_label`];
-                        if (rvLabelIndex !== undefined && values[rvLabelIndex]?.trim().toUpperCase().includes('I')) {
-                            summaryStats.totalIncorrect++;
-                            const rvCatIndex = headerMap[`rv${round}_cat`];
-                            const refixCategory = rvCatIndex !== undefined ? values[rvCatIndex]?.trim() : 'N/A';
-                            techStats[techId].refixTasks++;
-                            techStats[techId].refixDetails.push({ round: `RV${round}`, project: currentProjectName, category: refixCategory });
-                        }
-                    }
-                } else if (colName.toLowerCase().startsWith('qc')) {
-                    techStats[techId].points += calculationSettings.points.qc; techStats[techId].pointsBreakdown.qc += calculationSettings.points.qc;
-                } else if (colName.toLowerCase().startsWith('i3qa')) {
-                    techStats[techId].points += calculationSettings.points.i3qa; techStats[techId].pointsBreakdown.i3qa += calculationSettings.points.i3qa;
-                } else if (colName.toLowerCase().startsWith('rv')) {
-                    let points = 0;
-                    if (colName.toLowerCase() === 'rv1_id') points = isComboIR ? calculationSettings.points.rv1_combo : calculationSettings.points.rv1;
-                    else if (colName.toLowerCase() === 'rv2_id') points = calculationSettings.points.rv2;
-                    techStats[techId].points += points;
-                    techStats[techId].pointsBreakdown.rv += points;
-                }
+            if (!techId || !techStats[techId]) return;
+
+            // Task Points
+            if (qcCols.includes(headerMap[colName.toLowerCase()])) {
+                techStats[techId].points += calculationSettings.points.qc; techStats[techId].pointsBreakdown.qc += calculationSettings.points.qc;
+            }
+            if (i3qaCols.includes(headerMap[colName.toLowerCase()])) {
+                techStats[techId].points += calculationSettings.points.i3qa; techStats[techId].pointsBreakdown.i3qa += calculationSettings.points.i3qa;
+            }
+            if (rv1Cols.includes(headerMap[colName.toLowerCase()])) {
+                const points = isComboIR ? calculationSettings.points.rv1_combo : calculationSettings.points.rv1;
+                techStats[techId].points += points; techStats[techId].pointsBreakdown.rv += points;
+            }
+            if (rv2Cols.includes(headerMap[colName.toLowerCase()])) {
+                techStats[techId].points += calculationSettings.points.rv2; techStats[techId].pointsBreakdown.rv += calculationSettings.points.rv2;
             }
         });
         
-        warnCols.forEach(colName => {
-            const warnValue = values[headerMap[colName.toLowerCase()]]?.trim().toUpperCase();
-            if (warnValue && ['B', 'C', 'D', 'E', 'F', 'G', 'I'].includes(warnValue)) {
-                const round = colName.match(/\d+/)[0];
-                const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
-                if (fixTechId && techStats[fixTechId]) techStats[fixTechId].warnings.push({ type: warnValue, project: currentProjectName });
+        // Refixes
+        refixCheckCols.forEach(colIndex => {
+            const labelValue = values[colIndex]?.trim().toLowerCase();
+            if (labelValue && countingSettings.triggers.refix.labels.some(l => labelValue.includes(l))) {
+                const roundMatch = currentDataHeaders[colIndex].match(/\d+/);
+                if (roundMatch) {
+                    const round = roundMatch[0];
+                    const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
+                    if (fixTechId && techStats[fixTechId]) {
+                        summaryStats.totalIncorrect++;
+                        const refixCategory = values[headerMap[`rv${round}_cat`]]?.trim() || 'N/A';
+                        techStats[fixTechId].refixTasks++;
+                        techStats[fixTechId].refixDetails.push({ round: `RV${round}`, project: currentProjectName, category: refixCategory });
+                    }
+                }
+            }
+        });
+
+        // Misses
+        missCheckCols.forEach(colIndex => {
+            const labelValue = values[colIndex]?.trim().toLowerCase();
+            if (labelValue && countingSettings.triggers.miss.labels.some(l => labelValue.includes(l))) {
+                const colName = currentDataHeaders[colIndex];
+                const roundName = colName.split('_')[0].toUpperCase();
+                let techToBlame;
+                if (roundName === 'I3QA') techToBlame = fix1_id;
+                else if (roundName === 'RV1') techToBlame = fix2_id;
+                else if (roundName === 'RV2') techToBlame = fix3_id;
+                else if (roundName === 'RV3') techToBlame = fix4_id;
+                
+                if (techToBlame && techStats[techToBlame]) {
+                    const category = values[headerMap[`${roundName.toLowerCase()}_cat`]]?.trim() || 'N/A';
+                    techStats[techToBlame].missedCategories.push({ round: roundName, category: category, project: currentProjectName });
+                }
+            }
+        });
+
+        // Warnings
+        warningCheckCols.forEach(colIndex => {
+            const warnValue = values[colIndex]?.trim().toLowerCase();
+            if (warnValue && countingSettings.triggers.warning.labels.includes(warnValue)) {
+                const roundMatch = currentDataHeaders[colIndex].match(/\d+/);
+                if(roundMatch) {
+                    const round = roundMatch[0];
+                    const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
+                    if (fixTechId && techStats[fixTechId]) {
+                        techStats[fixTechId].warnings.push({ type: warnValue.toUpperCase(), project: currentProjectName });
+                    }
+                }
             }
         });
     });
@@ -817,28 +865,6 @@ function updateLeaderboard(techStats) {
     } else if (sortBy === 'fixQuality') {
         techArray.sort((a, b) => b.fixQuality - a.fixQuality);
         metricHeader.textContent = 'Fix Quality %';
-    } else if (sortBy === 'team') {
-        const teamQuality = {};
-        const teamsInFilter = [...new Set(techArray.map(t => t.team))]; 
-
-        for (const teamName of teamsInFilter) {
-            const teamMembers = techArray.filter(t => t.team === teamName);
-            if(teamMembers.length > 0) {
-                const totalFix = teamMembers.reduce((sum, t) => sum + techStats[t.id].fixTasks, 0);
-                const totalRefix = teamMembers.reduce((sum, t) => sum + techStats[t.id].refixTasks, 0);
-                const totalWarnings = teamMembers.reduce((sum, t) => sum + techStats[t.id].warnings.length, 0);
-                const denominator = totalFix + totalRefix + totalWarnings;
-                teamQuality[teamName] = denominator > 0 ? (totalFix / denominator) * 100 : 0;
-            }
-        }
-
-        techArray.sort((a, b) => {
-            const qualityA = teamQuality[a.team] || 0;
-            const qualityB = teamQuality[b.team] || 0;
-            if (qualityA !== qualityB) return qualityB - qualityA;
-            return b.totalPoints - a.totalPoints;
-        });
-        metricHeader.textContent = 'Team Quality %';
     } else { // Default to totalTasks
         techArray.sort((a, b) => b.fixTasks - a.fixTasks);
         metricHeader.textContent = 'Total Tasks';
@@ -852,7 +878,6 @@ function updateLeaderboard(techStats) {
         if (sortBy === 'totalTasks') value = stat.fixTasks;
         else if (sortBy === 'totalPoints') value = stat.totalPoints.toFixed(2);
         else if (sortBy === 'fixQuality') value = `${stat.fixQuality.toFixed(2)}%`;
-        else if (sortBy === 'team') value = `${stat.team} (${(teamQuality[stat.team] || 0).toFixed(2)}%)`;
         
         row.innerHTML = `<td class="px-4 py-2">${index + 1}</td><td class="px-4 py-2">${stat.id}</td><td class="px-4 py-2">${value}</td>`;
         tbody.appendChild(row);
@@ -1252,6 +1277,8 @@ function openBonusTierModal() { populateBonusTierEditor(); document.getElementBy
 function closeBonusTierModal() { document.getElementById('bonus-tier-modal').classList.add('hidden'); }
 function openCalcSettingsModal() { populateCalcSettingsEditor(); document.getElementById('calculation-settings-modal').classList.remove('hidden'); }
 function closeCalcSettingsModal() { document.getElementById('calculation-settings-modal').classList.add('hidden'); }
+function openCountingSettingsModal() { populateCountingSettingsEditor(); document.getElementById('counting-settings-modal').classList.remove('hidden'); }
+function closeCountingSettingsModal() { document.getElementById('counting-settings-modal').classList.add('hidden'); }
 
 
 async function saveReorderModal() {
@@ -1390,15 +1417,12 @@ function setupEventListeners() {
         openTechDataView(e.target.dataset.techId);
     });
     document.getElementById('data-view-close-btn').addEventListener('click', closeDataViewModal);
-
     document.getElementById('data-view-search').addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        const tableRows = document.querySelectorAll('#data-view-table-container tbody tr');
-        tableRows.forEach(row => {
+        document.querySelectorAll('#data-view-table-container tbody tr').forEach(row => {
             row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
         });
     });
-
     document.body.addEventListener('click', (e) => {
         const icon = e.target.closest('.info-icon:not(.tech-summary-icon)');
         if (icon && icon.dataset.key) {
@@ -1413,25 +1437,19 @@ function setupEventListeners() {
 
     const mergeModal = document.getElementById('merge-fixpoints-modal');
     const mergeDropZone = document.getElementById('merge-drop-zone');
-
     document.getElementById('merge-fixpoints-btn').addEventListener('click', () => {
         mergedFeatures = [];
         document.getElementById('merge-file-list').innerHTML = '';
         document.getElementById('merge-load-btn').disabled = true;
         mergeModal.classList.remove('hidden');
     });
-
-    document.getElementById('merge-cancel-btn').addEventListener('click', () => {
-        mergeModal.classList.add('hidden');
-    });
-
+    document.getElementById('merge-cancel-btn').addEventListener('click', () => mergeModal.classList.add('hidden'));
     document.getElementById('merge-load-btn').addEventListener('click', () => {
         if (mergedFeatures.length > 0) {
             const properties = mergedFeatures.map(f => f.properties);
             const allHeaders = new Set();
             properties.forEach(p => Object.keys(p).forEach(h => allHeaders.add(h)));
             const headers = [...allHeaders];
-
             let tsv = headers.join('\t') + '\n';
             properties.forEach(row => {
                 tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : row[h]).join('\t') + '\n';
@@ -1441,11 +1459,9 @@ function setupEventListeners() {
             mergeModal.classList.add('hidden');
         }
     });
-    
     mergeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.add('drag-over'); });
     mergeDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); });
     mergeDropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); handleMergeDrop(e.dataTransfer.files); });
-
 
     document.getElementById('manage-teams-btn').addEventListener('click', openTeamManagementModal);
     document.getElementById('close-teams-modal-btn').addEventListener('click', closeTeamManagementModal);
@@ -1489,7 +1505,16 @@ function setupEventListeners() {
             populateCalcSettingsEditor();
         }
     });
-
+    
+    document.getElementById('counting-settings-btn').addEventListener('click', openCountingSettingsModal);
+    document.getElementById('close-counting-settings-modal-btn').addEventListener('click', closeCountingSettingsModal);
+    document.getElementById('save-counting-settings-btn').addEventListener('click', saveCountingSettings);
+    document.getElementById('reset-counting-settings-btn').addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset counting logic to its defaults?")) {
+            countingSettings = JSON.parse(JSON.stringify(defaultCountingSettings));
+            populateCountingSettingsEditor();
+        }
+    });
 
     document.getElementById('reorder-projects-btn').addEventListener('click', () => { populateAdminProjectReorder(); document.getElementById('reorder-modal').classList.remove('hidden'); });
     document.getElementById('reorder-save-btn').addEventListener('click', saveReorderModal);
@@ -1497,9 +1522,7 @@ function setupEventListeners() {
 
     document.getElementById('refresh-projects-btn').addEventListener('click', fetchProjectListSummary);
     document.getElementById('project-select').addEventListener('change', (e) => {
-        if (!isSaving) {
-            loadProjectIntoForm(e.target.value);
-        }
+        if (!isSaving) loadProjectIntoForm(e.target.value);
     });
     document.getElementById('delete-project-btn').addEventListener('click', () => { const projectId = document.getElementById('project-select').value; if(projectId) deleteProjectFromIndexedDB(projectId); });
     
@@ -1515,9 +1538,7 @@ function setupEventListeners() {
     
     document.getElementById('cancel-edit-btn').addEventListener('click', () => {
         const projectId = document.getElementById('project-select').value;
-        if (projectId) {
-            loadProjectIntoForm(projectId);
-        }
+        if (projectId) loadProjectIntoForm(projectId);
     });
 
     document.getElementById('calculateCurrentBtn').addEventListener('click', async () => {
@@ -1577,19 +1598,14 @@ function setupEventListeners() {
 
         saveButton.disabled = true;
         saveButton.textContent = 'Saving...';
-
         const existingId = document.getElementById('project-select').value;
         const isEditing = !!existingId && !document.getElementById('techData').readOnly;
-        
         const projectId = isEditing ? existingId : projectName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() + '_' + Date.now();
-
         const isIR = document.getElementById('is-ir-project-checkbox').checked;
         const gsdVal = document.getElementById('gsd-value-select').value;
         const projectData = { id: projectId, name: projectName, rawData: techData, isIRProject: isIR, gsdValue: gsdVal };
         
-        if (isEditing) {
-            delete fullProjectDataCache[projectId];
-        }
+        if (isEditing) delete fullProjectDataCache[projectId];
 
         try {
             await saveProjectToIndexedDB(projectData);
@@ -1696,10 +1712,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "**New Feature**: Added a 'Calculation Settings' editor for full logic control.",
+        "**New Feature**: Added 'Counting Settings' for fully dynamic task logic.",
+        "**New Feature**: Added a 'Point Settings' editor for full logic control.",
         "**New Feature**: Added a fully customizable 'Bonus Tier Editor'.",
         "Added 'View Data' button to tech breakdown for full data transparency.",
-        "Added 'Quality per Team' breakdown to the Project Progress card.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
@@ -1718,7 +1734,8 @@ async function main() {
             fetchProjectListSummary(), 
             loadTeamSettings(), 
             loadBonusTiers(),
-            loadCalculationSettings() // NEW
+            loadCalculationSettings(),
+            loadCountingSettings()
         ]);
     } catch (e) {
         dbStatusEl.innerHTML = `Status: <span class="status-fail">Failed to connect</span>. Please check browser settings.`;
