@@ -1584,6 +1584,7 @@ function setupEventListeners() {
     });
     
     document.getElementById('save-project-btn').addEventListener('click', async () => {
+        if (isSaving) return;
         isSaving = true;
         const saveButton = document.getElementById('save-project-btn');
         const originalButtonText = saveButton.textContent;
