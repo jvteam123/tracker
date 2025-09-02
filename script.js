@@ -1225,6 +1225,8 @@ function openTechSummaryModal(techId) {
 }
 
 
+// --- File: script.js ---
+
 function openTechDataView(techId) {
     const dataViewModal = document.getElementById('data-view-modal');
     const breakdownContainer = document.getElementById('data-view-breakdown');
@@ -1236,11 +1238,74 @@ function openTechDataView(techId) {
     document.getElementById('data-view-title').innerHTML = `Full Data View for: <span class="text-blue-400">${techId}</span>`;
 
     const techIdUpper = techId.toUpperCase();
-    const techIdCols = currentDataHeaders.map((h, i) => h.toLowerCase().endsWith('_id') ? i : -1).filter(i => i !== -1);
-    
+    const headerMap = {};
+    currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
+
+    // Helper function to determine if a task was counted for the tech in this row
+    const isTaskCountedForRowForTech = (values) => {
+        const techId = techIdUpper;
+
+        // 1. Check for QC, i3qa, RV tasks
+        const taskCols = [...countingSettings.taskColumns.qc, ...countingSettings.taskColumns.i3qa, ...countingSettings.taskColumns.rv1, ...countingSettings.taskColumns.rv2];
+        for (const colName of taskCols) {
+            const colIndex = headerMap[colName.toLowerCase()];
+            if (colIndex !== undefined && values[colIndex]?.trim().toUpperCase() === techId) {
+                return true;
+            }
+        }
+
+        // 2. Check for Fix Tasks (Primary, from Misses, from AFP)
+        for (let i = 1; i <= 4; i++) {
+            const fixIdCol = `fix${i}_id`;
+            if (headerMap[fixIdCol] !== undefined && values[headerMap[fixIdCol]]?.trim().toUpperCase() === techId) {
+                // Check primary category
+                if (i === 1 && !!values[headerMap['category']]?.trim()) return true;
+                // Check for misses that grant fix points
+                const missCheck = { 1: 'i3qa', 2: 'rv1', 3: 'rv2', 4: 'rv3' }[i];
+                if (missCheck) {
+                    const labelCol = headerMap[`${missCheck}_label`];
+                    const catCol = headerMap[`${missCheck}_cat`];
+                    if (labelCol !== undefined && catCol !== undefined) {
+                        const labelValue = values[labelCol]?.trim().toLowerCase();
+                        if (labelValue && (countingSettings.triggers.miss.labels.includes(labelValue) || labelValue.includes('c')) && !!values[catCol]?.trim()) {
+                            return true;
+                        }
+                    }
+                }
+                // Check for AFP 'AA' status
+                const afpStatCol = headerMap[`afp${i}_stat`];
+                const afpCatCol = headerMap[`afp${i}_cat`];
+                if (afpStatCol !== undefined && values[afpStatCol]?.trim().toUpperCase() === 'AA' && !!values[afpCatCol]?.trim()) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Check for being assigned a Refix or a Warning
+        for (let i = 1; i <= 4; i++) {
+             const fixIdCol = `fix${i}_id`;
+             if (headerMap[fixIdCol] !== undefined && values[headerMap[fixIdCol]]?.trim().toUpperCase() === techId) {
+                // Check for refixes assigned to this fix round
+                const refixLabelCol = headerMap[`rv${i}_label`];
+                if (refixLabelCol !== undefined) {
+                     const labelValue = values[refixLabelCol]?.trim().toLowerCase();
+                     if(labelValue && countingSettings.triggers.refix.labels.includes(labelValue)) return true;
+                }
+                // Check for warnings assigned to this fix round
+                const warnCol = headerMap[`r${i}_warn`];
+                 if (warnCol !== undefined) {
+                     const warnValue = values[warnCol]?.trim().toLowerCase();
+                     if(warnValue && countingSettings.triggers.warning.labels.includes(warnValue)) return true;
+                 }
+             }
+        }
+
+        return false;
+    };
+
     const filteredLines = currentDataLines.filter(line => {
         const values = line.split('\t');
-        return techIdCols.some(index => values[index]?.trim().toUpperCase() === techIdUpper);
+        return isTaskCountedForRowForTech(values);
     });
 
     const columnsToKeep = [
@@ -1258,7 +1323,7 @@ function openTechDataView(techId) {
 
     filteredLines.forEach(line => {
         const values = line.split('\t');
-        const filteredValues = headerIndicesToKeep.map(i => values[i]);
+        const filteredValues = headerIndicesToKeep.map(i => values[i] || ''); // Ensure undefined becomes empty string
         tableHtml += `<tr>${filteredValues.map(v => `<td>${v}</td>`).join('')}</tr>`;
     });
 
