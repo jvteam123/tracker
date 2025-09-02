@@ -1151,7 +1151,7 @@ function generateTechBreakdownHTML(tech) {
     const warningsDetailHtml = tech.warnings.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.warnings.map(w => `<li>Type: <span class="font-mono font-semibold">${w.type}</span> (Project: ${w.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No warnings.</p>`;
     const refixDetailHtml = tech.refixDetails.length > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.refixDetails.map(r => `<li>Task: <span class="font-mono font-semibold">${r.round}</span> <span class="font-semibold text-red-400">(Cat: ${r.category})</span> (Project: ${r.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No refixes.</p>`;
     
-    const i3qaMisses = tech.missedCategories.filter(m => m.round === 'i3qa');
+    const i3qaMisses = tech.missedCategories.filter(m => m.round.toUpperCase() === 'I3QA');
     const rvMisses = tech.missedCategories.filter(m => m.round.startsWith('RV'));
     let missesDetailHtml = '';
     if (i3qaMisses.length > 0) {
