@@ -655,7 +655,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                 techStats[techId].points += points; techStats[techId].pointsBreakdown.rv += points;
             }
             if (rv2Cols.includes(headerMap[colName.toLowerCase()])) {
-                techStats[techId].points += calculationSettings.points.rv2; techStats[techId].pointsBreakdown.rv += calculationSettings.points.rv2;
+                techStats[techId].points += calculationSettings.points.rv2; techStats[techId].pointsBreakdown.rv += points;
             }
         });
         
@@ -1587,24 +1587,37 @@ function setupEventListeners() {
         mergeModal.classList.remove('hidden');
     });
     document.getElementById('merge-cancel-btn').addEventListener('click', () => mergeModal.classList.add('hidden'));
+    
+    // =================================================================================
+    // START OF CORRECTED CODE BLOCK
+    // =================================================================================
     document.getElementById('merge-load-btn').addEventListener('click', () => {
         if (mergedFeatures.length > 0) {
             const properties = mergedFeatures.map(f => f.properties);
+            // Create a comprehensive header list from all merged files
             const allHeaders = new Set();
             properties.forEach(p => Object.keys(p).forEach(h => allHeaders.add(h)));
-            const headers = [...allHeaders];
+            const headers = Array.from(allHeaders);
+            
             let tsv = headers.join('\t') + '\n';
             properties.forEach(row => {
-                tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : row[h]).join('\t') + '\n';
+                // For each row, map values based on the comprehensive header, providing an empty string if a key doesn't exist
+                tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : String(row[h])).join('\t') + '\n';
             });
+            
+            // Reset the main form to a clean state for the new merged data
+            resetUIForNewCalculation();
             document.getElementById('techData').value = tsv;
-            showNotification(`${mergedFeatures.length} merged features loaded into text area.`);
+            document.getElementById('project-select').value = ""; // Ensure no project is selected
+            
+            showNotification(`${mergedFeatures.length} merged features loaded into the text area.`);
             mergeModal.classList.add('hidden');
-            // Bug Fix: Reset project form to allow saving the merged data as a new project
-            loadProjectIntoForm("");
-            document.getElementById('project-select').value = "";
         }
     });
+    // =================================================================================
+    // END OF CORRECTED CODE BLOCK
+    // =================================================================================
+
     mergeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.add('drag-over'); });
     mergeDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); });
     mergeDropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); handleMergeDrop(e.dataTransfer.files); });
