@@ -83,8 +83,8 @@ const defaultCountingSettings = {
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
         },
         credited: {
-            labels: ['m', 'c', 'aa'],
-            columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label', 'afp1_stat', 'afp2_stat', 'afp3_stat']
+            labels: [],
+            columns: []
         }
     }
 };
@@ -716,7 +716,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
                     const round = roundMatch[0];
                     const fixTechId = values[headerMap[`fix${round}_id`]]?.trim();
                     if (fixTechId && techStats[fixTechId]) {
-                        techStats[fixTechId].warnings.push({ type: warnValue.toUpperCase(), project: currentProjectName });
+                        techStats[techId].warnings.push({ type: warnValue.toUpperCase(), project: currentProjectName });
                     }
                 }
             }
@@ -1190,7 +1190,19 @@ function generateTechBreakdownHTML(tech) {
         if (count > 0) {
             totalCategoryCount += count;
             const pointsPerCategory = calculationSettings.categoryValues[i]?.[gsd] || 0;
-            oldCategoryHtml += `<li class="flex justify-between p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}"><span>Category ${i}:</span><span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span></li>`;
+            let breakdownHtml = '';
+            if (counts.primary > 0) breakdownHtml += `<div>${counts.primary} from CATEGORY</div>`;
+            if (counts.i3qa > 0) breakdownHtml += `<div>${counts.i3qa} from i3QA</div>`;
+            if (counts.afp > 0) breakdownHtml += `<div>${counts.afp} from AFP</div>`;
+            if (counts.rv > 0) breakdownHtml += `<div>${counts.rv} from RV</div>`;
+
+            oldCategoryHtml += `<li class="p-1.5 rounded-md border text-gray-300 ${categoryColors[i]}">
+                <div class="flex justify-between">
+                    <span>Category ${i}:</span>
+                    <span class="font-mono text-xs">${count} x ${pointsPerCategory.toFixed(2)} pts = ${(count * pointsPerCategory).toFixed(2)} pts</span>
+                </div>
+                <div class="text-xs text-gray-400 pl-2">${breakdownHtml}</div>
+            </li>`;
         }
     }
     if (tech.pointsBreakdown.fix > 0) oldCategoryHtml += `<li class="flex justify-between font-bold border-t-2 border-gray-600 pt-2 mt-2 bg-gray-700 p-2 rounded-md"><span>Total from Categories:</span><span class="font-mono">(${totalCategoryCount} tasks) ${tech.pointsBreakdown.fix.toFixed(2)} pts</span></li>`;
