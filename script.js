@@ -1312,19 +1312,10 @@ function openTechDataView(techId) {
     currentDataHeaders.forEach((h, i) => { headerMap[h.toLowerCase()] = i; });
 
     // Helper function to determine if a task was counted for the tech in this row
-    const isTaskCountedForRowForTech = (values) => {
+    const isFixTaskCountedForRowForTech = (values) => {
         const techId = techIdUpper;
 
-        // 1. Check for QC, i3qa, RV tasks
-        const taskCols = [...countingSettings.taskColumns.qc, ...countingSettings.taskColumns.i3qa, ...countingSettings.taskColumns.rv1, ...countingSettings.taskColumns.rv2];
-        for (const colName of taskCols) {
-            const colIndex = headerMap[colName.toLowerCase()];
-            if (colIndex !== undefined && values[colIndex]?.trim().toUpperCase() === techId) {
-                return true;
-            }
-        }
-
-        // 2. Check for Fix Tasks (Primary, from Misses, from AFP)
+        // Check for Fix Tasks (Primary, from Misses, from AFP)
         for (let i = 1; i <= 4; i++) {
             const fixIdCol = `fix${i}_id`;
             if (headerMap[fixIdCol] !== undefined && values[headerMap[fixIdCol]]?.trim().toUpperCase() === techId) {
@@ -1350,32 +1341,12 @@ function openTechDataView(techId) {
                 }
             }
         }
-
-        // 3. Check for being assigned a Refix or a Warning
-        for (let i = 1; i <= 4; i++) {
-             const fixIdCol = `fix${i}_id`;
-             if (headerMap[fixIdCol] !== undefined && values[headerMap[fixIdCol]]?.trim().toUpperCase() === techId) {
-                // Check for refixes assigned to this fix round
-                const refixLabelCol = headerMap[`rv${i}_label`];
-                if (refixLabelCol !== undefined) {
-                     const labelValue = values[refixLabelCol]?.trim().toLowerCase();
-                     if(labelValue && countingSettings.triggers.refix.labels.includes(labelValue)) return true;
-                }
-                // Check for warnings assigned to this fix round
-                const warnCol = headerMap[`r${i}_warn`];
-                 if (warnCol !== undefined) {
-                     const warnValue = values[warnCol]?.trim().toLowerCase();
-                     if(warnValue && countingSettings.triggers.warning.labels.includes(warnValue)) return true;
-                 }
-             }
-        }
-
         return false;
     };
 
     const filteredLines = currentDataLines.filter(line => {
         const values = line.split('\t');
-        return isTaskCountedForRowForTech(values);
+        return isFixTaskCountedForRowForTech(values);
     });
 
     const columnsToKeep = [
@@ -1623,6 +1594,9 @@ function setupEventListeners() {
             document.getElementById('techData').value = tsv;
             showNotification(`${mergedFeatures.length} merged features loaded into text area.`);
             mergeModal.classList.add('hidden');
+            // Bug Fix: Reset project form to allow saving the merged data as a new project
+            loadProjectIntoForm("");
+            document.getElementById('project-select').value = "";
         }
     });
     mergeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.add('drag-over'); });
