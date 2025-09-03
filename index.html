@@ -33,6 +33,8 @@
                     <button id="edit-bonus-tiers-btn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">Edit Bonus Tiers</button>
                     <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Point Settings</button>
                     <button id="counting-settings-btn" class="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700">Counting Settings</button>
+                    <button id="bug-report-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700">Bug Report</button>
+                    <button id="clear-data-btn" class="bg-red-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Clear All Data</button>
                 </div>
             </div>
             
@@ -443,6 +445,21 @@
                         <div class="md:col-span-2">
                             <label for="setting-warning-cols" class="block font-medium text-gray-400">Columns to Check for Warnings</label>
                             <input type="text" id="setting-warning-cols" class="mt-1 w-full p-2" placeholder="e.g., r1_warn, r2_warn, r3_warn, r4_warn">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">Credited Task Definitions</h4>
+                    <p class="text-xs text-gray-400 mb-3">If rules are set here, only rows that match these rules will be counted. If left blank, all rows are counted by default.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        <div>
+                            <label for="setting-credited-labels" class="block font-medium text-gray-400">Credited Labels</label>
+                            <input type="text" id="setting-credited-labels" class="mt-1 w-full p-2" placeholder="e.g., credited, yes">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setting-credited-cols" class="block font-medium text-gray-400">Columns to Check for Credit</label>
+                            <input type="text" id="setting-credited-cols" class="mt-1 w-full p-2" placeholder="e.g., status, credit_col">
                         </div>
                     </div>
                 </div>
