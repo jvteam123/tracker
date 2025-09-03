@@ -448,21 +448,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="card p-4 rounded-lg">
-                    <h4 class="font-semibold text-gray-200 mb-3">Credited Task Definitions (for Fix Tasks ONLY)</h4>
-                    <p class="text-xs text-gray-400 mb-3">If rules are set, only Fix Tasks from rows matching these rules will be counted. Other tasks like QC, RV, and Warnings will still be counted from all rows. If left blank, Fix Tasks from all rows are counted by default.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-                        <div>
-                            <label for="setting-credited-labels" class="block font-medium text-gray-400">Credited Labels</label>
-                            <input type="text" id="setting-credited-labels" class="mt-1 w-full p-2" placeholder="e.g., credited, yes">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label for="setting-credited-cols" class="block font-medium text-gray-400">Columns to Check for Credit</label>
-                            <input type="text" id="setting-credited-cols" class="mt-1 w-full p-2" placeholder="e.g., status, credit_col">
-                        </div>
-                    </div>
-                </div>
             </div>
             <div class="mt-6 flex justify-between items-center gap-4 border-t border-gray-700 pt-4">
                 <button id="reset-counting-settings-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700 transition-colors">Reset to Defaults</button>
