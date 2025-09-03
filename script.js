@@ -394,7 +394,8 @@ async function saveCountingSettings() {
         triggers: {
             refix: { labels: getValues('setting-refix-labels'), columns: getValues('setting-refix-cols') },
             miss: { labels: getValues('setting-miss-labels'), columns: getValues('setting-miss-cols') },
-            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') }
+            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') },
+            qcPenalty: { labels: getValues('setting-qc-penalty-labels'), columns: getValues('setting-qc-penalty-cols') }
         }
     };
     try {
@@ -425,6 +426,8 @@ function populateCountingSettingsEditor() {
     setValues('setting-miss-cols', countingSettings.triggers.miss.columns);
     setValues('setting-warning-labels', countingSettings.triggers.warning.labels);
     setValues('setting-warning-cols', countingSettings.triggers.warning.columns);
+    setValues('setting-qc-penalty-labels', countingSettings.triggers.qcPenalty.labels);
+    setValues('setting-qc-penalty-cols', countingSettings.triggers.qcPenalty.columns);
 }
 
 
