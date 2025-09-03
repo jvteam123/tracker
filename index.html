@@ -28,11 +28,13 @@
                 </div>
                  <div class="flex flex-wrap gap-4 justify-end">
                     <button id="how-it-works-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md">How It Works</button>
-                    <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Fixpoints</button>
+                    <button id="merge-fixpoints-btn" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Merge Partials FP</button>
                     <button id="manage-teams-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Manage Teams</button>
                     <button id="edit-bonus-tiers-btn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">Edit Bonus Tiers</button>
-                    <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Point Settings</button>
-                    <button id="counting-settings-btn" class="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700">Counting Settings</button>
+                    <button id="calculation-settings-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Points Settings</button>
+                    <button id="counting-settings-btn" class="bg-orange-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-700">Advance Settings</button>
+                    <button id="bug-report-btn" class="bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700">Bugs Report</button>
+                    <button id="clear-data-btn" class="bg-red-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Clear All Data</button>
                 </div>
             </div>
             
@@ -325,7 +327,7 @@
     
     <div id="calculation-settings-modal" class="modal-overlay hidden">
         <div class="modal-content max-w-4xl">
-            <h3 class="text-xl font-bold text-gray-100 mb-2">Point Settings</h3>
+            <h3 class="text-xl font-bold text-gray-100 mb-2">Points Settings</h3>
             <p class="text-sm text-gray-400 mb-4">Modify the core values used in point calculations. Changes are saved locally.</p>
             <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
                 <div class="card p-4 rounded-lg">
@@ -390,7 +392,7 @@
             <h3 class="text-xl font-bold text-gray-100 mb-2">Task Counting Logic Settings</h3>
             <p class="text-sm text-gray-400 mb-4">Define which columns and values are used to count tasks, refixes, misses, and warnings. All inputs are case-insensitive.</p>
             <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
-                
+
                 <div class="card p-4 rounded-lg">
                     <h4 class="font-semibold text-gray-200 mb-3">Task-ID Column Definitions</h4>
                     <p class="text-xs text-gray-400 mb-3">Enter the exact column headers (comma-separated) that contain Tech IDs for each task type.</p>
@@ -443,6 +445,21 @@
                         <div class="md:col-span-2">
                             <label for="setting-warning-cols" class="block font-medium text-gray-400">Columns to Check for Warnings</label>
                             <input type="text" id="setting-warning-cols" class="mt-1 w-full p-2" placeholder="e.g., r1_warn, r2_warn, r3_warn, r4_warn">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-200 mb-3">Credited Task Definitions (for Fix Tasks ONLY)</h4>
+                    <p class="text-xs text-gray-400 mb-3">If rules are set, only Fix Tasks from rows matching these rules will be counted. Other tasks like QC, RV, and Warnings will still be counted from all rows. If left blank, Fix Tasks from all rows are counted by default.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        <div>
+                            <label for="setting-credited-labels" class="block font-medium text-gray-400">Credited Labels</label>
+                            <input type="text" id="setting-credited-labels" class="mt-1 w-full p-2" placeholder="e.g., credited, yes">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setting-credited-cols" class="block font-medium text-gray-400">Columns to Check for Credit</label>
+                            <input type="text" id="setting-credited-cols" class="mt-1 w-full p-2" placeholder="e.g., status, credit_col">
                         </div>
                     </div>
                 </div>
