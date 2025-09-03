@@ -373,7 +373,7 @@ function populateCalcSettingsEditor() {
 async function loadCountingSettings() {
     try {
         const savedSettings = await getFromDB('countingSettings', 'customCounting');
-        countingSettings = savedSettings ? { ...defaultCountingSettings, ...savedSettings.settings } : JSON.parse(JSON.stringify(defaultCountingSettings));
+        countingSettings = savedSettings ? savedSettings.settings : JSON.parse(JSON.stringify(defaultCountingSettings));
     } catch (error) {
         console.error("Error loading counting settings:", error);
         countingSettings = JSON.parse(JSON.stringify(defaultCountingSettings));
