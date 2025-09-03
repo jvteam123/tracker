@@ -16,6 +16,8 @@ let mergedFeatures = []; // To store features from dropped files in the merge mo
 let currentDataHeaders = []; // To store headers of the currently parsed data
 let currentDataLines = []; // To store lines of the currently parsed data
 
+const DB_NAME = 'BonusCalculatorDB';
+
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
     "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"],
@@ -79,6 +81,10 @@ const defaultCountingSettings = {
         warning: {
             labels: ['b', 'c', 'd', 'e', 'f', 'g', 'i'],
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
+        },
+        credited: {
+            labels: ['m', 'c', 'aa'],
+            columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label', 'afp1_stat', 'afp2_stat', 'afp3_stat']
         }
     }
 };
@@ -170,7 +176,7 @@ const calculationInfo = {
 // --- IndexedDB Helper Functions ---
 async function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('BonusCalculatorDB', 3);
+        const request = indexedDB.open(DB_NAME, 3);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
@@ -366,12 +372,13 @@ function populateCalcSettingsEditor() {
 async function loadCountingSettings() {
     try {
         const savedSettings = await getFromDB('countingSettings', 'customCounting');
-        countingSettings = savedSettings ? savedSettings.settings : JSON.parse(JSON.stringify(defaultCountingSettings));
+        countingSettings = savedSettings ? { ...defaultCountingSettings, ...savedSettings.settings } : JSON.parse(JSON.stringify(defaultCountingSettings));
     } catch (error) {
         console.error("Error loading counting settings:", error);
         countingSettings = JSON.parse(JSON.stringify(defaultCountingSettings));
     }
 }
+
 
 async function saveCountingSettings() {
     const getValues = (id) => document.getElementById(id).value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -386,7 +393,8 @@ async function saveCountingSettings() {
         triggers: {
             refix: { labels: getValues('setting-refix-labels'), columns: getValues('setting-refix-cols') },
             miss: { labels: getValues('setting-miss-labels'), columns: getValues('setting-miss-cols') },
-            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') }
+            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') },
+            credited: { labels: getValues('setting-credited-labels'), columns: getValues('setting-credited-cols') }
         }
     };
     try {
@@ -401,7 +409,12 @@ async function saveCountingSettings() {
 }
 
 function populateCountingSettingsEditor() {
-    const setValues = (id, arr) => { document.getElementById(id).value = arr.join(', '); };
+    const setValues = (id, arr) => { 
+        const el = document.getElementById(id);
+        if (el && arr) {
+            el.value = arr.join(', '); 
+        }
+    };
     setValues('setting-qc-cols', countingSettings.taskColumns.qc);
     setValues('setting-i3qa-cols', countingSettings.taskColumns.i3qa);
     setValues('setting-rv1-cols', countingSettings.taskColumns.rv1);
@@ -412,7 +425,10 @@ function populateCountingSettingsEditor() {
     setValues('setting-miss-cols', countingSettings.triggers.miss.columns);
     setValues('setting-warning-labels', countingSettings.triggers.warning.labels);
     setValues('setting-warning-cols', countingSettings.triggers.warning.columns);
+    setValues('setting-credited-labels', countingSettings.triggers.credited.labels);
+    setValues('setting-credited-cols', countingSettings.triggers.credited.columns);
 }
+
 
 async function loadTeamSettings() {
     try {
@@ -518,6 +534,22 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const summaryStats = { totalRows: 0, comboTasks: 0, totalIncorrect: 0, totalMiss: 0 };
     const allIdCols = currentDataHeaders.filter(h => h.toLowerCase().endsWith('_id'));
     
+    // Initialize stats for all technicians found
+    const allTechsInDataSet = new Set();
+    currentDataLines.forEach(line => {
+        const values = line.split('\t');
+        allIdCols.forEach(col => {
+            const techId = values[headerMap[col.toLowerCase()]]?.trim();
+            if (techId) allTechsInDataSet.add(techId);
+        });
+    });
+    allTechsInDataSet.forEach(techId => {
+        if (!techStats[techId]) {
+            techStats[techId] = createNewTechStat();
+            techStats[techId].id = techId;
+        }
+    });
+
     // --- Build dynamic column maps from settings ---
     const qcCols = countingSettings.taskColumns.qc.map(c => headerMap[c]).filter(i => i !== undefined);
     const i3qaCols = countingSettings.taskColumns.i3qa.map(c => headerMap[c]).filter(i => i !== undefined);
@@ -526,22 +558,35 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const creditedCheckCols = (countingSettings.triggers.credited.columns || []).map(c => headerMap[c]).filter(i => i !== undefined);
+    const creditedLabels = countingSettings.triggers.credited.labels || [];
 
     currentDataLines.forEach(line => {
         summaryStats.totalRows++;
         const values = line.split('\t');
+
+        // Check if the Fix Tasks in this row should be credited
+        let isFixTaskCredited = true; // Default to true
+        if (creditedCheckCols.length > 0 && creditedLabels.length > 0) {
+            isFixTaskCredited = false; // If rules exist, default to false until a match is found
+            for (const colIndex of creditedCheckCols) {
+                const cellValue = values[colIndex]?.trim().toLowerCase();
+                if (cellValue && creditedLabels.some(label => cellValue.includes(label))) {
+                    isFixTaskCredited = true;
+                    break; 
+                }
+            }
+        }
+
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
         
-        const allTechsInRow = new Set(allIdCols.map(col => values[headerMap[col.toLowerCase()]]?.trim()).filter(Boolean));
-        allTechsInRow.forEach(techId => { if (!techStats[techId]) { techStats[techId] = createNewTechStat(); techStats[techId].id = techId; } });
-
         const fix1_id = values[headerMap['fix1_id']]?.trim();
         const fix2_id = values[headerMap['fix2_id']]?.trim();
         const fix3_id = values[headerMap['fix3_id']]?.trim();
         const fix4_id = values[headerMap['fix4_id']]?.trim();
 
-        // --- Fix Task Point Calculation (Remains largely the same, but uses settings for values) ---
+        // --- Fix Task Point Calculation ---
         const processFixTech = (techId, catSources) => {
             if (!techId || !techStats[techId]) return;
             let techPoints = 0;
@@ -567,40 +612,44 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].points += pointsToAdd;
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
-
-        const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
-        const fix1Sources = [];
-        if (afp1_stat === 'AA') {
-            fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
-        } else {
-            if (!!values[headerMap['category']]?.trim()) {
-                fix1Sources.push({ cat: 'category', sourceType: 'primary' });
-            }
-            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
-        }
-        processFixTech(fix1_id, fix1Sources);
-
-        const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
-        const fix2Sources = [];
-        if (afp2_stat === 'AA') {
-            fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
-        } else {
-            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-        }
-        processFixTech(fix2_id, fix2Sources);
-
-        const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
-        const fix3Sources = [];
-        if (afp3_stat === 'AA') {
-            fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
-        } else {
-            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-        }
-        processFixTech(fix3_id, fix3Sources);
         
-        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
+        // Only run Fix Task processing if the row is credited
+        if (isFixTaskCredited) {
+            const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
+            const fix1Sources = [];
+            if (afp1_stat === 'AA') {
+                fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
+            } else {
+                if (!!values[headerMap['category']]?.trim()) {
+                    fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+                }
+                fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
+            }
+            processFixTech(fix1_id, fix1Sources);
 
-        // --- Dynamic Event Counting ---
+            const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
+            const fix2Sources = [];
+            if (afp2_stat === 'AA') {
+                fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
+            } else {
+                fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+            }
+            processFixTech(fix2_id, fix2Sources);
+
+            const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
+            const fix3Sources = [];
+            if (afp3_stat === 'AA') {
+                fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
+            } else {
+                fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+            }
+            processFixTech(fix3_id, fix3Sources);
+            
+            processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
+        }
+
+
+        // --- Dynamic Event Counting (runs for every row, regardless of credit status) ---
         allIdCols.forEach(colName => {
             const techId = values[headerMap[colName.toLowerCase()]]?.trim();
             if (!techId || !techStats[techId]) return;
@@ -1127,7 +1176,7 @@ function generateTechBreakdownHTML(tech) {
     
     detailedCategoryHtml += `</div></div>`;
     if (totalTasksFromCategories === 0) {
-        detailedCategoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
+        detailedCategoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded from data.</p>';
     }
 
     const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
@@ -1166,7 +1215,7 @@ function generateTechBreakdownHTML(tech) {
     
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
-
+    
 return `<div class="space-y-4 text-sm">
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
         <h4 class="font-semibold text-base text-gray-200 mb-2">Primary Fix Category Counts (Detailed)</h4>
@@ -1473,6 +1522,31 @@ async function handleMergeDrop(files) {
     }
 }
 
+function clearAllData() {
+    if (!confirm("Are you sure you want to clear ALL data? This will delete all saved projects and reset all custom settings to default. This action cannot be undone.")) {
+        return;
+    }
+
+    if (db) {
+        db.close();
+    }
+
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+
+    deleteRequest.onsuccess = function() {
+        console.log("Database deleted successfully");
+        alert("All data and settings have been cleared. The page will now reload.");
+        location.reload();
+    };
+    deleteRequest.onerror = function(event) {
+        console.error("Error deleting database:", event.target.error);
+        alert("An error occurred while clearing data. Please check the console and try clearing your browser's site data manually.");
+    };
+    deleteRequest.onblocked = function() {
+        console.warn("Database deletion blocked. Please close other tabs with this page open.");
+        alert("Could not delete the database because it's in use in another tab. Please close all other tabs with this tool open and try again.");
+    };
+}
 
 function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
@@ -1499,6 +1573,12 @@ function setupEventListeners() {
             openTechSummaryModal(techIcon.dataset.techId);
         }
     });
+
+    document.getElementById('bug-report-btn').addEventListener('click', () => {
+        window.open("https://teams.microsoft.com/l/chat/48:notes/conversations?context=%7B%22contextType%22%3A%22chat%22%7D", "_blank");
+    });
+    document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
+
 
     const mergeModal = document.getElementById('merge-fixpoints-modal');
     const mergeDropZone = document.getElementById('merge-drop-zone');
@@ -1778,10 +1858,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "**New Feature**: Added 'Counting Settings' for fully dynamic task logic.",
-        "**New Feature**: Added a 'Point Settings' editor for full logic control.",
-        "**New Feature**: Added a fully customizable 'Bonus Tier Editor'.",
-        "Added 'View Data' button to tech breakdown for full data transparency.",
+        "**Update**: Removed the 'Default Task Count' feature.",
+        "**New Feature**: Added default values for 'Credited Task' definitions.",
+        "**Update**: 'Credited Task' rule now applies only to Fix Tasks.",
+        "**New Feature**: Added 'Clear All Data' and 'Bug Report' buttons.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
