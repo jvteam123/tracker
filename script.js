@@ -81,6 +81,10 @@ const defaultCountingSettings = {
         warning: {
             labels: ['b', 'c', 'd', 'e', 'f', 'g', 'i'],
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
+        },
+        qcPenalty: { // Rule for penalizing QC and transferring points
+            labels: ['m', 'e'], // M for Missing, E for Error
+            columns: ['i3qa_label']
         }
     }
 };
@@ -141,6 +145,7 @@ const calculationInfo = {
                         <ul class="list-disc list-inside mt-1 space-y-1 text-gray-400">
                             <li><strong class="text-gray-300">Fix Tasks:</strong> Points are based on the category and the selected GSD value. All point values are defined in the <strong class="text-red-400">Point Settings</strong>. If the project is marked as "IR", the total points for a fix task row are multiplied by the customizable IR Modifier.</li>
                             <li><strong class="text-gray-300">QC, i3qa, RV Tasks:</strong> Each task is awarded a specific point value, which can be edited in the <strong class="text-red-400">Point Settings</strong>.</li>
+                            <li><strong class="text-yellow-300">Point Transfers:</strong> If a QC task is flagged with a 'Missing' or 'Incomplete' tag during i3QA, the points for that QC task are subtracted from the QC tech and awarded to the i3QA tech.</li>
                         </ul>
                     </div>
                      <div>
@@ -238,7 +243,7 @@ function createNewTechStat() {
         refixDetails: [], missedCategories: [], approvedByRQA: [],
         approvedByRQACategoryCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
         categoryCounts: categoryCounts,
-        pointsBreakdown: { fix: 0, qc: 0, i3qa: 0, rv: 0 }
+        pointsBreakdown: { fix: 0, qc: 0, i3qa: 0, rv: 0, qcTransfer: 0 }
     };
 }
 
@@ -551,6 +556,9 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const qcPenaltyCheckCols = (countingSettings.triggers.qcPenalty.columns || []).map(c => headerMap[c]).filter(i => i !== undefined);
+    const qcPenaltyLabels = countingSettings.triggers.qcPenalty.labels || [];
+
 
     currentDataLines.forEach(line => {
         summaryStats.totalRows++;
@@ -645,6 +653,35 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             }
         });
         
+        // QC Penalty and Point Transfer Logic
+        let penaltyTriggered = false;
+        for (const colIndex of qcPenaltyCheckCols) {
+            const cellValue = values[colIndex]?.trim().toLowerCase();
+            if (cellValue && qcPenaltyLabels.includes(cellValue)) {
+                penaltyTriggered = true;
+                break;
+            }
+        }
+
+        if (penaltyTriggered) {
+            const i3qaTechId = values[headerMap['i3qa_id']]?.trim();
+            let pointsToTransfer = 0;
+
+            qcCols.forEach(qcColIndex => {
+                const qcTechId = values[qcColIndex]?.trim();
+                if (qcTechId && techStats[qcTechId]) {
+                    techStats[qcTechId].points -= calculationSettings.points.qc;
+                    techStats[qcTechId].pointsBreakdown.qc -= calculationSettings.points.qc;
+                    pointsToTransfer += calculationSettings.points.qc;
+                }
+            });
+
+            if (i3qaTechId && techStats[i3qaTechId] && pointsToTransfer > 0) {
+                techStats[i3qaTechId].points += pointsToTransfer;
+                techStats[i3qaTechId].pointsBreakdown.qcTransfer += pointsToTransfer;
+            }
+        }
+
         // Refixes
         refixCheckCols.forEach(colIndex => {
             const labelValue = values[colIndex]?.trim().toLowerCase();
@@ -1229,7 +1266,16 @@ return `<div class="space-y-4 text-sm">
             </div>
         </div>
     </div>
-    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+        <h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4>
+        <div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div>
+        ${tech.pointsBreakdown.qcTransfer > 0 ? `<div class="flex justify-between text-green-400"><span class="text-green-400">Points Transferred from QC:</span><span class="font-mono">+${tech.pointsBreakdown.qcTransfer.toFixed(3)}</span></div>` : ''}
+        <div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div>
+        <hr class="my-2 border-gray-600">
+        <div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div>
+    </div>
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
     <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
 </div>`;
@@ -1791,6 +1837,9 @@ function setupEventListeners() {
                     combinedTechStats[techId].approvedByRQA.push(...stat.approvedByRQA);
 
                     for (const key in stat.pointsBreakdown) {
+                        if (!combinedTechStats[techId].pointsBreakdown[key]) {
+                            combinedTechStats[techId].pointsBreakdown[key] = 0;
+                        }
                         combinedTechStats[techId].pointsBreakdown[key] += stat.pointsBreakdown[key];
                     }
                     for (let i = 1; i <= 9; i++) {
