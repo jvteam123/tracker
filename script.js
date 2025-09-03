@@ -16,6 +16,8 @@ let mergedFeatures = []; // To store features from dropped files in the merge mo
 let currentDataHeaders = []; // To store headers of the currently parsed data
 let currentDataLines = []; // To store lines of the currently parsed data
 
+const DB_NAME = 'BonusCalculatorDB';
+
 const defaultTeams = {
     "Team 123": ["7244AA", "7240HH", "7247JA", "4232JD", "4475JT", "4472JS", "4426KV", "7236LE", "7039NO", "7231NR", "7249SS", "7314VP"],
     "Team 63": ["7089RR", "7102JD", "7161KA", "7159MC", "7168JS", "7158JD", "7167AD", "7040JP", "7178MD", "7092RN", "7170WS"],
@@ -79,6 +81,10 @@ const defaultCountingSettings = {
         warning: {
             labels: ['b', 'c', 'd', 'e', 'f', 'g', 'i'],
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
+        },
+        credited: {
+            labels: [],
+            columns: []
         }
     }
 };
@@ -170,7 +176,7 @@ const calculationInfo = {
 // --- IndexedDB Helper Functions ---
 async function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('BonusCalculatorDB', 3);
+        const request = indexedDB.open(DB_NAME, 3);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
@@ -386,7 +392,8 @@ async function saveCountingSettings() {
         triggers: {
             refix: { labels: getValues('setting-refix-labels'), columns: getValues('setting-refix-cols') },
             miss: { labels: getValues('setting-miss-labels'), columns: getValues('setting-miss-cols') },
-            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') }
+            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') },
+            credited: { labels: getValues('setting-credited-labels'), columns: getValues('setting-credited-cols') }
         }
     };
     try {
@@ -401,7 +408,7 @@ async function saveCountingSettings() {
 }
 
 function populateCountingSettingsEditor() {
-    const setValues = (id, arr) => { document.getElementById(id).value = arr.join(', '); };
+    const setValues = (id, arr) => { if(arr) document.getElementById(id).value = arr.join(', '); };
     setValues('setting-qc-cols', countingSettings.taskColumns.qc);
     setValues('setting-i3qa-cols', countingSettings.taskColumns.i3qa);
     setValues('setting-rv1-cols', countingSettings.taskColumns.rv1);
@@ -412,6 +419,8 @@ function populateCountingSettingsEditor() {
     setValues('setting-miss-cols', countingSettings.triggers.miss.columns);
     setValues('setting-warning-labels', countingSettings.triggers.warning.labels);
     setValues('setting-warning-cols', countingSettings.triggers.warning.columns);
+    setValues('setting-credited-labels', countingSettings.triggers.credited.labels);
+    setValues('setting-credited-cols', countingSettings.triggers.credited.columns);
 }
 
 async function loadTeamSettings() {
@@ -526,10 +535,27 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const creditedCheckCols = countingSettings.triggers.credited.columns.map(c => headerMap[c]).filter(i => i !== undefined);
+    const creditedLabels = countingSettings.triggers.credited.labels;
 
     currentDataLines.forEach(line => {
-        summaryStats.totalRows++;
         const values = line.split('\t');
+
+        // NEW Credited Check Logic: Skip row if it doesn't meet the credited criteria
+        let isCredited = true; // Default to true (all rows count)
+        if (creditedCheckCols.length > 0 && creditedLabels.length > 0) {
+            isCredited = false; // If rules exist, default to false until a match is found
+            for (const colIndex of creditedCheckCols) {
+                const cellValue = values[colIndex]?.trim().toLowerCase();
+                if (cellValue && creditedLabels.some(label => cellValue.includes(label))) {
+                    isCredited = true;
+                    break; // Found a match, no need to check other columns
+                }
+            }
+        }
+        if (!isCredited) return; // Skip this entire row if it's not credited
+
+        summaryStats.totalRows++;
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
         
@@ -1473,6 +1499,32 @@ async function handleMergeDrop(files) {
     }
 }
 
+function clearAllData() {
+    if (!confirm("Are you sure you want to clear ALL data? This will delete all saved projects and reset all custom settings to default. This action cannot be undone.")) {
+        return;
+    }
+
+    // Close the database connection if it's open
+    if (db) {
+        db.close();
+    }
+
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+
+    deleteRequest.onsuccess = function() {
+        console.log("Database deleted successfully");
+        alert("All data and settings have been cleared. The page will now reload.");
+        location.reload();
+    };
+    deleteRequest.onerror = function(event) {
+        console.error("Error deleting database:", event.target.error);
+        alert("An error occurred while clearing data. Please check the console and try clearing your browser's site data manually.");
+    };
+    deleteRequest.onblocked = function() {
+        console.warn("Database deletion blocked. Please close other tabs with this page open.");
+        alert("Could not delete the database because it's in use in another tab. Please close all other tabs with this tool open and try again.");
+    };
+}
 
 function setupEventListeners() {
     document.getElementById('how-it-works-btn').addEventListener('click', () => showModal('howItWorks'));
@@ -1499,6 +1551,13 @@ function setupEventListeners() {
             openTechSummaryModal(techIcon.dataset.techId);
         }
     });
+
+    // New button event listeners
+    document.getElementById('bug-report-btn').addEventListener('click', () => {
+        window.open("https://teams.microsoft.com/l/chat/48:notes/conversations?context=%7B%22contextType%22%3A%22chat%22%7D", "_blank");
+    });
+    document.getElementById('clear-data-btn').addEventListener('click', clearAllData);
+
 
     const mergeModal = document.getElementById('merge-fixpoints-modal');
     const mergeDropZone = document.getElementById('merge-drop-zone');
@@ -1778,10 +1837,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "**New Feature**: Added 'Credited' task rule in Counting Settings.",
+        "**New Feature**: Added 'Clear All Data' and 'Bug Report' buttons.",
         "**New Feature**: Added 'Counting Settings' for fully dynamic task logic.",
         "**New Feature**: Added a 'Point Settings' editor for full logic control.",
-        "**New Feature**: Added a fully customizable 'Bonus Tier Editor'.",
-        "Added 'View Data' button to tech breakdown for full data transparency.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
