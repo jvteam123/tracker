@@ -1873,10 +1873,7 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "**Update**: Removed the 'Default Task Count' feature.",
-        "**New Feature**: Added default values for 'Credited Task' definitions.",
-        "**Update**: 'Credited Task' rule now applies only to Fix Tasks.",
-        "**New Feature**: Added 'Clear All Data' and 'Bug Report' buttons.",
+        "**Update**: Fix bug in I3,i3QA,RV Calculation logic.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
