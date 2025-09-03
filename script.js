@@ -81,10 +81,6 @@ const defaultCountingSettings = {
         warning: {
             labels: ['b', 'c', 'd', 'e', 'f', 'g', 'i'],
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
-        },
-        credited: {
-            labels: ['m', 'c', 'aa'],
-            columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label', 'afp1_stat', 'afp2_stat', 'afp3_stat']
         }
     }
 };
@@ -393,8 +389,7 @@ async function saveCountingSettings() {
         triggers: {
             refix: { labels: getValues('setting-refix-labels'), columns: getValues('setting-refix-cols') },
             miss: { labels: getValues('setting-miss-labels'), columns: getValues('setting-miss-cols') },
-            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') },
-            credited: { labels: getValues('setting-credited-labels'), columns: getValues('setting-credited-cols') }
+            warning: { labels: getValues('setting-warning-labels'), columns: getValues('setting-warning-cols') }
         }
     };
     try {
@@ -425,8 +420,6 @@ function populateCountingSettingsEditor() {
     setValues('setting-miss-cols', countingSettings.triggers.miss.columns);
     setValues('setting-warning-labels', countingSettings.triggers.warning.labels);
     setValues('setting-warning-cols', countingSettings.triggers.warning.columns);
-    setValues('setting-credited-labels', countingSettings.triggers.credited.labels);
-    setValues('setting-credited-cols', countingSettings.triggers.credited.columns);
 }
 
 
@@ -558,25 +551,10 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
-    const creditedCheckCols = (countingSettings.triggers.credited.columns || []).map(c => headerMap[c]).filter(i => i !== undefined);
-    const creditedLabels = countingSettings.triggers.credited.labels || [];
 
     currentDataLines.forEach(line => {
         summaryStats.totalRows++;
         const values = line.split('\t');
-
-        // Check if the Fix Tasks in this row should be credited
-        let isFixTaskCredited = true; // Default to true
-        if (creditedCheckCols.length > 0 && creditedLabels.length > 0) {
-            isFixTaskCredited = false; // If rules exist, default to false until a match is found
-            for (const colIndex of creditedCheckCols) {
-                const cellValue = values[colIndex]?.trim().toLowerCase();
-                if (cellValue && creditedLabels.some(label => cellValue.includes(label))) {
-                    isFixTaskCredited = true;
-                    break; 
-                }
-            }
-        }
 
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
@@ -613,40 +591,37 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
         
-        // Only run Fix Task processing if the row is credited
-        if (isFixTaskCredited) {
-            const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
-            const fix1Sources = [];
-            if (afp1_stat === 'AA') {
-                fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
-            } else {
-                if (!!values[headerMap['category']]?.trim()) {
-                    fix1Sources.push({ cat: 'category', sourceType: 'primary' });
-                }
-                fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
+        const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
+        const fix1Sources = [];
+        if (afp1_stat === 'AA') {
+            fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
+        } else {
+            if (!!values[headerMap['category']]?.trim()) {
+                fix1Sources.push({ cat: 'category', sourceType: 'primary' });
             }
-            processFixTech(fix1_id, fix1Sources);
-
-            const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
-            const fix2Sources = [];
-            if (afp2_stat === 'AA') {
-                fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
-            } else {
-                fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-            }
-            processFixTech(fix2_id, fix2Sources);
-
-            const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
-            const fix3Sources = [];
-            if (afp3_stat === 'AA') {
-                fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
-            } else {
-                fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-            }
-            processFixTech(fix3_id, fix3Sources);
-            
-            processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
+            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
         }
+        processFixTech(fix1_id, fix1Sources);
+
+        const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
+        const fix2Sources = [];
+        if (afp2_stat === 'AA') {
+            fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
+        } else {
+            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+        }
+        processFixTech(fix2_id, fix2Sources);
+
+        const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
+        const fix3Sources = [];
+        if (afp3_stat === 'AA') {
+            fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
+        } else {
+            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+        }
+        processFixTech(fix3_id, fix3Sources);
+        
+        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
 
 
         // --- Dynamic Event Counting (runs for every row, regardless of credit status) ---
