@@ -63,6 +63,7 @@ const defaultCalculationSettings = {
 };
 
 const defaultCountingSettings = {
+    defaultTaskCount: 0,
     taskColumns: {
         qc: ['qc1_id', 'qc2_id', 'qc3_id'],
         i3qa: ['i3qa_id'],
@@ -372,17 +373,19 @@ function populateCalcSettingsEditor() {
 async function loadCountingSettings() {
     try {
         const savedSettings = await getFromDB('countingSettings', 'customCounting');
-        countingSettings = savedSettings ? savedSettings.settings : JSON.parse(JSON.stringify(defaultCountingSettings));
+        countingSettings = savedSettings ? { ...defaultCountingSettings, ...savedSettings.settings } : JSON.parse(JSON.stringify(defaultCountingSettings));
     } catch (error) {
         console.error("Error loading counting settings:", error);
         countingSettings = JSON.parse(JSON.stringify(defaultCountingSettings));
     }
 }
 
+
 async function saveCountingSettings() {
     const getValues = (id) => document.getElementById(id).value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
     const newSettings = {
+        defaultTaskCount: parseInt(document.getElementById('setting-default-task-count').value, 10) || 0,
         taskColumns: {
             qc: getValues('setting-qc-cols'),
             i3qa: getValues('setting-i3qa-cols'),
@@ -409,6 +412,7 @@ async function saveCountingSettings() {
 
 function populateCountingSettingsEditor() {
     const setValues = (id, arr) => { if(arr) document.getElementById(id).value = arr.join(', '); };
+    document.getElementById('setting-default-task-count').value = countingSettings.defaultTaskCount || 0;
     setValues('setting-qc-cols', countingSettings.taskColumns.qc);
     setValues('setting-i3qa-cols', countingSettings.taskColumns.i3qa);
     setValues('setting-rv1-cols', countingSettings.taskColumns.rv1);
@@ -526,6 +530,7 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     
     const summaryStats = { totalRows: 0, comboTasks: 0, totalIncorrect: 0, totalMiss: 0 };
     const allIdCols = currentDataHeaders.filter(h => h.toLowerCase().endsWith('_id'));
+    const allTechsInDataSet = new Set();
     
     // --- Build dynamic column maps from settings ---
     const qcCols = countingSettings.taskColumns.qc.map(c => headerMap[c]).filter(i => i !== undefined);
@@ -535,39 +540,55 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
-    const creditedCheckCols = countingSettings.triggers.credited.columns.map(c => headerMap[c]).filter(i => i !== undefined);
-    const creditedLabels = countingSettings.triggers.credited.labels;
+    const creditedCheckCols = (countingSettings.triggers.credited.columns || []).map(c => headerMap[c]).filter(i => i !== undefined);
+    const creditedLabels = countingSettings.triggers.credited.labels || [];
 
+    // First pass to identify all unique technicians in the dataset
     currentDataLines.forEach(line => {
         const values = line.split('\t');
+        allIdCols.forEach(col => {
+            const techId = values[headerMap[col.toLowerCase()]]?.trim();
+            if (techId) allTechsInDataSet.add(techId);
+        });
+    });
 
-        // NEW Credited Check Logic: Skip row if it doesn't meet the credited criteria
-        let isCredited = true; // Default to true (all rows count)
+    // Initialize stats for all technicians found, and add default task count
+    allTechsInDataSet.forEach(techId => {
+        if (!techStats[techId]) {
+            techStats[techId] = createNewTechStat();
+            techStats[techId].id = techId;
+            if (countingSettings.defaultTaskCount > 0) {
+                techStats[techId].fixTasks += countingSettings.defaultTaskCount;
+            }
+        }
+    });
+
+    currentDataLines.forEach(line => {
+        summaryStats.totalRows++;
+        const values = line.split('\t');
+
+        // Check if the Fix Tasks in this row should be credited
+        let isFixTaskCredited = true; // Default to true
         if (creditedCheckCols.length > 0 && creditedLabels.length > 0) {
-            isCredited = false; // If rules exist, default to false until a match is found
+            isFixTaskCredited = false; // If rules exist, default to false until a match is found
             for (const colIndex of creditedCheckCols) {
                 const cellValue = values[colIndex]?.trim().toLowerCase();
                 if (cellValue && creditedLabels.some(label => cellValue.includes(label))) {
-                    isCredited = true;
-                    break; // Found a match, no need to check other columns
+                    isFixTaskCredited = true;
+                    break; 
                 }
             }
         }
-        if (!isCredited) return; // Skip this entire row if it's not credited
 
-        summaryStats.totalRows++;
         const isComboIR = headerMap['combo?'] !== undefined && values[headerMap['combo?']] === 'Y';
         if (isComboIR) summaryStats.comboTasks++;
         
-        const allTechsInRow = new Set(allIdCols.map(col => values[headerMap[col.toLowerCase()]]?.trim()).filter(Boolean));
-        allTechsInRow.forEach(techId => { if (!techStats[techId]) { techStats[techId] = createNewTechStat(); techStats[techId].id = techId; } });
-
         const fix1_id = values[headerMap['fix1_id']]?.trim();
         const fix2_id = values[headerMap['fix2_id']]?.trim();
         const fix3_id = values[headerMap['fix3_id']]?.trim();
         const fix4_id = values[headerMap['fix4_id']]?.trim();
 
-        // --- Fix Task Point Calculation (Remains largely the same, but uses settings for values) ---
+        // --- Fix Task Point Calculation ---
         const processFixTech = (techId, catSources) => {
             if (!techId || !techStats[techId]) return;
             let techPoints = 0;
@@ -593,40 +614,44 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             techStats[techId].points += pointsToAdd;
             techStats[techId].pointsBreakdown.fix += pointsToAdd;
         };
-
-        const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
-        const fix1Sources = [];
-        if (afp1_stat === 'AA') {
-            fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
-        } else {
-            if (!!values[headerMap['category']]?.trim()) {
-                fix1Sources.push({ cat: 'category', sourceType: 'primary' });
-            }
-            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
-        }
-        processFixTech(fix1_id, fix1Sources);
-
-        const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
-        const fix2Sources = [];
-        if (afp2_stat === 'AA') {
-            fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
-        } else {
-            fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-        }
-        processFixTech(fix2_id, fix2Sources);
-
-        const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
-        const fix3Sources = [];
-        if (afp3_stat === 'AA') {
-            fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
-        } else {
-            fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
-        }
-        processFixTech(fix3_id, fix3Sources);
         
-        processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
+        // Only run Fix Task processing if the row is credited
+        if (isFixTaskCredited) {
+            const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
+            const fix1Sources = [];
+            if (afp1_stat === 'AA') {
+                fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
+            } else {
+                if (!!values[headerMap['category']]?.trim()) {
+                    fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+                }
+                fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
+            }
+            processFixTech(fix1_id, fix1Sources);
 
-        // --- Dynamic Event Counting ---
+            const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
+            const fix2Sources = [];
+            if (afp2_stat === 'AA') {
+                fix2Sources.push({ cat: 'afp2_cat', isRQA: true, round: 'AFP2', sourceType: 'afp' });
+            } else {
+                fix2Sources.push({ cat: 'rv1_cat', label: 'rv1_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+            }
+            processFixTech(fix2_id, fix2Sources);
+
+            const afp3_stat = values[headerMap['afp3_stat']]?.trim().toUpperCase();
+            const fix3Sources = [];
+            if (afp3_stat === 'AA') {
+                fix3Sources.push({ cat: 'afp3_cat', isRQA: true, round: 'AFP3', sourceType: 'afp' });
+            } else {
+                fix3Sources.push({ cat: 'rv2_cat', label: 'rv2_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' });
+            }
+            processFixTech(fix3_id, fix3Sources);
+            
+            processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
+        }
+
+
+        // --- Dynamic Event Counting (runs for every row, regardless of credit status) ---
         allIdCols.forEach(colName => {
             const techId = values[headerMap[colName.toLowerCase()]]?.trim();
             if (!techId || !techStats[techId]) return;
@@ -1192,6 +1217,8 @@ function generateTechBreakdownHTML(tech) {
     
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
+    
+    const totalFixTasksWithDefault = tech.fixTasks + (countingSettings.defaultTaskCount || 0);
 
 return `<div class="space-y-4 text-sm">
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
@@ -1207,7 +1234,8 @@ return `<div class="space-y-4 text-sm">
         <div class="core-stats-grid">
             <div class="stat-item">
                 <div class="stat-item-header"><span>Total Primary Fix Tasks</span></div>
-                <div class="stat-item-value text-green-400">${tech.fixTasks}</div>
+                <div class="stat-item-value text-green-400">${totalFixTasksWithDefault}</div>
+                <p class="text-xs text-gray-400">${tech.fixTasks} from data + ${countingSettings.defaultTaskCount || 0} default</p>
             </div>
             <div class="stat-item">
                 <div class="stat-item-header"><span>Approved by RQA (AA)</span></div>
@@ -1232,7 +1260,7 @@ return `<div class="space-y-4 text-sm">
         </div>
     </div>
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Points Calculation</h4><div class="flex justify-between"><span class="text-gray-400">Points from Fix Tasks:</span><span class="font-mono">${tech.pointsBreakdown.fix.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from QC Tasks:</span><span class="font-mono">${tech.pointsBreakdown.qc.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from i3qa Tasks:</span><span class="font-mono">${tech.pointsBreakdown.i3qa.toFixed(3)}</span></div><div class="flex justify-between"><span class="text-gray-400">Points from RV Tasks:</span><span class="font-mono">${tech.pointsBreakdown.rv.toFixed(3)}</span></div><hr class="my-2 border-gray-600"><div class="flex justify-between font-bold"><span class="text-gray-200">Total Points:</span><span class="font-mono">${tech.points.toFixed(3)}</span></div></div>
-    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${tech.fixTasks} / (${tech.fixTasks} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
+    <div class="p-3 bg-gray-800 rounded-lg border border-gray-700"><h4 class="font-semibold text-base text-gray-200 mb-2">Quality Calculation</h4><p class="text-xs text-gray-500 mb-2">Formula: [Fix Tasks] / ([Fix Tasks] + [Refix Tasks] + [Warnings])</p><div class="p-2 bg-gray-900 rounded text-center font-mono"><code>${totalFixTasksWithDefault} / (${totalFixTasksWithDefault} + ${tech.refixTasks} + ${warningsCount}) = ${(fixQuality / 100).toFixed(4)}</code></div><div class="flex justify-between font-bold"><span class="text-gray-200">Fix Quality %:</span><span class="font-mono">${fixQuality.toFixed(2)}%</span></div></div>
     <div class="p-3 bg-blue-900/30 rounded-lg border border-blue-700/50"><h4 class="font-semibold text-base text-blue-300 mb-2">Final Payout</h4><p class="text-xs text-gray-500 mt-2 mb-2">Formula: Total Points * Bonus Multiplier * % of Bonus Earned</p><div class="p-2 bg-gray-900 rounded text-center text-xs md:text-sm mb-2 font-mono"><code>${tech.points.toFixed(3)} * ${multiplierDisplay} * ${qualityModifier.toFixed(2)}</code></div><div class="flex justify-between font-bold text-lg"><span class="text-blue-200">Final Payout (PHP):</span><span class="text-blue-400 font-mono">${finalPayout.toFixed(2)}</span></div></div>
 </div>`;
 }
@@ -1504,7 +1532,6 @@ function clearAllData() {
         return;
     }
 
-    // Close the database connection if it's open
     if (db) {
         db.close();
     }
@@ -1552,7 +1579,6 @@ function setupEventListeners() {
         }
     });
 
-    // New button event listeners
     document.getElementById('bug-report-btn').addEventListener('click', () => {
         window.open("https://teams.microsoft.com/l/chat/48:notes/conversations?context=%7B%22contextType%22%3A%22chat%22%7D", "_blank");
     });
@@ -1837,10 +1863,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
-        "**New Feature**: Added 'Credited' task rule in Counting Settings.",
+        "**New Feature**: Added 'Default Task Count' to Counting Settings.",
+        "**Update**: 'Credited Task' rule now applies only to Fix Tasks.",
         "**New Feature**: Added 'Clear All Data' and 'Bug Report' buttons.",
         "**New Feature**: Added 'Counting Settings' for fully dynamic task logic.",
-        "**New Feature**: Added a 'Point Settings' editor for full logic control.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
