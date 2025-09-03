@@ -555,10 +555,6 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
     });
 
     // --- Build dynamic column maps from settings ---
-    const qcCols = countingSettings.taskColumns.qc.map(c => headerMap[c]).filter(i => i !== undefined);
-    const i3qaCols = countingSettings.taskColumns.i3qa.map(c => headerMap[c]).filter(i => i !== undefined);
-    const rv1Cols = countingSettings.taskColumns.rv1.map(c => headerMap[c]).filter(i => i !== undefined);
-    const rv2Cols = countingSettings.taskColumns.rv2.map(c => headerMap[c]).filter(i => i !== undefined);
     const refixCheckCols = countingSettings.triggers.refix.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const missCheckCols = countingSettings.triggers.miss.columns.map(c => headerMap[c]).filter(i => i !== undefined);
     const warningCheckCols = countingSettings.triggers.warning.columns.map(c => headerMap[c]).filter(i => i !== undefined);
@@ -637,27 +633,28 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         
         processFixTech(fix4_id, [{ cat: 'rv3_cat', label: 'rv3_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'rv' }]);
 
+        // --- QC, i3qa, RV Task Point Calculation ---
+        const addPointsForTask = (colNames, pointValue, breakdownField, comboCheck = false) => {
+            colNames.forEach(colName => {
+                const colIndex = headerMap[colName];
+                if (colIndex !== undefined) {
+                    const techId = values[colIndex]?.trim();
+                    if (techId && techStats[techId]) {
+                        let pointsToAdd = pointValue;
+                        if (comboCheck) {
+                             pointsToAdd = isComboIR ? calculationSettings.points.rv1_combo : calculationSettings.points.rv1;
+                        }
+                        techStats[techId].points += pointsToAdd;
+                        techStats[techId].pointsBreakdown[breakdownField] += pointsToAdd;
+                    }
+                }
+            });
+        };
 
-        // --- Dynamic Event Counting (runs for every row, regardless of credit status) ---
-        allIdCols.forEach(colName => {
-            const techId = values[headerMap[colName.toLowerCase()]]?.trim();
-            if (!techId || !techStats[techId]) return;
-
-            // Task Points
-            if (qcCols.includes(headerMap[colName.toLowerCase()])) {
-                techStats[techId].points += calculationSettings.points.qc; techStats[techId].pointsBreakdown.qc += calculationSettings.points.qc;
-            }
-            if (i3qaCols.includes(headerMap[colName.toLowerCase()])) {
-                techStats[techId].points += calculationSettings.points.i3qa; techStats[techId].pointsBreakdown.i3qa += calculationSettings.points.i3qa;
-            }
-            if (rv1Cols.includes(headerMap[colName.toLowerCase()])) {
-                const points = isComboIR ? calculationSettings.points.rv1_combo : calculationSettings.points.rv1;
-                techStats[techId].points += points; techStats[techId].pointsBreakdown.rv += points;
-            }
-            if (rv2Cols.includes(headerMap[colName.toLowerCase()])) {
-                techStats[techId].points += calculationSettings.points.rv2; techStats[techId].pointsBreakdown.rv += points;
-            }
-        });
+        addPointsForTask(countingSettings.taskColumns.qc, calculationSettings.points.qc, 'qc');
+        addPointsForTask(countingSettings.taskColumns.i3qa, calculationSettings.points.i3qa, 'i3qa');
+        addPointsForTask(countingSettings.taskColumns.rv1, calculationSettings.points.rv1, 'rv', true); // Special handling for RV1 combo
+        addPointsForTask(countingSettings.taskColumns.rv2, calculationSettings.points.rv2, 'rv');
         
         // QC Penalty and Point Transfer Logic
         let penaltyTriggered = false;
@@ -672,10 +669,14 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         if (penaltyTriggered) {
             const i3qaTechId = values[headerMap['i3qa_id']]?.trim();
             let pointsToTransfer = 0;
+            const qcColIndices = countingSettings.taskColumns.qc.map(c => headerMap[c]).filter(i => i !== undefined);
 
-            qcCols.forEach(qcColIndex => {
+            qcColIndices.forEach(qcColIndex => {
                 const qcTechId = values[qcColIndex]?.trim();
                 if (qcTechId && techStats[qcTechId]) {
+                    // This logic assumes points were already added and now need to be subtracted.
+                    // The addPointsForTask runs before this, so we subtract from the QC tech
+                    // and then add to the i3QA tech.
                     techStats[qcTechId].points -= calculationSettings.points.qc;
                     techStats[qcTechId].pointsBreakdown.qc -= calculationSettings.points.qc;
                     pointsToTransfer += calculationSettings.points.qc;
@@ -1401,14 +1402,20 @@ async function saveReorderModal() {
         const projectMap = new Map(projects.map(p => [p.id, p]));
         const reorderedList = newOrderIds.map((id, index) => {
             const project = projectMap.get(id);
-            if (project) { project.projectOrder = index; return project; }
+            if (project) { project.projectOrder = Date.now() - index; return project; }
         }).filter(Boolean);
         
         const tx = db.transaction(['projects'], 'readwrite');
         const store = tx.objectStore('projects');
-        await Promise.all(reorderedList.map(project => store.put(project)));
+        const promises = [];
+        for (const project of reorderedList) {
+           promises.push(store.put(project));
+        }
+        await Promise.all(promises);
+
+        await tx.done;
         
-        alert("Project order saved!");
+        showNotification("Project order saved!");
         await fetchProjectListSummary();
         closeReorderModal();
     } catch (err) {
@@ -1588,35 +1595,26 @@ function setupEventListeners() {
     });
     document.getElementById('merge-cancel-btn').addEventListener('click', () => mergeModal.classList.add('hidden'));
     
-    // =================================================================================
-    // START OF CORRECTED CODE BLOCK
-    // =================================================================================
     document.getElementById('merge-load-btn').addEventListener('click', () => {
         if (mergedFeatures.length > 0) {
             const properties = mergedFeatures.map(f => f.properties);
-            // Create a comprehensive header list from all merged files
             const allHeaders = new Set();
             properties.forEach(p => Object.keys(p).forEach(h => allHeaders.add(h)));
             const headers = Array.from(allHeaders);
             
             let tsv = headers.join('\t') + '\n';
             properties.forEach(row => {
-                // For each row, map values based on the comprehensive header, providing an empty string if a key doesn't exist
                 tsv += headers.map(h => row[h] === undefined || row[h] === null ? '' : String(row[h])).join('\t') + '\n';
             });
             
-            // Reset the main form to a clean state for the new merged data
             resetUIForNewCalculation();
             document.getElementById('techData').value = tsv;
-            document.getElementById('project-select').value = ""; // Ensure no project is selected
+            document.getElementById('project-select').value = ""; 
             
             showNotification(`${mergedFeatures.length} merged features loaded into the text area.`);
             mergeModal.classList.add('hidden');
         }
     });
-    // =================================================================================
-    // END OF CORRECTED CODE BLOCK
-    // =================================================================================
 
     mergeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.add('drag-over'); });
     mergeDropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); mergeDropZone.classList.remove('drag-over'); });
