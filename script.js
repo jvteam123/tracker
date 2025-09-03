@@ -84,8 +84,8 @@ const defaultCountingSettings = {
             columns: ['r1_warn', 'r2_warn', 'r3_warn', 'r4_warn']
         },
         credited: {
-            labels: [],
-            columns: []
+            labels: ['m', 'c', 'aa'],
+            columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label', 'afp1_stat', 'afp2_stat', 'afp3_stat']
         }
     }
 };
@@ -411,7 +411,12 @@ async function saveCountingSettings() {
 }
 
 function populateCountingSettingsEditor() {
-    const setValues = (id, arr) => { if(arr) document.getElementById(id).value = arr.join(', '); };
+    const setValues = (id, arr) => { 
+        const el = document.getElementById(id);
+        if (el && arr) {
+            el.value = arr.join(', '); 
+        }
+    };
     document.getElementById('setting-default-task-count').value = countingSettings.defaultTaskCount || 0;
     setValues('setting-qc-cols', countingSettings.taskColumns.qc);
     setValues('setting-i3qa-cols', countingSettings.taskColumns.i3qa);
@@ -426,6 +431,7 @@ function populateCountingSettingsEditor() {
     setValues('setting-credited-labels', countingSettings.triggers.credited.labels);
     setValues('setting-credited-cols', countingSettings.triggers.credited.columns);
 }
+
 
 async function loadTeamSettings() {
     try {
@@ -557,9 +563,10 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         if (!techStats[techId]) {
             techStats[techId] = createNewTechStat();
             techStats[techId].id = techId;
-            if (countingSettings.defaultTaskCount > 0) {
-                techStats[techId].fixTasks += countingSettings.defaultTaskCount;
-            }
+        }
+        // Apply default count *before* processing rows
+        if (countingSettings.defaultTaskCount > 0) {
+            techStats[techId].fixTasks = countingSettings.defaultTaskCount;
         }
     });
 
@@ -1177,9 +1184,12 @@ function generateTechBreakdownHTML(tech) {
     }
     
     detailedCategoryHtml += `</div></div>`;
-    if (totalTasksFromCategories === 0) {
+    if (totalTasksFromCategories === 0 && (countingSettings.defaultTaskCount || 0) === 0) {
         detailedCategoryHtml = '<p class="text-gray-500 italic">No primary fix tasks recorded.</p>';
+    } else if (totalTasksFromCategories === 0 && countingSettings.defaultTaskCount > 0) {
+        detailedCategoryHtml = `<p class="text-gray-500 italic">No fix tasks from data, only the default count of ${countingSettings.defaultTaskCount} was applied.</p>`;
     }
+
 
     const categoryColors = { 1: 'bg-teal-900/50 border-teal-700', 2: 'bg-cyan-900/50 border-cyan-700', 3: 'bg-sky-900/50 border-sky-700', 4: 'bg-indigo-900/50 border-indigo-700', 5: 'bg-purple-900/50 border-purple-700', 6: 'bg-pink-900/50 border-pink-700', 7: 'bg-rose-900/50 border-rose-700', 8: 'bg-amber-900/50 border-amber-700', 9: 'bg-lime-900/50 border-lime-700' };
     let oldCategoryHtml = '';
@@ -1218,7 +1228,8 @@ function generateTechBreakdownHTML(tech) {
     const approvedByRQACount = tech.approvedByRQA.length;
     const approvedByRQADetailHtml = approvedByRQACount > 0 ? `<ul class="list-disc list-inside text-xs text-gray-400 mt-1 space-y-0.5">${tech.approvedByRQA.map(a => `<li>Task: <span class="font-mono font-semibold">${a.round}</span> <span class="font-semibold text-green-400">(Cat: ${a.category})</span> (Project: ${a.project})</li>`).join('')}</ul>` : `<p class="text-xs text-gray-500 italic mt-1 pl-4">No RQA approvals.</p>`;
     
-    const totalFixTasksWithDefault = tech.fixTasks + (countingSettings.defaultTaskCount || 0);
+    const totalFixTasksWithDefault = tech.fixTasks;
+    const fixTasksFromData = totalFixTasksWithDefault - (countingSettings.defaultTaskCount || 0);
 
 return `<div class="space-y-4 text-sm">
     <div class="p-3 bg-gray-800 rounded-lg border border-gray-700">
@@ -1235,7 +1246,7 @@ return `<div class="space-y-4 text-sm">
             <div class="stat-item">
                 <div class="stat-item-header"><span>Total Primary Fix Tasks</span></div>
                 <div class="stat-item-value text-green-400">${totalFixTasksWithDefault}</div>
-                <p class="text-xs text-gray-400">${tech.fixTasks} from data + ${countingSettings.defaultTaskCount || 0} default</p>
+                <p class="text-xs text-gray-400">${fixTasksFromData} from data + ${countingSettings.defaultTaskCount || 0} default</p>
             </div>
             <div class="stat-item">
                 <div class="stat-item-header"><span>Approved by RQA (AA)</span></div>
@@ -1863,10 +1874,10 @@ function setupEventListeners() {
 
 function populateUpdates() {
     const updates = [
+        "**New Feature**: Added default values for 'Credited Task' definitions.",
         "**New Feature**: Added 'Default Task Count' to Counting Settings.",
         "**Update**: 'Credited Task' rule now applies only to Fix Tasks.",
         "**New Feature**: Added 'Clear All Data' and 'Bug Report' buttons.",
-        "**New Feature**: Added 'Counting Settings' for fully dynamic task logic.",
     ];
     const updatesList = document.getElementById('updates-list');
     updatesList.innerHTML = updates.map(update => `<p>&bull; ${update}</p>`).join('');
