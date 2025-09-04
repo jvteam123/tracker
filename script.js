@@ -604,12 +604,13 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
         const afp1_stat = values[headerMap['afp1_stat']]?.trim().toUpperCase();
         const fix1Sources = [];
         if (afp1_stat === 'AA') {
-            fix1Sources.push({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
+            ({ cat: 'afp1_cat', isRQA: true, round: 'AFP1', sourceType: 'afp' });
         } else {
             if (!!values[headerMap['category']]?.trim()) {
-                fix1Sources.push({ cat: 'category', sourceType: 'primary' });
+                ({ cat: 'category', sourceType: 'primary' });
             }
             fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'i3qa' }); // Remove || val.includes('C')
+        }
         processFixTech(fix1_id, fix1Sources);
 
         const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
