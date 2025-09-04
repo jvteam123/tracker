@@ -75,7 +75,7 @@ const defaultCountingSettings = {
             columns: ['rv1_label', 'rv2_label', 'rv3_label']
         },
         miss: {
-            labels: ['m'],
+            labels: ['m', 'c'],
             columns: ['i3qa_label', 'rv1_label', 'rv2_label', 'rv3_label']
         },
         warning: {
@@ -609,8 +609,8 @@ function parseRawData(data, isFixTaskIR = false, currentProjectName = "Pasted Da
             if (!!values[headerMap['category']]?.trim()) {
                 ({ cat: 'category', sourceType: 'primary' });
             }
-             fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())) || val.includes('C'), sourceType: 'i3qa' });
-        }
+            fix1Sources.push({ cat: 'i3qa_cat', label: 'i3qa_label', condition: val => val && countingSettings.triggers.miss.labels.some(l => val.includes(l.toUpperCase())), sourceType: 'i3qa' }); // Remove || val.includes('C')
+        }  
         processFixTech(fix1_id, fix1Sources);
 
         const afp2_stat = values[headerMap['afp2_stat']]?.trim().toUpperCase();
