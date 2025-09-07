@@ -332,3 +332,29 @@ details[open] > summary::before {
     max-height: 600px;
     overflow-y: auto;
 }
+
+.announcement {
+    background-color: #f59e0b; /* amber-500 */
+    color: #1f2937; /* gray-800 */
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 4px solid #b45309; /* amber-700 */
+}
+.announcement p {
+    margin-bottom: 0.5rem;
+    font-size: 1.125rem;
+}
+.announcement-button {
+    display: inline-block;
+    background-color: #1f2937; /* gray-800 */
+    color: #f3f4f6; /* gray-100 */
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: bold;
+    margin-top: 1rem;
+    transition: background-color 0.3s;
+}
+.announcement-button:hover {
+    background-color: #374151; /* gray-700 */
+}
