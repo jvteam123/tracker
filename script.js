@@ -16,12 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
             projects: [], 
             users: [], 
             isAppInitialized: false,
-            // New filter state
             filters: {
                 month: 'All',
                 project: 'All',
                 fixCategory: 'All',
-                showDays: { 1: true, 2: true, 3: true, 4: true, 5: true } // Day 1 always true
+                showDays: { 1: true, 2: true, 3: true, 4: true, 5: true }
             }
         },
         elements: {},
@@ -50,31 +49,32 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
                 alert("Critical Error: Could not initialize Google API client. The app may not function.");
+                this.hideLoading();
             }
         },
 
         updateAuthUI() {
-            const token = gapi.client.getToken();
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-
-            if (token && isLoggedIn) {
-                this.handleAuthorizedUser();
+            if (isLoggedIn) {
+                // If user was logged in, try to get a token silently.
+                this.showLoading("Restoring session...");
+                this.tokenClient.requestAccessToken({ prompt: 'none' });
             } else {
+                // User was not logged in, show the sign-in screen.
                 this.handleSignedOutUser();
             }
         },
 
         handleAuthClick() {
-            if (gapi.client.getToken() === null) {
-                this.tokenClient.requestAccessToken({ prompt: 'consent' });
-            } else {
-                this.tokenClient.requestAccessToken({ prompt: '' });
-            }
+            // On explicit sign-in, always show consent prompt if needed.
+            this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
 
         async handleTokenResponse(resp) {
             if (resp.error) {
-                console.error("Auth Error: Token response contained an error.", resp);
+                console.error("Auth Error:", resp.error);
+                // This can happen if silent sign-in fails.
+                this.handleSignoutClick(); // Treat as a sign-out
                 return;
             }
             gapi.client.setToken(resp);
@@ -85,11 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSignoutClick() {
             const token = gapi.client.getToken();
             if (token !== null) {
-                google.accounts.oauth2.revoke(token.access_token);
-                gapi.client.setToken('');
-                localStorage.removeItem('isLoggedIn');
-                this.handleSignedOutUser();
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    gapi.client.setToken('');
+                });
             }
+            // Clear local state regardless
+            localStorage.removeItem('isLoggedIn');
+            this.handleSignedOutUser();
         },
 
         async handleAuthorizedUser() {
@@ -101,12 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
             } else {
-                // If already initialized and user logs back in, just re-render with current data/filters
                 this.filterAndRenderProjects(); 
             }
         },
 
         handleSignedOutUser() {
+            this.hideLoading(); // Ensure loading screen is hidden
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
@@ -146,8 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
 
-                this.populateFilterDropdowns(); // Populate filters after data load
-                this.filterAndRenderProjects(); // Render with initial filters
+                this.populateFilterDropdowns();
+                this.filterAndRenderProjects();
 
             } catch (err) {
                 console.error("Data Error: Failed to load data from Sheets.", err);
@@ -167,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const headers = getHeaders.result.values[0];
                 
-                // Map the dataObject back to the sheet order using HEADER_MAP
                 const values = [headers.map(header => {
                     const propName = this.config.HEADER_MAP[header.trim()];
                     return dataObject[propName] !== undefined ? dataObject[propName] : "";
@@ -182,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error(`Data Error: Failed to update row ${rowIndex}.`, err);
                 alert("Failed to save changes. The data will be refreshed to prevent inconsistencies.");
-                await this.loadDataFromSheets(); // Reload data to sync
+                await this.loadDataFromSheets();
             } finally {
                 this.hideLoading();
             }
@@ -212,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboardWrapper: document.querySelector('.dashboard-wrapper'),
                 signInBtn: document.getElementById('signInBtn'),
                 signOutBtn: document.getElementById('signOutBtn'),
-                projectTable: document.getElementById('projectTable'), // Get the whole table for header manipulation
+                projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'),
                 projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'),
@@ -220,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectFormModal: document.getElementById('projectFormModal'),
                 closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
                 newProjectForm: document.getElementById('newProjectForm'),
-                // New filter elements
                 monthFilter: document.getElementById('monthFilter'),
                 projectFilter: document.getElementById('projectFilter'),
                 fixCategoryFilter: document.getElementById('fixCategoryFilter'),
@@ -241,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
 
-            // Attach listeners for filters
             this.elements.monthFilter.addEventListener('change', (e) => {
                 this.state.filters.month = e.target.value;
                 this.filterAndRenderProjects();
@@ -263,7 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         populateFilterDropdowns() {
-            // Populate Month Filter
             const months = [...new Set(this.state.projects.map(p => {
                 if (p.lastModifiedTimestamp) {
                     const date = new Date(p.lastModifiedTimestamp);
@@ -273,11 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }).filter(Boolean))].sort();
             this.elements.monthFilter.innerHTML = '<option value="All">All Months</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // Populate Project Filter
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
 
-            // Populate Fix Category Filter
             const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
             this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
         },
@@ -318,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
                 this.elements.projectFormModal.style.display = 'none';
                 this.elements.newProjectForm.reset();
-                await this.loadDataFromSheets(); // Reload all data and re-render with filters
+                await this.loadDataFromSheets();
             } catch (error) {
                 alert("Error adding projects: " + error.message);
             } finally {
@@ -330,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
-                this.filterAndRenderProjects(); // Re-render with existing filters
+                this.filterAndRenderProjects();
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
@@ -370,20 +366,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         formatProjectName(name) {
             if (!name) return '';
-            // Example: "1965_PAPHILE25_Gin_Z__NG31_R1_FixPoints_Partial" -> "1965 PAPHILE25 Gin Z  NG31 R1 FixPoints Partial"
             return name.replace(/__/g, '  ').replace(/_/g, ' ');
         },
 
         // =================================================================================
-        // == FILTERING LOGIC ==============================================================
+        // == FILTERING & RENDERING ========================================================
         // =================================================================================
         filterAndRenderProjects() {
             this.showFilterSpinner();
-            // Simulate a small delay for spinner visibility if needed for fast operations
             setTimeout(() => {
-                let filteredProjects = [...this.state.projects]; // Start with a copy of all projects
+                let filteredProjects = [...this.state.projects];
 
-                // Apply Month Filter
                 if (this.state.filters.month !== 'All') {
                     filteredProjects = filteredProjects.filter(p => {
                         if (p.lastModifiedTimestamp) {
@@ -394,30 +387,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                // Apply Project Filter
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
 
-                // Apply Fix Category Filter
                 if (this.state.filters.fixCategory !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
                 }
                 
                 this.renderProjects(filteredProjects);
                 this.hideFilterSpinner();
-            }, 100); // Small delay for UX, adjust or remove if not necessary
+            }, 100);
         },
 
-        // =================================================================================
-        // == RENDERING PROJECTS TABLE =====================================================
-        // =================================================================================
         renderProjects(projectsToRender = this.state.projects) {
             const tableBody = this.elements.projectTableBody;
             const tableHead = this.elements.projectTableHead;
-            tableBody.innerHTML = ""; // Clear existing rows
+            tableBody.innerHTML = "";
 
-            // Dynamically build headers based on showDays filters
             const headers = [
                 'Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'
             ];
@@ -426,14 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers.push(`Day ${i} Start`, `Day ${i} Finish`, `Day ${i} Break`);
                 }
             }
-            headers.push('Total (min)', 'Actions'); // Always include these
+            headers.push('Total (min)', 'Actions');
 
-            // Update table header row
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
             
             if (projectsToRender.length === 0) {
                 const row = tableBody.insertRow();
-                // Set colspan dynamically based on current number of visible headers
                 row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found matching current filters.</td>`;
                 return;
             }
@@ -442,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .forEach(project => {
                     const row = tableBody.insertRow();
                     row.insertCell().textContent = project.fixCategory || '';
-                    row.insertCell().textContent = this.formatProjectName(project.baseProjectName); // Formatted name
+                    row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
                     row.insertCell().textContent = project.areaTask || '';
                     row.insertCell().textContent = project.gsd || '';
 
@@ -458,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let totalBreakMinutes = 0;
 
                     for (let i = 1; i <= 5; i++) {
-                        if (this.state.filters.showDays[i]) { // Only render if day is visible
+                        if (this.state.filters.showDays[i]) {
                             const startTime = project[`startTimeDay${i}`] || '';
                             const finishTime = project[`finishTimeDay${i}`] || '';
                             const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
@@ -479,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const actionsCell = row.insertCell();
                     for (let i = 1; i <= 5; i++) {
-                        if (this.state.filters.showDays[i]) { // Only show buttons for visible days
+                        if (this.state.filters.showDays[i]) {
                             const startBtn = document.createElement('button');
                             startBtn.textContent = `Start D${i}`;
                             startBtn.className = 'btn btn-primary btn-small';
