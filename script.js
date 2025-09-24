@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             pins: { TL_DASHBOARD_PIN: "1234" },
             sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes" },
-            HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Day 6 Start': 'startTimeDay6', 'Day 6 Finish': 'finishTimeDay6', 'Day 6 Break': 'breakDurationMinutesDay6', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId', 'Released': 'releasedToNextStage' }
+            HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId', 'Released': 'releasedToNextStage' }
         },
         tokenClient: null,
         state: { projects: [], users: [], disputes: [], isAppInitialized: false },
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = values[0];
             return values.slice(1).map((row, index) => {
                 let obj = { _row: index + 2 };
-                headers.forEach((header, i) => { const propName = headerMap[header]; if (propName) obj[propName] = row[i] || ""; });
+                headers.forEach((header, i) => { const propName = headerMap[header.trim()]; if (propName) obj[propName] = row[i] || ""; });
                 return obj;
             });
         },
@@ -171,9 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1` })).result.values[0];
             const newRows = [];
             
-            console.log("Headers from your Google Sheet:", headers);
-            console.log("Keys from your HEADER_MAP:", Object.keys(this.config.HEADER_MAP));
-
             for (let i = 1; i <= numRows; i++) {
                 const newRowObj = { 
                     id: `proj_${Date.now()}_${i}`, 
@@ -185,14 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: "Available", 
                     lastModifiedTimestamp: new Date().toISOString() 
                 };
-                newRows.push(headers.map(header => {
-                    const trimmedHeader = header.trim();
-                    const propName = this.config.HEADER_MAP[trimmedHeader];
-                    if (!propName) {
-                        console.warn(`Header "${header}" from your sheet was not found in the HEADER_MAP.`);
-                    }
-                    return newRowObj[propName] || "";
-                }));
+                newRows.push(headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""));
             }
             
             try { 
@@ -224,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayMatch = action.match(/(start|end)Day(\d)/);
             if (dayMatch) {
                 const [, type, day] = dayMatch;
-                updates.status = type === 'start' ? `InProgressDay${day}` : (parseInt(day) < 6 ? `Day${day}Ended_AwaitingNext` : 'Completed');
+                updates.status = type === 'start' ? `InProgressDay${day}` : (parseInt(day) < 5 ? `Day${day}Ended_AwaitingNext` : 'Completed');
                 if (type === 'start') updates[`startTimeDay${day}`] = this.getCurrentTimeGMT8();
                 if (type === 'end') updates[`finishTimeDay${day}`] = this.getCurrentTimeGMT8();
             }
@@ -242,12 +232,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                 row.insertCell().appendChild(assignedToSelect);
                 row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
-                for (let i = 1; i <= 6; i++) { row.insertCell().textContent = project[`startTimeDay${i}`]; row.insertCell().textContent = project[`finishTimeDay${i}`]; row.insertCell().textContent = project[`breakDurationMinutesDay${i}`]; }
+                for (let i = 1; i <= 5; i++) { // Changed from 6 to 5
+                    row.insertCell().textContent = project[`startTimeDay${i}`]; 
+                    row.insertCell().textContent = project[`finishTimeDay${i}`]; 
+                    row.insertCell().textContent = project[`breakDurationMinutesDay${i}`]; 
+                }
                 
                 row.insertCell(); row.insertCell(); // Placeholders for Progress, Total
                 
                 const actionsCell = row.insertCell();
-                for (let i = 1; i <= 6; i++) {
+                for (let i = 1; i <= 5; i++) { // Changed from 6 to 5
                     const startBtn = document.createElement('button');
                     startBtn.textContent = `Start D${i}`;
                     startBtn.className = 'btn btn-primary btn-small';
