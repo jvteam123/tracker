@@ -22,10 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 fixCategory: 'All',
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
             },
-            pagination: {
-                currentPage: 1,
-                rowsPerPage: 20,
-            }
         },
         elements: {},
 
@@ -246,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
-                projectSettingsView: document.getElementById('projectSettingsView'), paginationControls: document.getElementById('paginationControls'),
+                projectSettingsView: document.getElementById('projectSettingsView'), 
                 openTlSummaryBtn: document.getElementById('openTlSummaryBtn'),
                 tlSummaryView: document.getElementById('tlSummaryView'),
                 summaryTableBody: document.getElementById('summaryTableBody'),
@@ -263,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
             this.elements.projectFilter.addEventListener('change', (e) => {
-                this.state.filters.project = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
+                this.state.filters.project = e.target.value; this.filterAndRenderProjects();
             });
         },
 
@@ -461,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0];
 
-                // 1. Sort all projects
                 const sortedProjects = [...this.state.projects].sort((a, b) => {
                     if (a.baseProjectName < b.baseProjectName) return -1;
                     if (a.baseProjectName > b.baseProjectName) return 1;
@@ -474,13 +469,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return 0;
                 });
 
-                // 2. Build the new rows array with blank rows between fix stages
                 const newSheetData = [];
                 let lastProject = null;
                 let lastFix = null;
                 sortedProjects.forEach(project => {
                     if ( (lastProject !== null && project.baseProjectName !== lastProject) || (lastFix !== null && project.fixCategory !== lastFix) ) {
-                         newSheetData.push(new Array(headers.length).fill("")); // Add blank row
+                         newSheetData.push(new Array(headers.length).fill(""));
                     }
                     const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
                     newSheetData.push(row);
@@ -488,13 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastFix = project.fixCategory;
                 });
 
-                // 3. Clear the sheet (from row 2 downwards)
                 await gapi.client.sheets.spreadsheets.values.clear({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${this.config.sheetNames.PROJECTS}!A2:Z`,
                 });
 
-                // 4. Write the new, sorted data back
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${this.config.sheetNames.PROJECTS}!A2`,
@@ -516,8 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         renderProjectSettings() {
             const container = this.elements.projectSettingsView; container.innerHTML = "";
-            
-            // Add the Reorganize Sheet card at the top
             const reorganizeCard = `
                 <div class="project-settings-card">
                     <h2>Sheet Management</h2>
@@ -533,7 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', reorganizeCard);
-
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             if (uniqueProjects.length === 0) {
                 container.insertAdjacentHTML('beforeend', `<p>No projects found to configure.</p>`);
@@ -611,28 +600,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
 
-        renderPaginationControls(totalRows) {
-            const { currentPage, rowsPerPage } = this.state.pagination;
-            const totalPages = Math.ceil(totalRows / rowsPerPage);
-            const container = this.elements.paginationControls; container.innerHTML = "";
-            if (totalPages <= 1) return;
-
-            const prevButton = document.createElement('button');
-            prevButton.textContent = 'Previous'; prevButton.className = 'btn';
-            prevButton.disabled = currentPage === 1;
-            prevButton.onclick = () => { this.state.pagination.currentPage--; this.filterAndRenderProjects(); };
-
-            const pageInfo = document.createElement('span');
-            pageInfo.textContent = ` Page ${currentPage} of ${totalPages} `; pageInfo.style.margin = "0 15px";
-
-            const nextButton = document.createElement('button');
-            nextButton.textContent = 'Next'; nextButton.className = 'btn';
-            nextButton.disabled = currentPage === totalPages;
-            nextButton.onclick = () => { this.state.pagination.currentPage++; this.filterAndRenderProjects(); };
-
-            container.appendChild(prevButton); container.appendChild(pageInfo); container.appendChild(nextButton);
-        },
-
         filterAndRenderProjects() {
             this.showFilterSpinner();
             setTimeout(() => {
@@ -640,18 +607,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
-
-                let projectsToRender = filteredProjects;
-                if (this.state.filters.project !== 'All') {
-                    const { currentPage, rowsPerPage } = this.state.pagination;
-                    const startIndex = (currentPage - 1) * rowsPerPage; const endIndex = startIndex + rowsPerPage;
-                    projectsToRender = filteredProjects.slice(startIndex, endIndex);
-                    this.renderPaginationControls(filteredProjects.length);
-                } else {
-                    this.elements.paginationControls.innerHTML = "";
-                }
-
-                this.renderProjects(projectsToRender); this.hideFilterSpinner();
+                this.renderProjects(filteredProjects); 
+                this.hideFilterSpinner();
             }, 100);
         },
 
@@ -669,68 +626,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`; return;
             }
 
-            const groupedProjects = projectsToRender.reduce((acc, project) => {
-                const key = project.fixCategory || 'Uncategorized';
+            const groupedByProject = projectsToRender.reduce((acc, project) => {
+                const key = project.baseProjectName || 'Uncategorized';
                 if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
             }, {});
-            const sortedGroupKeys = Object.keys(groupedProjects).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const sortedProjectKeys = Object.keys(groupedByProject).sort();
 
-            sortedGroupKeys.forEach(fixKey => {
-                const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
-                headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
-                headerRow.onclick = () => {
-                    const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
-                    document.querySelectorAll(`tr[data-fix-group="${fixKey}"]`).forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
-                    headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
-                };
+            sortedProjectKeys.forEach((projectName, index) => {
+                if (index > 0) { // Add separator row between projects
+                    const separatorRow = tableBody.insertRow();
+                    separatorRow.className = 'project-separator-row';
+                    separatorRow.innerHTML = `<td colspan="${headers.length}"></td>`;
+                }
 
-                const projectsInGroup = groupedProjects[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
-                projectsInGroup.forEach(project => {
-                    const row = tableBody.insertRow(); row.dataset.fixGroup = fixKey;
-                    row.insertCell().textContent = project.fixCategory || ''; row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
-                    row.insertCell().textContent = project.areaTask || ''; row.insertCell().textContent = project.gsd || '';
-                    const assignedToCell = row.insertCell(); const assignedToSelect = document.createElement('select');
-                    assignedToSelect.innerHTML = '<option value="">Unassigned</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
-                    assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
-                    assignedToCell.appendChild(assignedToSelect);
-                    row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
+                const projectsInGroup = groupedByProject[projectName];
+                const groupedByFix = projectsInGroup.reduce((acc, project) => {
+                    const key = project.fixCategory || 'Uncategorized';
+                    if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
+                }, {});
+                const sortedFixKeys = Object.keys(groupedByFix).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-                    for (let i = 1; i <= 5; i++) {
-                        if (this.state.filters.showDays[i]) {
-                            row.insertCell().textContent = project[`startTimeDay${i}`] || ''; row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
-                            const breakCell = row.insertCell(); const breakSelect = document.createElement('select');
-                            const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
-                            const currentBreak = project[`breakDurationMinutesDay${i}`] || '0';
-                            for (const value in breakOptions) {
-                                const option = document.createElement('option'); option.value = value; option.textContent = breakOptions[value];
-                                if (currentBreak == value) option.selected = true; breakSelect.appendChild(option);
-                            }
-                            breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
-                            breakCell.appendChild(breakSelect);
-                        }
-                    }
-                    row.insertCell().textContent = project.totalMinutes || '';
-
-                    const actionsCell = row.insertCell();
-                    for (let i = 1; i <= 5; i++) {
-                        if (this.state.filters.showDays[i]) {
-                            const startBtn = document.createElement('button'); startBtn.textContent = `Start D${i}`; startBtn.className = 'btn btn-primary btn-small';
-                            startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i - 1}Ended_AwaitingNext`);
-                            startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`); actionsCell.appendChild(startBtn);
-
-                            const endBtn = document.createElement('button'); endBtn.textContent = `End D${i}`; endBtn.className = 'btn btn-warning btn-small';
-                            endBtn.disabled = project.status !== `InProgressDay${i}`;
-                            endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`); actionsCell.appendChild(endBtn);
-                        }
-                    }
-                    const doneBtn = document.createElement('button'); doneBtn.textContent = 'Done'; doneBtn.className = 'btn btn-success btn-small';
-                    doneBtn.disabled = project.status === 'Completed';
-                    doneBtn.onclick = () => {
-                        if (confirm('Are you sure you want to mark this project as "Completed"?')) {
-                            this.handleProjectUpdate(project.id, { 'status': 'Completed' });
-                        }
+                sortedFixKeys.forEach(fixKey => {
+                    const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
+                    headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${this.formatProjectName(projectName)} - ${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
+                    headerRow.onclick = () => {
+                        const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
+                        document.querySelectorAll(`tr[data-project-group="${projectName}"][data-fix-group="${fixKey}"]`).forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
+                        headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
                     };
-                    actionsCell.appendChild(doneBtn);
+
+                    const tasksInFixGroup = groupedByFix[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
+                    tasksInFixGroup.forEach(project => {
+                        const row = tableBody.insertRow(); 
+                        row.dataset.projectGroup = projectName;
+                        row.dataset.fixGroup = fixKey;
+                        row.insertCell().textContent = project.fixCategory || ''; row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
+                        row.insertCell().textContent = project.areaTask || ''; row.insertCell().textContent = project.gsd || '';
+                        const assignedToCell = row.insertCell(); const assignedToSelect = document.createElement('select');
+                        assignedToSelect.innerHTML = '<option value="">Unassigned</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
+                        assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
+                        assignedToCell.appendChild(assignedToSelect);
+                        row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
+
+                        for (let i = 1; i <= 5; i++) {
+                            if (this.state.filters.showDays[i]) {
+                                row.insertCell().textContent = project[`startTimeDay${i}`] || ''; row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
+                                const breakCell = row.insertCell(); const breakSelect = document.createElement('select');
+                                const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
+                                const currentBreak = project[`breakDurationMinutesDay${i}`] || '0';
+                                for (const value in breakOptions) {
+                                    const option = document.createElement('option'); option.value = value; option.textContent = breakOptions[value];
+                                    if (currentBreak == value) option.selected = true; breakSelect.appendChild(option);
+                                }
+                                breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
+                                breakCell.appendChild(breakSelect);
+                            }
+                        }
+                        row.insertCell().textContent = project.totalMinutes || '';
+
+                        const actionsCell = row.insertCell();
+                        for (let i = 1; i <= 5; i++) {
+                            if (this.state.filters.showDays[i]) {
+                                const startBtn = document.createElement('button'); startBtn.textContent = `Start D${i}`; startBtn.className = 'btn btn-primary btn-small';
+                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i - 1}Ended_AwaitingNext`);
+                                startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`); actionsCell.appendChild(startBtn);
+
+                                const endBtn = document.createElement('button'); endBtn.textContent = `End D${i}`; endBtn.className = 'btn btn-warning btn-small';
+                                endBtn.disabled = project.status !== `InProgressDay${i}`;
+                                endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`); actionsCell.appendChild(endBtn);
+                            }
+                        }
+                        const doneBtn = document.createElement('button'); doneBtn.textContent = 'Done'; doneBtn.className = 'btn btn-success btn-small';
+                        doneBtn.disabled = project.status === 'Completed';
+                        doneBtn.onclick = () => {
+                            if (confirm('Are you sure you want to mark this project as "Completed"?')) {
+                                this.handleProjectUpdate(project.id, { 'status': 'Completed' });
+                            }
+                        };
+                        actionsCell.appendChild(doneBtn);
+                    });
                 });
             });
         },
