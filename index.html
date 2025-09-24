@@ -140,10 +140,9 @@
         .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
         .project-table tr:hover { background-color: #f0f8ff; }
         .project-table tr.fix-group-header td { background-color: #e9ecef; font-weight: 600; cursor: pointer; }
+        .project-table tr.project-separator-row td { padding: 8px; background-color: var(--bg-color); border-top: 2px solid #ccc; border-bottom: 2px solid #ccc;}
         .project-table select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
         .project-table .btn-small { padding: 4px 8px; font-size: 0.8em; margin: 2px; }
-        
-        .pagination-controls { padding: 15px 0; text-align: center; }
         
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
@@ -233,8 +232,7 @@
                             <tbody id="projectTableBody"></tbody>
                         </table>
                     </div>
-                    <div id="paginationControls" class="pagination-controls"></div>
-                </div>
+                    </div>
             </div>
             
             <div id="tlSummaryView" class="table-container" style="display: none;">
