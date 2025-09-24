@@ -23,9 +23,13 @@
             --border-radius-md: 8px;
             --border-radius-lg: 12px;
         }
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling on the body */
+        }
         body {
             font-family: 'Inter', Arial, sans-serif;
-            margin: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.6;
@@ -35,23 +39,20 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
-            box-sizing: border-box;
         }
         .dashboard-wrapper { display: flex; height: 100vh; width: 100%; }
-        .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #475569; }
+        .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #475569; flex-shrink: 0; }
         .sidebar h2 { color: #fff; margin-top: 0; margin-bottom: 30px; font-size: 1.5em; text-align: center; }
         .sidebar-nav button { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color 0.3s ease; text-align: left; gap: 12px; }
         .sidebar-nav button:hover, .sidebar-nav button.active { background-color: #475569; }
         .sidebar-nav button .icon { font-size: 1.2em; }
-        .main-content { flex-grow: 1; padding: 25px; overflow-y: auto; }
-        .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; font-weight: 500; transition: background-color 0.3s ease; }
+        .main-content { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; overflow: hidden; } /* Allow main content to manage its own scrolling */
+        .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; font-weight: 500; }
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-success { background-color: var(--success-color); color: white; }
         .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-danger { background-color: var(--danger-color); color: white; }
-        .btn:disabled { background-color: #bdc3c7 !important; cursor: not-allowed; }
-        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; }
+        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; overflow: auto; } /* Let the table container be the scrolling element */
         .table-scroll-wrapper { width: 100%; overflow-x: auto; }
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
@@ -84,46 +85,44 @@
         <aside class="sidebar">
             <h2>Team123</h2>
             <div class="sidebar-nav">
-                <button id="openTechDashboardBtn" class.active><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
+                <button id="openTechDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
         </aside>
 
         <main class="main-content">
-            <div id="techDashboard" class="dashboard-container active">
-                <div class="table-container">
-                    <div class="table-scroll-wrapper">
-                        <table id="projectTable" class="project-table">
-                            <thead>
-                                <tr>
-                                    <th>Fix Cat</th>
-                                    <th>Project Name</th>
-                                    <th>Area/Task</th>
-                                    <th>GSD</th>
-                                    <th>Assigned To</th>
-                                    <th>Status</th>
-                                    <th>Day 1 Start</th>
-                                    <th>Day 1 Finish</th>
-                                    <th>Day 1 Break</th>
-                                    <th>Day 2 Start</th>
-                                    <th>Day 2 Finish</th>
-                                    <th>Day 2 Break</th>
-                                    <th>Day 3 Start</th>
-                                    <th>Day 3 Finish</th>
-                                    <th>Day 3 Break</th>
-                                    <th>Day 4 Start</th>
-                                    <th>Day 4 Finish</th>
-                                    <th>Day 4 Break</th>
-                                    <th>Day 5 Start</th>
-                                    <th>Day 5 Finish</th>
-                                    <th>Day 5 Break</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="projectTableBody"></tbody>
-                        </table>
-                    </div>
+            <div id="techDashboard" class="table-container">
+                <div class="table-scroll-wrapper">
+                    <table id="projectTable" class="project-table">
+                        <thead>
+                            <tr>
+                                <th>Fix Cat</th>
+                                <th>Project Name</th>
+                                <th>Area/Task</th>
+                                <th>GSD</th>
+                                <th>Assigned To</th>
+                                <th>Status</th>
+                                <th>Day 1 Start</th>
+                                <th>Day 1 Finish</th>
+                                <th>Day 1 Break</th>
+                                <th>Day 2 Start</th>
+                                <th>Day 2 Finish</th>
+                                <th>Day 2 Break</th>
+                                <th>Day 3 Start</th>
+                                <th>Day 3 Finish</th>
+                                <th>Day 3 Break</th>
+                                <th>Day 4 Start</th>
+                                <th>Day 4 Finish</th>
+                                <th>Day 4 Break</th>
+                                <th>Day 5 Start</th>
+                                <th>Day 5 Finish</th>
+                                <th>Day 5 Break</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectTableBody"></tbody>
+                    </table>
                 </div>
             </div>
         </main>
