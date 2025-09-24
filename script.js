@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // =================================================================================
+    // == MAIN APPLICATION OBJECT ======================================================
+    // =================================================================================
     const ProjectTrackerApp = {
-        // --- CONFIGURATION (Already set with your details) ---
+        // --- CONFIGURATION ---
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
@@ -8,12 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
-            pins: { TL_DASHBOARD_PIN: "1234" },
             sheetNames: { PROJECTS: "Projects", USERS: "Users" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Day 6 Start': 'startTimeDay6', 'Day 6 Finish': 'finishTimeDay6', 'Day 6 Break': 'breakDurationMinutesDay6', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId', 'Released': 'releasedToNextStage' }
         },
         tokenClient: null,
-        state: { projects: [], users: [], isAppInitialized: false, isGapiInitialized: false, isGisInitialized: false },
+        state: { projects: [], users: [], isAppInitialized: false },
         elements: {},
 
         // =================================================================================
@@ -23,15 +25,15 @@ document.addEventListener('DOMContentLoaded', () => {
             this.setupDOMReferences();
             this.attachEventListeners();
             gapi.load('client', this.initializeGapiClient.bind(this));
-            google.accounts.id.initialize({
-                client_id: this.config.google.CLIENT_ID,
-                callback: this.handleAuthClick.bind(this)
-            });
         },
 
         async initializeGapiClient() {
             await gapi.client.init({ apiKey: this.config.google.API_KEY, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
-            this.state.isGapiInitialized = true;
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.config.google.CLIENT_ID,
+                scope: this.config.google.SCOPES,
+                callback: this.handleTokenResponse.bind(this),
+            });
             const storedToken = localStorage.getItem('google_auth_token');
             if (storedToken) gapi.client.setToken(JSON.parse(storedToken));
             this.updateAuthUI();
@@ -43,17 +45,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleAuthClick() {
-            this.tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: this.config.google.CLIENT_ID,
-                scope: this.config.google.SCOPES,
-                callback: async (resp) => {
-                    if (resp.error) throw (resp);
-                    localStorage.setItem('google_auth_token', JSON.stringify(gapi.client.getToken()));
-                    await this.handleAuthorizedUser();
-                }
-            });
             if (gapi.client.getToken() === null) this.tokenClient.requestAccessToken({ prompt: 'consent' });
             else this.tokenClient.requestAccessToken({ prompt: '' });
+        },
+
+        async handleTokenResponse(resp) {
+            if (resp.error) throw (resp);
+            localStorage.setItem('google_auth_token', JSON.stringify(gapi.client.getToken()));
+            await this.handleAuthorizedUser();
         },
 
         handleSignoutClick() {
@@ -109,13 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Could not load data. Check Spreadsheet ID, sheet names, and sharing permissions.");
             } finally { this.hideLoading(); }
         },
-
+        
         async updateRowInSheet(sheetName, rowIndex, dataObject) {
             this.showLoading("Saving...");
             try {
                 const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!1:1` })).result.values[0];
-                const invertedHeaderMap = Object.entries(this.config.HEADER_MAP).reduce((acc, [key, value]) => { acc[value] = key; return acc; }, {});
-                const values = [headers.map(header => dataObject[invertedHeaderMap[header]] || dataObject[header] || "")];
+                const invertedHeaderMap = Object.entries(this.config.HEADER_MAP).reduce((acc, [key, value]) => ({...acc, [value]: key }), {});
+                const values = [headers.map(header => dataObject[this.config.HEADER_MAP[header]] || dataObject[header] || "")];
                 await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A${rowIndex}`, valueInputOption: 'USER_ENTERED', resource: { values } });
             } catch (err) {
                 console.error(`Error updating row ${rowIndex}:`, err);
@@ -139,8 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectTableBody: document.getElementById('projectTableBody'), loadingOverlay: document.getElementById('loadingOverlay'),
                 openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'), projectFormModal: document.getElementById('projectFormModal'),
                 closeProjectFormBtn: document.getElementById('closeProjectFormBtn'), newProjectForm: document.getElementById('newProjectForm'),
-                openTlDashboardBtn: document.getElementById('openTlDashboardBtn'), tlDashboard: document.getElementById('tlDashboard'),
-                tlDashboardContent: document.getElementById('tlDashboardContent'),
             };
         },
 
@@ -157,9 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const numRows = parseInt(document.getElementById('numRows').value, 10), baseProjectName = document.getElementById('baseProjectName').value.trim(), gsd = document.getElementById('gsd').value;
             const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1` })).result.values[0];
             const newRows = [];
+            const invertedHeaderMap = Object.entries(this.config.HEADER_MAP).reduce((acc, [key, value]) => ({...acc, [value]: key }), {});
             for (let i = 1; i <= numRows; i++) {
-                const newRowObj = { id: `proj_${Date.now()}_${i}`, batchId: `batch_${Date.now()}`, baseProjectName, areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available", creationTimestamp: new Date().toISOString() };
-                newRows.push(headers.map(h => this.config.HEADER_MAP[h] ? newRowObj[this.config.HEADER_MAP[h]] : ""));
+                const newRowObj = { id: `proj_${Date.now()}_${i}`, batchId: `batch_${Date.now()}`, baseProjectName, areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available", lastModifiedTimestamp: new Date().toISOString() };
+                newRows.push(headers.map(header => newRowObj[this.config.HEADER_MAP[header]] || ""));
             }
             try { await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); this.elements.projectFormModal.style.display = 'none'; await this.loadDataFromSheets(); } catch (error) { alert("Error adding projects: " + error.message); }
         },
@@ -176,12 +174,14 @@ document.addEventListener('DOMContentLoaded', () => {
         getCurrentTimeGMT8() { return new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }); },
 
         async updateProjectState(projectId, action) {
+            const project = this.state.projects.find(p => p.id === projectId);
+            if (!project) return;
             const updates = {};
             const dayMatch = action.match(/(start|end)Day(\d)/);
             if (dayMatch) {
                 const [, type, day] = dayMatch;
                 updates.status = type === 'start' ? `InProgressDay${day}` : (day < 6 ? `Day${day}Ended_AwaitingNext` : 'Completed');
-                updates[`startTimeDay${day}`] = type === 'start' ? this.getCurrentTimeGMT8() : this.state.projects.find(p=>p.id===projectId)[`startTimeDay${day}`];
+                updates[`startTimeDay${day}`] = type === 'start' ? this.getCurrentTimeGMT8() : project[`startTimeDay${day}`];
                 updates[`finishTimeDay${day}`] = type === 'end' ? this.getCurrentTimeGMT8() : '';
             }
             await this.handleProjectUpdate(projectId, updates);
@@ -198,11 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                 row.insertCell().appendChild(assignedToSelect);
                 row.insertCell().innerHTML = `<span class="status">${project.status}</span>`;
-                for (let i = 1; i <= 6; i++) {
-                    row.insertCell().textContent = project[`startTimeDay${i}`];
-                    row.insertCell().textContent = project[`finishTimeDay${i}`];
-                    row.insertCell().textContent = project[`breakDurationMinutesDay${i}`];
-                }
+                for (let i = 1; i <= 6; i++) { row.insertCell().textContent = project[`startTimeDay${i}`]; row.insertCell().textContent = project[`finishTimeDay${i}`]; row.insertCell().textContent = project[`breakDurationMinutesDay${i}`]; }
                 row.insertCell(); row.insertCell(); // Placeholders
                 const actionsCell = row.insertCell();
                 for (let i = 1; i <= 6; i++) {
