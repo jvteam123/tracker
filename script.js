@@ -171,6 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1` })).result.values[0];
             const newRows = [];
             
+            console.log("Headers from your Google Sheet:", headers);
+            console.log("Keys from your HEADER_MAP:", Object.keys(this.config.HEADER_MAP));
+
             for (let i = 1; i <= numRows; i++) {
                 const newRowObj = { 
                     id: `proj_${Date.now()}_${i}`, 
@@ -182,7 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: "Available", 
                     lastModifiedTimestamp: new Date().toISOString() 
                 };
-                newRows.push(headers.map(header => newRowObj[this.config.HEADER_MAP[header]] || ""));
+                newRows.push(headers.map(header => {
+                    const trimmedHeader = header.trim();
+                    const propName = this.config.HEADER_MAP[trimmedHeader];
+                    if (!propName) {
+                        console.warn(`Header "${header}" from your sheet was not found in the HEADER_MAP.`);
+                    }
+                    return newRowObj[propName] || "";
+                }));
             }
             
             try { 
