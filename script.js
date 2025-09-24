@@ -45,11 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 month: localStorage.getItem('currentSelectedMonth') || "",
                 sortBy: localStorage.getItem('currentSortBy') || 'newest'
             },
-            pagination: {
-                currentPage: 1, projectsPerPage: 50, // Increased for better usability
-                totalPages: 0,
-            },
-            disputePagination: { currentPage: 1, disputesPerPage: 15, totalPages: 0 },
             isGapiInitialized: false,
             isGisInitialized: false,
         },
@@ -162,16 +157,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         spreadsheetId: this.config.google.SPREADSHEET_ID,
                         ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES],
                     });
-
                     const [projectsData, usersData, disputesData] = response.result.valueRanges;
-
                     this.state.projects = this.methods.sheetValuesToObjects.call(this, projectsData.values);
                     this.state.users = this.methods.sheetValuesToObjects.call(this, usersData.values);
                     this.state.disputes = this.methods.sheetValuesToObjects.call(this, disputesData.values);
-                    
                     const uniqueNames = new Set(this.state.projects.map(p => p.baseProjectName));
                     this.state.allUniqueProjectNames = Array.from(uniqueNames).sort();
-
                     this.methods.refreshAllViews.call(this);
                 } catch (err) {
                     console.error("Error loading data from Sheets: ", err);
@@ -184,19 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
             async updateRowInSheet(sheetName, rowIndex, dataObject) {
                 this.methods.showLoading.call(this, "Saving changes...");
                 try {
-                    const headersResponse = await gapi.client.sheets.spreadsheets.values.get({
-                        spreadsheetId: this.config.google.SPREADSHEET_ID,
-                        range: `${sheetName}!1:1`,
-                    });
-                    const headers = headersResponse.result.values[0];
+                    const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!1:1` })).result.values[0];
                     const values = [headers.map(header => dataObject[header] || "")];
-
-                    await gapi.client.sheets.spreadsheets.values.update({
-                        spreadsheetId: this.config.google.SPREADSHEET_ID,
-                        range: `${sheetName}!A${rowIndex}`,
-                        valueInputOption: 'USER_ENTERED',
-                        resource: { values },
-                    });
+                    await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A${rowIndex}`, valueInputOption: 'USER_ENTERED', resource: { values } });
                 } catch (err) {
                     console.error(`Error updating row ${rowIndex} in ${sheetName}:`, err);
                     alert("Failed to save changes.");
@@ -207,49 +188,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
             async appendRowsToSheet(sheetName, rows) {
                  try {
-                    await gapi.client.sheets.spreadsheets.values.append({
-                        spreadsheetId: this.config.google.SPREADSHEET_ID,
-                        range: sheetName,
-                        valueInputOption: 'USER_ENTERED',
-                        resource: { values: rows },
-                    });
+                    await gapi.client.sheets.spreadsheets.values.append({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: sheetName, valueInputOption: 'USER_ENTERED', resource: { values: rows } });
                 } catch (err) {
                     console.error(`Error appending rows to ${sheetName}:`, err);
                     throw new Error("Failed to add data to Google Sheet.");
                 }
             },
-            
-            // --- FULLY IMPLEMENTED METHODS ---
 
             setupDOMReferences() {
-                // This is the same as your original setupDOMReferences method
-                 this.elements = {
-                    body: document.body, authWrapper: document.getElementById('auth-wrapper'), mainContainer: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'), signOutBtn: document.getElementById('signOutBtn'), clearDataBtn: document.getElementById('clearDataBtn'), userInfoDisplayDiv: document.querySelector('.user-profile'), userNameP: document.getElementById('userName'), userEmailP: document.getElementById('userEmail'), userPhotoImg: document.getElementById('userPhoto'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'), openTlDashboardBtn: document.getElementById('openTlDashboardBtn'), openSettingsBtn: document.getElementById('openSettingsBtn'), openTlSummaryBtn: document.getElementById('openTlSummaryBtn'), exportAllCsvBtn: document.getElementById('exportAllCsvBtn'), openImportCsvBtn: document.getElementById('openImportCsvBtn'), projectFormModal: document.getElementById('projectFormModal'), tlDashboard: document.getElementById('tlDashboard'), userManagementDashboard: document.getElementById('userManagementDashboard'), tlSummaryModal: document.getElementById('tlSummaryModal'), importCsvModal: document.getElementById('importCsvModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'), closeTlDashboardBtn: document.getElementById('closeTlDashboardBtn'), closeSettingsBtn: document.getElementById('closeSettingsBtn'), closeTlSummaryBtn: document.getElementById('closeTlSummaryBtn'), closeImportCsvBtn: document.getElementById('closeImportCsvBtn'), csvFileInput: document.getElementById('csvFileInput'), processCsvBtn: document.getElementById('processCsvBtn'), csvImportStatus: document.getElementById('csvImportStatus'), newProjectForm: document.getElementById('newProjectForm'), projectTableBody: document.getElementById('projectTableBody'), loadingOverlay: document.getElementById('loadingOverlay'), batchIdSelect: document.getElementById('batchIdSelect'), fixCategoryFilter: document.getElementById('fixCategoryFilter'), monthFilter: document.getElementById('monthFilter'), sortByFilter: document.getElementById('sortByFilter'), paginationControls: document.getElementById('paginationControls'), prevPageBtn: document.getElementById('prevPageBtn'), nextPageBtn: document.getElementById('nextPageBtn'), pageInfo: document.getElementById('pageInfo'), tlDashboardContent: document.getElementById('tlDashboardContent'), tlSummaryContent: document.getElementById('tlSummaryContent'), userManagementForm: document.getElementById('userManagementForm'), newUserName: document.getElementById('newUserName'), newUserEmail: document.getElementById('newUserEmail'), newUserTechId: document.getElementById('newUserTechId'), userManagementTableBody: document.getElementById('userManagementTableBody'), userFormButtons: document.getElementById('userFormButtons'), importUsersBtn: document.getElementById('importUsersBtn'), exportUsersBtn: document.getElementById('exportUsersBtn'), userCsvInput: document.getElementById('userCsvInput'), openDisputeBtn: document.getElementById('openDisputeBtn'), disputeModal: document.getElementById('disputeModal'), closeDisputeBtn: document.getElementById('closeDisputeBtn'), disputeForm: document.getElementById('disputeForm'), disputeTableBody: document.getElementById('disputeTableBody'), disputeProjectName: document.getElementById('disputeProjectName'), disputeTechId: document.getElementById('disputeTechId'), disputeTechName: document.getElementById('disputeTechName'), disputePaginationControls: document.getElementById('disputePaginationControls'), prevDisputePageBtn: document.getElementById('prevDisputePageBtn'), nextDisputePageBtn: document.getElementById('nextDisputePageBtn'), disputePageInfo: document.getElementById('disputePageInfo'), exportSelectedCsvBtn: document.getElementById('exportSelectedCsvBtn'), selectProjectsModal: document.getElementById('selectProjectsModal'), closeSelectProjectsBtn: document.getElementById('closeSelectProjectsBtn'), projectSelectionList: document.getElementById('projectSelectionList'), exportSelectedProjectsBtn: document.getElementById('exportSelectedProjectsBtn'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'), techDashboard: document.getElementById('techDashboard')
-                };
+                this.elements = { body: document.body, authWrapper: document.getElementById('auth-wrapper'), mainContainer: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'), signOutBtn: document.getElementById('signOutBtn'), userInfoDisplayDiv: document.querySelector('.user-profile'), userNameP: document.getElementById('userName'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'), openTlDashboardBtn: document.getElementById('openTlDashboardBtn'), openSettingsBtn: document.getElementById('openSettingsBtn'), projectFormModal: document.getElementById('projectFormModal'), tlDashboard: document.getElementById('tlDashboard'), userManagementDashboard: document.getElementById('userManagementDashboard'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'), newProjectForm: document.getElementById('newProjectForm'), projectTableBody: document.getElementById('projectTableBody'), loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'), techDashboard: document.getElementById('techDashboard') };
             },
 
             attachEventListeners() {
-                // Auth listeners
                 this.elements.signInBtn.onclick = this.methods.handleAuthClick.bind(this);
                 this.elements.signOutBtn.onclick = this.methods.handleSignoutClick.bind(this);
-                
-                // Other listeners
                 this.elements.newProjectForm.addEventListener('submit', (e) => this.methods.handleAddProjectSubmit.call(this, e));
                 this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
                 this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
-
-                // Sidebar navigation
                 this.elements.openTechDashboardBtn.onclick = () => this.methods.showDashboard.call(this, 'techDashboard');
                 this.elements.openTlDashboardBtn.onclick = () => this.methods.showDashboard.call(this, 'tlDashboard');
                 this.elements.openSettingsBtn.onclick = () => this.methods.showDashboard.call(this, 'userManagementDashboard');
             },
             
-            showDashboard(dashboardId) {
-                // Simple dashboard toggle logic
-                ['techDashboard', 'tlDashboard', 'userManagementDashboard'].forEach(id => {
-                    this.elements[id].classList.remove('active');
-                });
-                this.elements[dashboardId].classList.add('active');
+            showDashboard(id) {
+                document.querySelectorAll('.dashboard-container').forEach(d => d.style.display = 'none');
+                document.getElementById(id).style.display = 'flex';
             },
 
             refreshAllViews() {
@@ -267,30 +230,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const numRows = parseInt(document.getElementById('numRows').value, 10);
                 const baseProjectName = document.getElementById('baseProjectName').value.trim();
                 const gsd = document.getElementById('gsd').value;
-
                 const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1` })).result.values[0];
                 const newRows = [];
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = { id: `proj_${Date.now()}_${i}`, baseProjectName, areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available", creationTimestamp: new Date().toISOString() };
                     newRows.push(headers.map(h => newRowObj[h] || ""));
                 }
-
                 try {
                     await this.methods.appendRowsToSheet.call(this, this.config.sheetNames.PROJECTS, newRows);
                     this.elements.projectFormModal.style.display = 'none';
                     await this.methods.loadDataFromSheets.call(this);
                 } catch (error) {
                     alert("Error adding projects: " + error.message);
-                } finally {
-                    this.methods.hideLoading.call(this);
                 }
             },
             
-            async handleProjectAction(projectId, field, value) {
+            async handleProjectUpdate(projectId, updates) {
                 const project = this.state.projects.find(p => p.id === projectId);
                 if (project) {
-                    project[field] = value;
-                    project.lastModifiedTimestamp = new Date().toISOString();
+                    Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
                     await this.methods.updateRowInSheet.call(this, this.config.sheetNames.PROJECTS, project._row, project);
                     this.methods.renderProjects.call(this);
                 }
@@ -309,57 +267,64 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.dataset.projectId = project.id;
                     row.style.backgroundColor = this.config.FIX_CATEGORIES.COLORS[project.fixCategory] || '#fff';
 
-                    // Simplified rendering logic, expand as needed
                     row.insertCell().textContent = project.fixCategory;
                     row.insertCell().textContent = project.baseProjectName;
                     row.insertCell().textContent = project.areaTask;
                     row.insertCell().textContent = project.gsd;
 
-                    // Assigned To Dropdown
                     const assignedToCell = row.insertCell();
                     const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Select Tech</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
-                    assignedToSelect.onchange = (e) => this.methods.handleProjectAction.call(this, project.id, 'assignedTo', e.target.value);
+                    assignedToSelect.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { 'assignedTo': e.target.value });
                     assignedToCell.appendChild(assignedToSelect);
 
-                    // Status
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "unknown").toLowerCase()}">${project.status}</span>`;
 
-                    // Time Inputs and Breaks (Day 1 as example)
                     for (let i = 1; i <= 6; i++) {
-                        const startCell = row.insertCell();
                         const startInput = document.createElement('input');
-                        startInput.type = 'text'; // Use text for simplicity with Sheets
+                        startInput.type = 'text';
                         startInput.value = project[`startTimeDay${i}`] || '';
-                        startInput.onchange = (e) => this.methods.handleProjectAction.call(this, project.id, `startTimeDay${i}`, e.target.value);
-                        startCell.appendChild(startInput);
+                        startInput.placeholder = "HH:MM";
+                        startInput.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { [`startTimeDay${i}`]: e.target.value });
+                        row.insertCell().appendChild(startInput);
 
-                        const finishCell = row.insertCell();
                         const finishInput = document.createElement('input');
                         finishInput.type = 'text';
                         finishInput.value = project[`finishTimeDay${i}`] || '';
-                        finishInput.onchange = (e) => this.methods.handleProjectAction.call(this, project.id, `finishTimeDay${i}`, e.target.value);
-                        finishCell.appendChild(finishInput);
+                        finishInput.placeholder = "HH:MM";
+                        finishInput.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { [`finishTimeDay${i}`]: e.target.value });
+                        row.insertCell().appendChild(finishInput);
 
-                        const breakCell = row.insertCell();
-                        const breakInput = document.createElement('input');
-                        breakInput.type = 'number';
-                        breakInput.value = project[`breakDurationMinutesDay${i}`] || 0;
-                        breakInput.onchange = (e) => this.methods.handleProjectAction.call(this, project.id, `breakDurationMinutesDay${i}`, e.target.value);
-                        breakCell.appendChild(breakInput);
+                        const breakSelect = document.createElement('select');
+                        breakSelect.innerHTML = `<option value="0">No Break</option><option value="15">15m</option><option value="60">1h</option>`;
+                        breakSelect.value = project[`breakDurationMinutesDay${i}`] || 0;
+                        breakSelect.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
+                        row.insertCell().appendChild(breakSelect);
                     }
                     
-                    // Progress and Total - you would need to implement the calculation logic
                     row.insertCell().textContent = '...'; // Progress
                     row.insertCell().textContent = '...'; // Total
 
-                    // Actions
                     const actionsCell = row.insertCell();
                     const doneButton = document.createElement('button');
                     doneButton.textContent = 'Done';
-                    doneButton.className = 'btn btn-success';
-                    doneButton.onclick = () => this.methods.handleProjectAction.call(this, project.id, 'status', 'Completed');
+                    doneButton.className = 'btn btn-success btn-small';
+                    doneButton.onclick = () => this.methods.handleProjectUpdate.call(this, project.id, { 'status': 'Completed' });
                     actionsCell.appendChild(doneButton);
+                    
+                    const resetButton = document.createElement('button');
+                    resetButton.textContent = 'Reset';
+                    resetButton.className = 'btn btn-secondary btn-small';
+                    resetButton.onclick = () => {
+                        const updates = { status: 'Available', assignedTo: '' };
+                        for(let i=1; i<=6; i++) {
+                            updates[`startTimeDay${i}`] = '';
+                            updates[`finishTimeDay${i}`] = '';
+                            updates[`breakDurationMinutesDay${i}`] = '0';
+                        }
+                        this.methods.handleProjectUpdate.call(this, project.id, updates);
+                    }
+                    actionsCell.appendChild(resetButton);
                 });
             },
 
