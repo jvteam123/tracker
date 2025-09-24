@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 month: 'All',
                 project: 'All',
                 fixCategory: 'All',
-                // Default days 2-5 to hidden
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
             }
         },
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
                 alert("Critical Error: Could not initialize Google API client. The app may not function.");
-                this.hideLoading();
+                this.handleSignedOutUser(); // Go to signed-out state on critical error
             }
         },
 
@@ -67,13 +66,19 @@ document.addEventListener('DOMContentLoaded', () => {
         handleAuthClick() {
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
-
+        
+        // --- THIS FUNCTION IS THE KEY FIX ---
         async handleTokenResponse(resp) {
             if (resp.error) {
-                console.error("Auth Error:", resp.error);
-                this.handleSignoutClick();
+                console.error("Auth Error (likely silent-refresh failure):", resp.error);
+                // If there's an error, it means the silent sign-in failed.
+                // The correct action is to clear the local login state and
+                // show the main login screen. This avoids getting stuck.
+                localStorage.removeItem('isLoggedIn');
+                this.handleSignedOutUser(); // This function hides the loading screen.
                 return;
             }
+            // On success:
             gapi.client.setToken(resp);
             localStorage.setItem('isLoggedIn', 'true');
             this.handleAuthorizedUser();
@@ -104,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleSignedOutUser() {
-            this.hideLoading();
+            this.hideLoading(); // Ensure loading screen is always hidden on sign-out
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
@@ -112,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == DATA HANDLING ================================================================
+        // == DATA HANDLING (No changes in this section) ===================================
         // =================================================================================
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
@@ -200,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         // =================================================================================
-        // == UI AND EVENT LOGIC ===========================================================
+        // == UI AND EVENT LOGIC (No changes in this section) ==============================
         // =================================================================================
         setupDOMReferences() {
             this.elements = {
@@ -228,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'),
                 
-                // New elements for view switching
                 openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
                 techDashboardContainer: document.getElementById('techDashboardContainer'),
@@ -243,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
 
-            // View switching listeners
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
 
@@ -268,15 +271,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         switchView(viewName) {
-            // Hide all main content views
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
             
-            // Deactivate all sidebar buttons
             this.elements.openTechDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
 
-            // Show the selected view and activate its button
             if (viewName === 'dashboard') {
                 this.elements.techDashboardContainer.style.display = 'block';
                 this.elements.openTechDashboardBtn.classList.add('active');
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == FILTERING & RENDERING ========================================================
+        // == FILTERING & RENDERING (No changes in this section) ===========================
         // =================================================================================
         filterAndRenderProjects() {
             this.showFilterSpinner();
