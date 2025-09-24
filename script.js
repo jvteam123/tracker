@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- CONFIGURATION ---
         config: {
             google: {
-                API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8", // Your API Key
-                CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com", // Your Client ID
+                API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
+                CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY", // <-- IMPORTANT: REPLACE THIS
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
@@ -63,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(resp);
                 return;
             }
+            // THIS IS THE FIX: Ensure the new token is set and then authorize the user
+            gapi.client.setToken(resp);
             this.handleAuthorizedUser();
         },
 
@@ -100,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!values || values.length < 2) return [];
             const headers = values[0];
             return values.slice(1).map((row, index) => {
-                let obj = { _row: index + 2 }; // +2 because sheets are 1-indexed and we skip the header
+                let obj = { _row: index + 2 };
                 headers.forEach((header, i) => {
                     const propName = headerMap[header.trim()];
                     if (propName) {
@@ -123,13 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
                 
-                if (projectsData && projectsData.values) {
-                    this.state.projects = this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP);
-                }
-                
-                if (usersData && usersData.values) {
-                     this.state.users = this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' });
-                }
+                this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
+                this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
 
                 this.renderProjects();
             } catch (err) {
@@ -149,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 const headers = getHeaders.result.values[0];
+                const invertedHeaderMap = Object.fromEntries(Object.entries(this.config.HEADER_MAP).map(a => a.reverse()));
                 const values = [headers.map(header => dataObject[this.config.HEADER_MAP[header.trim()]] || "")];
 
                 await gapi.client.sheets.spreadsheets.values.update({
@@ -160,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error(`Error updating row ${rowIndex}:`, err);
                 alert("Failed to save changes.");
+                await this.loadDataFromSheets(); // Refresh data on error to revert optimistic UI
             } finally {
                 this.hideLoading();
             }
@@ -254,9 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleProjectUpdate(projectId, updates) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
+                // Optimistic UI update
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
+                this.renderProjects(); 
+
+                // Send update to the sheet
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
-                this.renderProjects(); // Re-render to show changes
             }
         },
         
@@ -291,12 +293,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const tableBody = this.elements.projectTableBody;
             tableBody.innerHTML = "";
             
+            if (this.state.projects.length === 0) {
+                const row = tableBody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 22;
+                cell.textContent = "No projects found. Add one to get started!";
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                return;
+            }
+
             this.state.projects.sort((a,b) => (a.baseProjectName + a.areaTask).localeCompare(b.baseProjectName + b.areaTask))
                 .forEach(project => {
                     const row = tableBody.insertRow();
                     ['fixCategory', 'baseProjectName', 'areaTask', 'gsd'].forEach(key => row.insertCell().textContent = project[key] || '');
 
-                    // Assigned To Dropdown
                     const assignedToCell = row.insertCell();
                     const assignedToSelect = document.createElement('select');
                     let userOptions = '<option value="">Unassigned</option>';
@@ -307,17 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     assignedToCell.appendChild(assignedToSelect);
 
-                    // Status
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
 
-                    // Day Start/Finish/Break columns
                     for (let i = 1; i <= 5; i++) {
                         row.insertCell().textContent = project[`startTimeDay${i}`] || '';
                         row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
                         row.insertCell().textContent = project[`breakDurationMinutesDay${i}`] || '';
                     }
 
-                    // Actions
                     const actionsCell = row.insertCell();
                     for (let i = 1; i <= 5; i++) {
                         const startBtn = document.createElement('button');
@@ -338,12 +346,16 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         showLoading(message = "Loading...") {
-            this.elements.loadingOverlay.querySelector('p').textContent = message;
-            this.elements.loadingOverlay.style.display = 'flex';
+            if (this.elements.loadingOverlay) {
+                this.elements.loadingOverlay.querySelector('p').textContent = message;
+                this.elements.loadingOverlay.style.display = 'flex';
+            }
         },
 
         hideLoading() {
-            this.elements.loadingOverlay.style.display = 'none';
+            if (this.elements.loadingOverlay) {
+                this.elements.loadingOverlay.style.display = 'none';
+            }
         }
     };
 
