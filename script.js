@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- METHODS ---
         methods: {
             // =================================================================================
-            // == INITIALIZATION & AUTH ========================================================
+            // == INITIALIZATION & AUTH (Updated with Persistent Login) ========================
             // =================================================================================
             init() {
                 this.methods.setupDOMReferences.call(this);
@@ -46,6 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
             async initializeGapiClient() {
                 await gapi.client.init({ apiKey: this.config.google.API_KEY, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
                 this.state.isGapiInitialized = true;
+                
+                // **FIX ADDED**: Load token from localStorage on startup
+                const storedToken = localStorage.getItem('google_auth_token');
+                if (storedToken) {
+                    gapi.client.setToken(JSON.parse(storedToken));
+                }
+
                 this.methods.updateAuthUI.call(this);
             },
             gisLoaded() {
@@ -59,12 +66,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             handleAuthClick() {
-                this.tokenClient.callback = async (resp) => { if (resp.error) throw (resp); await this.methods.handleAuthorizedUser.call(this); };
+                this.tokenClient.callback = async (resp) => { 
+                    if (resp.error) throw (resp); 
+                    
+                    // **FIX ADDED**: Save token to localStorage after successful login
+                    localStorage.setItem('google_auth_token', JSON.stringify(gapi.client.getToken()));
+
+                    await this.methods.handleAuthorizedUser.call(this); 
+                };
                 if (gapi.client.getToken() === null) { this.tokenClient.requestAccessToken({ prompt: 'consent' }); } else { this.tokenClient.requestAccessToken({ prompt: '' }); }
             },
             handleSignoutClick() {
                 const token = gapi.client.getToken();
-                if (token !== null) { google.accounts.oauth2.revoke(token.access_token); gapi.client.setToken(''); this.methods.handleSignedOutUser.call(this); }
+                if (token !== null) { 
+                    google.accounts.oauth2.revoke(token.access_token); 
+                    gapi.client.setToken(''); 
+                    
+                    // **FIX ADDED**: Remove token from localStorage on sign out
+                    localStorage.removeItem('google_auth_token');
+
+                    this.methods.handleSignedOutUser.call(this); 
+                }
             },
             async handleAuthorizedUser() {
                 document.body.classList.remove('login-view-active');
@@ -130,6 +152,17 @@ document.addEventListener('DOMContentLoaded', () => {
                  try {
                     await gapi.client.sheets.spreadsheets.values.append({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: sheetName, valueInputOption: 'USER_ENTERED', resource: { values: rows } });
                 } catch (err) { throw new Error("Failed to add data to Google Sheet."); }
+            },
+             async updateRowInSheet(sheetName, rowIndex, dataObject) {
+                this.methods.showLoading.call(this, "Saving changes...");
+                try {
+                    const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!1:1` })).result.values[0];
+                    const values = [headers.map(header => dataObject[header] || "")];
+                    await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A${rowIndex}`, valueInputOption: 'USER_ENTERED', resource: { values } });
+                } catch (err) {
+                    console.error(`Error updating row ${rowIndex} in ${sheetName}:`, err);
+                    alert("Failed to save changes.");
+                } finally { this.methods.hideLoading.call(this); }
             },
             
             // =================================================================================
@@ -198,32 +231,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     const row = tableBody.insertRow();
                     row.dataset.projectId = project.id;
                     row.style.backgroundColor = this.config.FIX_CATEGORIES.COLORS[project.fixCategory] || '#fff';
-
                     row.insertCell().textContent = project.fixCategory;
                     row.insertCell().textContent = project.baseProjectName;
                     row.insertCell().textContent = project.areaTask;
                     row.insertCell().textContent = project.gsd;
-
                     const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Select Tech</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
                     assignedToSelect.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { 'assignedTo': e.target.value });
                     row.insertCell().appendChild(assignedToSelect);
-
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
-
                     for (let i = 1; i <= 6; i++) {
                         row.insertCell().textContent = project[`startTimeDay${i}`] || '';
                         row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
                         row.insertCell().textContent = project[`breakDurationMinutesDay${i}`] || '0';
                     }
-                    
                     row.insertCell().textContent = '...'; // Progress
                     row.insertCell().textContent = '...'; // Total
-
                     const actionsCell = row.insertCell();
                     const buttonsDiv = document.createElement('div');
                     actionsCell.appendChild(buttonsDiv);
-                    
                     const createBtn = (text, className, action, disabled = false) => {
                         const btn = document.createElement('button');
                         btn.textContent = text;
@@ -232,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.onclick = () => this.methods.updateProjectState.call(this, project.id, action);
                         buttonsDiv.appendChild(btn);
                     };
-
                     for (let i = 1; i <= 6; i++) {
                         const isStartDisabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
                         createBtn(`Start D${i}`, 'btn-primary', `startDay${i}`, isStartDisabled);
@@ -249,18 +274,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     acc[p.baseProjectName].push(p);
                     return acc;
                 }, {});
-
                 for (const projectName in projectsByName) {
                     const projectDiv = document.createElement('div');
-                    projectDiv.style.border = "1px solid #ccc";
-                    projectDiv.style.padding = "10px";
-                    projectDiv.style.marginBottom = "10px";
+                    projectDiv.style.border = "1px solid #ccc"; projectDiv.style.padding = "10px"; projectDiv.style.marginBottom = "10px";
                     projectDiv.innerHTML = `<h4>${projectName}</h4>`;
-
                     const currentFixes = [...new Set(projectsByName[projectName].map(p => p.fixCategory))].sort();
                     const latestFix = currentFixes[currentFixes.length - 1];
                     const nextFixIndex = this.config.FIX_CATEGORIES.ORDER.indexOf(latestFix) + 1;
-                    
                     if (nextFixIndex < this.config.FIX_CATEGORIES.ORDER.length) {
                         const nextFix = this.config.FIX_CATEGORIES.ORDER[nextFixIndex];
                         const releaseBtn = document.createElement('button');
@@ -276,36 +296,24 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             async releaseBatchToNextFix(projectName, currentFix, nextFix) {
                 if (!confirm(`Are you sure you want to release all tasks for "${projectName}" from ${currentFix} to ${nextFix}?`)) return;
-
                 const tasksToRelease = this.state.projects.filter(p => p.baseProjectName === projectName && p.fixCategory === currentFix);
                 if (tasksToRelease.length === 0) { alert("No tasks found to release."); return; }
-                
                 this.methods.showLoading.call(this, `Releasing ${tasksToRelease.length} tasks...`);
-                
                 const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1` })).result.values[0];
-                const newRows = [];
-                const updates = [];
-
+                const newRows = [], updates = [];
                 tasksToRelease.forEach(task => {
-                    // Prepare new row for the next fix stage
                     const newRowObj = { ...task, fixCategory: nextFix, status: 'Available', id: `proj_${Date.now()}_${Math.random()}` };
-                    // Reset time and break values for the new task
                     for(let i=1; i<=6; i++) { newRowObj[`startTimeDay${i}`] = ''; newRowObj[`finishTimeDay${i}`] = ''; newRowObj[`breakDurationMinutesDay${i}`] = '0'; }
                     newRows.push(headers.map(h => newRowObj[h] || ""));
-
-                    // Prepare update for the old task
                     task.releasedToNextStage = "TRUE";
                     updates.push({ rowIndex: task._row, dataObject: task });
                 });
-
                 try {
                     await this.methods.appendRowsToSheet.call(this, this.config.sheetNames.PROJECTS, newRows);
                     await this.methods.batchUpdateSheet.call(this, this.config.sheetNames.PROJECTS, updates);
                     alert("Tasks released successfully!");
-                    await this.methods.loadDataFromSheets.call(this); // Reload all data
-                } catch (e) {
-                    alert("An error occurred during release.");
-                } finally { this.methods.hideLoading.call(this); }
+                    await this.methods.loadDataFromSheets.call(this);
+                } catch (e) { alert("An error occurred during release."); }
             },
             showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
             hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
