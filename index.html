@@ -3,22 +3,700 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PCS Advanced Bonus Calculator - New Version Available</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Team123 - Project Tracker V2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.css">
     <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #6c757d;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --info-color: #17a2b8;
+            --bg-color: #f0f2f5;
+            --card-bg-color: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #e0e0e0;
+            --shadow-light: 0 2px 5px rgba(0,0,0,0.05);
+            --shadow-medium: 0 4px 12px rgba(0,0,0,0.08);
+            --border-radius-sm: 4px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 12px;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s ease;
+        }
+        
+        body.login-view-active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        body.login-view-active .dashboard-wrapper {
+            display: none;
+        }
+
+        .dashboard-wrapper {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--text-color);
+            color: #ecf0f1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #475569;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar h2 {
+            color: #fff;
+            margin-top: 0;
+            margin-bottom: 30px;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        .sidebar-nav button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background-color: transparent;
+            border: none;
+            color: #ecf0f1;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: var(--border-radius-md);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            text-align: left;
+            gap: 12px;
+        }
+
+        .sidebar-nav button:hover, .sidebar-nav button.active {
+            background-color: #475569;
+            color: #fff;
+        }
+        
+        .sidebar-nav button .icon {
+            font-size: 1.2em;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: var(--text-color);
+            text-align: left;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 15px;
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            cursor: pointer;
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .user-profile:hover {
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .user-profile img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-profile .info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-profile .info .name {
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .user-profile .info .email {
+            font-size: 0.85em;
+            color: #777;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: #2980b9; }
+
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-success:hover { background-color: #27ae60; }
+
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        .btn-info { background-color: var(--info-color); color: white; }
+        .btn-info:hover { background-color: #138496; }
+        
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn-danger:hover { background-color: #c0392b; }
+
+        .btn-warning { background-color: var(--warning-color); color: white; }
+        .btn-warning:hover { background-color: #e67e22; }
+
+        .btn:disabled {
+            background-color: #bdc3c7 !important;
+            color: #7f8c8d !important;
+            cursor: not-allowed;
+        }
+        
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: flex-end;
+        }
+
+        .filter-bar {
+            background-color: var(--card-bg-color);
+            padding: 15px;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-light);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .filter-bar label {
+            font-weight: 500;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .filter-bar select {
+            padding: 8px;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid #ccc;
+            font-size: 0.9em;
+            background-color: #f8f9fa;
+        }
+
+        .table-container {
+            background-color: var(--card-bg-color);
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-light);
+            padding: 20px;
+        }
+
+        .table-scroll-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .project-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85em;
+        }
+
+        .project-table th, .project-table td {
+            padding: 12px 10px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .project-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .project-table td:first-child { border-left: 1px solid var(--border-color); }
+        .project-table tr:last-child td { border-bottom: none; }
+        .project-table tr:hover { background-color: #f0f8ff; }
+        .project-table input, .project-table select {
+            padding: 6px;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid #ccc;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .dashboard-container {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .dashboard-container.active {
+            display: flex;
+        }
+
+        .tl-dashboard-content, .user-management-content {
+            background-color: var(--card-bg-color);
+            padding: 20px;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-light);
+        }
+        
+        #auth-wrapper {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        #auth-wrapper .login-card {
+            background-color: #ffffff;
+            padding: 40px 50px;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-medium);
+            text-align: center;
+        }
+        
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: var(--card-bg-color); margin: 5% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; box-shadow: var(--shadow-medium); }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close-btn:hover, .close-btn:focus { color: black; text-decoration: none; cursor: pointer; }
+
+        /* Other styles from previous file */
+        .batch-header-row td { background-color: #6c757d !important; color: white; font-size: 1.1em; font-weight: bold; text-align: left; padding: 6px 8px; }
+        .fix-group-header td { background-color: #adb5bd !important; color: #212529; font-size: 1.0em; font-weight: bold; text-align: left; padding: 4px 8px; cursor:pointer; padding-left: 30px; }
+        .hidden-group-row { display: none; }
+        #projectTable td.total-duration-column { font-weight: bold; background-color: #c0392b; color: white; }
+        .reassigned-task-highlight { background-color: #FFF9C4 !important; }
+        .status { padding: 2px 5px; border-radius: 3px; color: white; font-weight: bold; text-align: center; display: inline-block; font-size:0.95em; }
+        .status-available { background-color: #3498db; }
+        .status-inprogressday1, .status-day1ended_awaitingnext, .status-inprogressday2, .status-day2ended_awaitingnext, .status-inprogressday3, .status-day3ended_awaitingnext, .status-inprogressday4, .status-day4ended_awaitingnext, .status-inprogressday5, .status-day5ended_awaitingnext, .status-inprogressday6, .status-day6ended_awaitingnext { background-color: #f39c12; }
+        .status-completed { background-color: #2ecc71; }
+        .status-reassigned_techabsent { background-color: #B0BEC5; color: #263238; }
+        .user-management-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .dispute-status-pending { color: #f39c12; font-weight: bold; }
+        .dispute-status-done { color: #2ecc71; font-weight: bold; }
+
+        /* Added new styles to fix the login button and message display */
+        #signInBtn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+        #loading-auth-message {
+            margin-top: 20px;
+            text-align: center;
         }
     </style>
+    <link rel="icon" type="image/png" href="icon.png">
 </head>
-<body class="bg-gray-900 text-gray-300 flex items-center justify-center min-h-screen">
-
-    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-8 md:p-12 text-center max-w-2xl mx-4">
-        <h1 class="text-2xl md:text-3xl font-bold text-white mb-4">A new version of the PCS Bonus Calculator is now available.</h1>
-        <p class="text-gray-400 md:text-lg mb-8">A new and improved version is available. Please visit the new site for the latest updates and features.</p>
-        <a href="https://pcsbonus.vercel.app/#" class="inline-block bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-md text-lg" target="_blank">Go to Version 2</a>
+<body class="login-view-active">
+    <div id="auth-wrapper">
+        <div class="login-card">
+            <h2>Project Tracker V2</h2>
+            <p>Sign in to continue to Team123</p>
+            <button id="signInBtn">
+                <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66L15.71 17.57c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    <path d="M1 1h22v22H1z" fill="none"/>
+                </svg>
+                <span>Sign in with Google</span>
+            </button>
+            <button id="clearDataBtn" style="display: block; width: 100%; padding: 12px 24px; margin-top: 15px; background-color: #6c757d; color: white; border: none; border-radius: 8px; font-family: 'Inter', Arial, sans-serif; font-size: 1.05em; font-weight: 500; cursor: pointer; transition: background-color 0.3s ease;" onmouseover="this.style.backgroundColor='#5a6268'" onmouseout="this.style.backgroundColor='#6c757d'">
+            Clear Login Session
+            </button>
+        </div>
+        <div id="loading-auth-message"></div>
     </div>
+    
+    <div class="dashboard-wrapper">
+        <aside class="sidebar" id="sidebar">
+            <h2>Team123</h2>
+            <div class="sidebar-nav">
+                <button id="openTechDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
+                <button id="openTlDashboardBtn"><i class="fas fa-tools icon"></i> Project Settings</button>
+                <button id="openSettingsBtn"><i class="fas fa-users-cog icon"></i> User Management</button>
+                <button id="openTlSummaryBtn"><i class="fas fa-chart-bar icon"></i> TL Summary</button>
+                <button id="openDisputeBtn" style="position: relative;"><i class="fas fa-exclamation-triangle icon"></i> Dispute
+                    <span id="disputeNotificationBadge" class="chat-notification-badge" style="display: none;"></span>
+                </button>
+                <button id="exportSelectedCsvBtn"><i class="fas fa-file-csv icon"></i> Export Selected</button>
+                <button id="exportAllCsvBtn"><i class="fas fa-download icon"></i> Export All</button>
+                <button id="openImportCsvBtn"><i class="fas fa-upload icon"></i> Import CSV</button>
+            </div>
+            <div class="user-profile" style="margin-top: auto; display: none;">
+                <img id="userPhoto" src="" alt="User Photo">
+                <div class="info">
+                    <span class="name" id="userName"></span>
+                    <span class="email" id="userEmail"></span>
+                </div>
+            </div>
+            <button id="signOutBtn" class="btn btn-danger" style="margin-top: 15px; display: none;">Sign Out</button>
+        </aside>
 
+        <main class="main-content" id="mainContent">
+            <div id="techDashboard" class="dashboard-container active">
+                <div class="dashboard-header">
+                    <h1>Tech Dashboard</h1>
+                </div>
+                <div class="filter-bar">
+                    <label for="monthFilter">Month:</label>
+                    <select id="monthFilter">
+                        <option value="">All Months</option>
+                    </select>
+                    <label for="batchIdSelect">Project:</label>
+                    <select id="batchIdSelect">
+                        <option value="">All Projects</option>
+                    </select>
+                    <label for="fixCategoryFilter">Fix Category:</label>
+                    <select id="fixCategoryFilter">
+                        <option value="">All</option>
+                        <option value="Fix1">Fix1</option>
+                        <option value="Fix2">Fix2</option>
+                        <option value="Fix3">Fix3</option>
+                        <option value="Fix4">Fix4</option>
+                        <option value="Fix5">Fix5</option>
+                        <option value="Fix6">Fix6</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <div class="table-scroll-wrapper">
+                        <table id="projectTable" class="project-table">
+                            <thead>
+                                <tr>
+                                    <th>Fix Cat</th>
+                                    <th>Project Name</th>
+                                    <th>Area/Task</th>
+                                    <th>GSD</th>
+                                    <th>Assigned To</th>
+                                    <th>Status</th>
+                                    <th>Day 1 Start</th>
+                                    <th>Day 1 Finish</th>
+                                    <th>Day 1 Break</th>
+                                    <th>Day 2 Start</th>
+                                    <th>Day 2 Finish</th>
+                                    <th>Day 2 Break</th>
+                                    <th>Day 3 Start</th>
+                                    <th>Day 3 Finish</th>
+                                    <th>Day 3 Break</th>
+                                    <th>Day 4 Start</th>
+                                    <th>Day 4 Finish</th>
+                                    <th>Day 4 Break</th>
+                                    <th>Day 5 Start</th>
+                                    <th>Day 5 Finish</th>
+                                    <th>Day 5 Break</th>
+                                    <th>Day 6 Start</th>
+                                    <th>Day 6 Finish</th>
+                                    <th>Day 6 Break</th>
+                                    <th>Progress</th>
+                                    <th>Total (min)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectTableBody"></tbody>
+                        </table>
+                        <div id="paginationControls" style="display: none; text-align: center; padding: 15px;">
+                            <button id="prevPageBtn" class="btn btn-secondary">« Previous</button>
+                            <span id="pageInfo" style="margin: 0 15px; font-weight: bold;"></span>
+                            <button id="nextPageBtn" class="btn btn-secondary">Next »</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="tlDashboard" class="dashboard-container">
+                <div class="dashboard-header">
+                    <h1>Project Settings</h1>
+                </div>
+                <div class="action-bar" style="justify-content: flex-start; padding-left: 20px;">
+                    <button id="openNewProjectModalBtn" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add New Project
+                    </button>
+                </div>
+                <div class="tl-dashboard-content" id="tlDashboardContent"></div>
+            </div>
+            <div id="userManagementDashboard" class="dashboard-container">
+                <div class="dashboard-header">
+                    <h1>User Management</h1>
+                </div>
+                <div class="user-management-content" id="userManagementContent">
+                    <div class="user-management-header">
+                        <h2>User Management</h2>
+                        <div>
+                            <button id="importUsersBtn" class="btn btn-info">Import Users</button>
+                            <button id="exportUsersBtn" class="btn btn-primary">Export Users</button>
+                            <input type="file" id="userCsvInput" accept=".csv" style="display: none;">
+                        </div>
+                    </div>
+                    <p style="font-size: 0.9em; color: #666; margin-top: -8px; margin-bottom: 20px;">Add, edit, and remove authorized users. The Tech ID will appear in dropdowns, and the Full Name will show on hover.</p>
+                    <form id="userManagementForm">
+                        <div class="form-group">
+                            <label for="newUserName">Full Name</label>
+                            <input type="text" id="newUserName" placeholder="e.g., John Doe" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserEmail">Email Address</label>
+                            <input type="email" id="newUserEmail" placeholder="e.g., user@example.com" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserTechId">Tech ID</label>
+                            <input type="text" id="newUserTechId" placeholder="e.g., 1234JD" class="form-control" required>
+                        </div>
+                        <div id="userFormButtons">
+                             <button type="submit" class="btn btn-success">Add User</button>
+                        </div>
+                    </form>
+                    <table id="userManagementTable">
+                        <thead>
+                            <tr>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Tech ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userManagementTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="projectFormModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeProjectFormBtn">&times;</span>
+            <h2>Add New Tracker</h2>
+            <form id="newProjectForm">
+                <label for="numRows">Number of Area:</label>
+                <input type="number" id="numRows" value="1" min="1" required>
+                <label for="baseProjectName">Project Name:</label>
+                <input type="text" id="baseProjectName" value="PROJ_ID_XYZ" required>
+                <label for="gsd">GSD:</label>
+                <select id="gsd" required>
+                    <option value="3in">3in</option>
+                    <option value="4in">4in</option>
+                    <option value="6in">6in</option>
+                    <option value="9in">9in</option>
+                </select>
+                <button type="submit" class="btn btn-success">Add Project(s)</button>
+            </form>
+        </div>
+    </div>
+    <div id="tlSummaryModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeTlSummaryBtn">&times;</span>
+            <div class="summary-header">
+                <h2 class="summary-title">TL Summary</h2>
+            </div>
+            <div id="tlSummaryContent">
+                <p>Loading summary...</p>
+            </div>
+        </div>
+    </div>
+    <div id="importCsvModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeImportCsvBtn">&times;</span>
+            <h2>📥 Import Projects from CSV</h2>
+            <p>Upload a CSV file. The file should have headers matching the export format.</p>
+            <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom: 15px;">
+            <button id="processCsvBtn" class="btn btn-primary" disabled>Process CSV</button>
+            <div id="csvImportStatus" style="margin-top: 10px; font-size: 0.9em; color: #555;"></div>
+        </div>
+    </div>
+    <div id="selectProjectsModal" class="modal">
+        <div class="modal-content large">
+            <span class="close-btn" id="closeSelectProjectsBtn">&times;</span>
+            <h2>Select Projects to Export</h2>
+            <div id="projectListContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 15px;">
+                <ul id="projectSelectionList" style="list-style: none; padding: 0;"></ul>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="exportSelectedProjectsBtn" class="btn btn-primary">Export Selected Projects</button>
+            </div>
+        </div>
+    </div>
+    <div id="disputeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeDisputeBtn">&times;</span>
+            <h2>File a Dispute</h2>
+            <form id="disputeForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label for="disputeBlockId">Block ID:</label>
+                        <input type="text" id="disputeBlockId" required>
+
+                        <label for="disputeProjectName">Project Name:</label>
+                        <select id="disputeProjectName" required></select>
+
+                        <label for="disputePartial">Partial:</label>
+                        <select id="disputePartial" required>
+                            <option value="">Select Partial</option>
+                            <option value="Partial 1">Partial 1</option>
+                            <option value="Partial 2">Partial 2</option>
+                            <option value="Partial 3">Partial 3</option>
+                            <option value="Partial 4">Partial 4</option>
+                            <option value="Partial 5">Partial 5</option>
+                            <option value="Partial 6">Partial 6</option>
+                            <option value="Partial 7">Partial 7</option>
+                            <option value="Partial 8">Partial 8</option>
+                            <option value="Partial 9">Partial 9</option>
+                            <option value="Partial 10">Partial 10</option>
+                        </select>
+
+                        <label for="disputePhase">Phase:</label>
+                        <select id="disputePhase" required>
+                            <option value="">Select Phase</option>
+                            <option value="Fix2">Fix2</option>
+                            <option value="Fix3">Fix3</option>
+                            <option value="Fix4">Fix4</option>
+                            <option value="Fix5">Fix5</option>
+                        </select>
+
+                        <label for="disputeUid">UID (Initial FP's UID):</label>
+                        <input type="text" id="disputeUid" required>
+                    </div>
+                    <div>
+                        <label for="disputeTechId">Tech ID:</label>
+                        <select id="disputeTechId" required></select>
+
+                        <label for="disputeTechName">Tech Name:</label>
+                        <input type="text" id="disputeTechName" readonly>
+
+                        <label for="disputeTeam">Team:</label>
+                        <select id="disputeTeam" required>
+                            <option value="">Select Team</option>
+                            <option value="Team 123">Team 123</option>
+                            <option value="Team 114">Team 114</option>
+                            <option value="Team 64">Team 64</option>
+                        </select>
+
+                        <label for="disputeType">Type:</label>
+                        <select id="disputeType" required>
+                            <option value="">Select Type</option>
+                            <option value="Incorrect">Incorrect</option>
+                            <option value="Skip">Skip</option>
+                            <option value="Change">Change</option>
+                        </select>
+
+                        <label for="disputeCategory">Category:</label>
+                        <select id="disputeCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                        </select>
+                    </div>
+                </div>
+                <label for="disputeWarning">Warning:</label>
+                <select id="disputeWarning" name="warning">
+                    <option value="N/A" selected>N/A</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                    <option value="E">E</option>
+                    <option value="F">F</option>
+                    <option value="G">G</option>
+                </select>
+                <label for="disputeRqaTechId">RQA TechID:</label>
+                <input type="text" id="disputeRqaTechId">
+                <label for="disputeReason">Detailed Reason for Dispute:</label>
+                <textarea id="disputeReason" rows="4" required></textarea>
+                <button type="submit" class="btn btn-success">Save Dispute</button>
+            </form>
+            <hr>
+            <h3>Disputes List</h3>
+            <div class="table-scroll-wrapper">
+                <table id="disputeTable">
+                    <thead>
+                        <tr>
+                            <th>Block ID</th>
+                            <th>Project Name</th>
+                            <th>Phase</th>
+                            <th>Tech ID</th>
+                            <th>Team</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="disputeTableBody"></tbody>
+                </table>
+                <div id="disputePaginationControls" style="text-align: center; padding: 15px;">
+                    <button id="prevDisputePageBtn" class="btn">« Previous</button>
+                    <span id="disputePageInfo" style="margin: 0 15px; font-weight: bold;"></span>
+                    <button id="nextDisputePageBtn" class="btn">Next »</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+    
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="script.js"></script>
 </body>
 </html>
