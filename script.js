@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
+        authTimeoutId: null, // To handle auth hangs
         state: { 
             projects: [], 
             users: [], 
@@ -49,14 +50,22 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
                 alert("Critical Error: Could not initialize Google API client. The app may not function.");
-                this.handleSignedOutUser(); // Go to signed-out state on critical error
+                this.handleSignedOutUser();
             }
         },
-
+        
+        // --- THIS FUNCTION INCLUDES THE TIMEOUT FIX ---
         updateAuthUI() {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (isLoggedIn) {
                 this.showLoading("Restoring session...");
+
+                // Set a timeout as a fallback in case the auth process hangs
+                this.authTimeoutId = setTimeout(() => {
+                    console.warn("Authentication timed out. Forcing sign-out.");
+                    this.handleSignedOutUser();
+                }, 7000); // 7-second timeout
+
                 this.tokenClient.requestAccessToken({ prompt: 'none' });
             } else {
                 this.handleSignedOutUser();
@@ -67,18 +76,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
         
-        // --- THIS FUNCTION IS THE KEY FIX ---
         async handleTokenResponse(resp) {
+            // As soon as we get a response, clear the timeout safety net
+            clearTimeout(this.authTimeoutId);
+
             if (resp.error) {
                 console.error("Auth Error (likely silent-refresh failure):", resp.error);
-                // If there's an error, it means the silent sign-in failed.
-                // The correct action is to clear the local login state and
-                // show the main login screen. This avoids getting stuck.
                 localStorage.removeItem('isLoggedIn');
-                this.handleSignedOutUser(); // This function hides the loading screen.
+                this.handleSignedOutUser();
                 return;
             }
-            // On success:
+            
             gapi.client.setToken(resp);
             localStorage.setItem('isLoggedIn', 'true');
             this.handleAuthorizedUser();
@@ -109,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleSignedOutUser() {
-            this.hideLoading(); // Ensure loading screen is always hidden on sign-out
+            this.hideLoading();
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
@@ -117,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == DATA HANDLING (No changes in this section) ===================================
+        // == DATA HANDLING (No changes) ===================================================
         // =================================================================================
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
@@ -205,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         // =================================================================================
-        // == UI AND EVENT LOGIC (No changes in this section) ==============================
+        // == UI AND EVENT LOGIC (No changes) ==============================================
         // =================================================================================
         setupDOMReferences() {
             this.elements = {
@@ -395,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == FILTERING & RENDERING (No changes in this section) ===========================
+        // == FILTERING & RENDERING (No changes) ===========================================
         // =================================================================================
         filterAndRenderProjects() {
             this.showFilterSpinner();
