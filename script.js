@@ -9,7 +9,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             sheetNames: { PROJECTS: "Projects", USERS: "Users" },
-            HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
+            HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
+            FIX_COLORS: { // Define colors for sheet formatting (Red, Green, Blue)
+                "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 },     // Light Blue
+                "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },    // Light Green
+                "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 },    // Light Yellow
+                "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },    // Light Red
+                "Fix5": { "red": 0.952, "green": 0.901, "blue": 0.972 },    // Light Purple
+            }
         },
         tokenClient: null,
         authTimeoutId: null, 
@@ -149,9 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
                 
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
-                
-                // --- GHOST PROJECT FIX ---
-                // Filter out any rows that don't have a baseProjectName
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
 
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
@@ -268,6 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value; this.filterAndRenderProjects();
             });
+            this.elements.fixCategoryFilter.addEventListener('change', (e) => {
+                this.state.filters.fixCategory = e.target.value; this.filterAndRenderProjects();
+            });
         },
 
         switchView(viewName) {
@@ -291,6 +298,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             this.elements.projectFilter.value = this.state.filters.project;
+
+            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
+            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
         },
 
         async handleAddProjectSubmit(event) {
@@ -456,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async handleReorganizeSheet() {
-            if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows. This action cannot be undone. Are you sure you want to continue?")) return;
+            if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows and applying colors. This action cannot be undone. Are you sure?")) return;
             this.showLoading("Reorganizing sheet...");
             try {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
@@ -477,14 +488,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const newSheetData = [];
+                const formattingRequests = [];
                 let lastProject = null;
                 let lastFix = null;
+                let currentRowIndex = 1; // Start from row 2 (1-based index for API)
+                
                 sortedProjects.forEach(project => {
+                    currentRowIndex++;
                     if ( (lastProject !== null && project.baseProjectName !== lastProject) || (lastFix !== null && project.fixCategory !== lastFix) ) {
                          newSheetData.push(new Array(headers.length).fill(""));
+                         currentRowIndex++;
                     }
                     const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
                     newSheetData.push(row);
+                    
+                    const color = this.config.FIX_COLORS[project.fixCategory];
+                    if (color) {
+                        formattingRequests.push({
+                            repeatCell: {
+                                range: {
+                                    sheetId: this.state.projectSheetId,
+                                    startRowIndex: currentRowIndex -1,
+                                    endRowIndex: currentRowIndex
+                                },
+                                cell: {
+                                    userEnteredFormat: {
+                                        backgroundColor: color
+                                    }
+                                },
+                                fields: "userEnteredFormat.backgroundColor"
+                            }
+                        });
+                    }
+
                     lastProject = project.baseProjectName;
                     lastFix = project.fixCategory;
                 });
@@ -501,9 +537,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     resource: { values: newSheetData }
                 });
 
+                if (formattingRequests.length > 0) {
+                    await gapi.client.sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: this.config.google.SPREADSHEET_ID,
+                        resource: { requests: formattingRequests }
+                    });
+                }
+
                 await this.loadDataFromSheets();
-                alert("Sheet reorganized successfully!");
+                alert("Sheet reorganized and colored successfully!");
             } catch(error) {
+                console.error("Reorganization Error:", error);
                 alert("Error reorganizing sheet: " + error.message);
             } finally {
                 this.hideLoading();
@@ -524,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="btn-group">
                                 <button class="btn btn-secondary" data-action="reorganize">Reorganize Sheet</button>
                             </div>
-                            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">Sorts all entries by Project, then Fix Stage. Inserts blank rows for clarity. This can take a moment.</p>
+                            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">Sorts all entries by Project, then Fix Stage. Inserts blank rows and applies colors for clarity.</p>
                         </div>
                     </div>
                 </div>
@@ -614,6 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
+                // --- FIX CATEGORY FILTER FIX ---
+                if (this.state.filters.fixCategory !== 'All') {
+                    filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
+                }
                 this.renderProjects(filteredProjects); 
                 this.hideFilterSpinner();
             }, 100);
@@ -654,6 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sortedFixKeys = Object.keys(groupedByFix).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
                 sortedFixKeys.forEach(fixKey => {
+                    const fixNum = parseInt(fixKey.replace('Fix', ''), 10);
                     const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
                     headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${this.formatProjectName(projectName)} - ${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
                     headerRow.onclick = () => {
@@ -665,6 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const tasksInFixGroup = groupedByFix[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
                     tasksInFixGroup.forEach(project => {
                         const row = tableBody.insertRow(); 
+                        row.className = `fix-stage-${fixNum}`;
                         row.dataset.projectGroup = projectName;
                         row.dataset.fixGroup = fixKey;
                         row.insertCell().textContent = project.fixCategory || ''; row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
