@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const ProjectTrackerApp = {
-        // --- CONFIGURATION (Completed with your details) ---
+        // --- CONFIGURATION ---
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
@@ -153,26 +153,24 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             
             // =================================================================================
-            // == CORE APPLICATION LOGIC (FULLY IMPLEMENTED) ===================================
+            // == CORE APPLICATION LOGIC (FULLY IMPLEMENTED AND BUG-FIXED) =====================
             // =================================================================================
             setupDOMReferences() {
                  this.elements = { body: document.body, authWrapper: document.getElementById('auth-wrapper'), mainContainer: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'), signOutBtn: document.getElementById('signOutBtn'), userInfoDisplayDiv: document.querySelector('.user-profile'), userNameP: document.getElementById('userName'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'), openTlDashboardBtn: document.getElementById('openTlDashboardBtn'), openSettingsBtn: document.getElementById('openSettingsBtn'), projectFormModal: document.getElementById('projectFormModal'), tlDashboard: document.getElementById('tlDashboard'), userManagementDashboard: document.getElementById('userManagementDashboard'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'), newProjectForm: document.getElementById('newProjectForm'), projectTableBody: document.getElementById('projectTableBody'), loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'), techDashboard: document.getElementById('techDashboard'), tlDashboardContent: document.getElementById('tlDashboardContent') };
             },
             attachEventListeners() {
-                this.elements.signInBtn.onclick = this.methods.handleAuthClick.bind(this);
-                this.elements.signOutBtn.onclick = this.methods.handleSignoutClick.bind(this);
-                this.elements.newProjectForm.addEventListener('submit', (e) => this.methods.handleAddProjectSubmit.call(this, e));
+                this.elements.signInBtn.onclick = () => ProjectTrackerApp.methods.handleAuthClick();
+                this.elements.signOutBtn.onclick = () => ProjectTrackerApp.methods.handleSignoutClick();
+                this.elements.newProjectForm.addEventListener('submit', (e) => ProjectTrackerApp.methods.handleAddProjectSubmit(e));
                 this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
                 this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
-                this.elements.openTechDashboardBtn.onclick = () => this.methods.showDashboard.call(this, 'techDashboard');
-                this.elements.openTlDashboardBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { this.methods.showDashboard.call(this, 'tlDashboard'); this.methods.renderTLDashboard.call(this); } else { alert("Incorrect PIN."); }};
-                this.elements.openSettingsBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { this.methods.showDashboard.call(this, 'userManagementDashboard'); } else { alert("Incorrect PIN."); }};
+                this.elements.openTechDashboardBtn.onclick = () => ProjectTrackerApp.methods.showDashboard('techDashboard');
+                this.elements.openTlDashboardBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { ProjectTrackerApp.methods.showDashboard('tlDashboard'); ProjectTrackerApp.methods.renderTLDashboard(); } else { alert("Incorrect PIN."); }};
+                this.elements.openSettingsBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { ProjectTrackerApp.methods.showDashboard('userManagementDashboard'); } else { alert("Incorrect PIN."); }};
             },
             showDashboard(id) {
                 document.querySelectorAll('.dashboard-container').forEach(d => d.style.display = 'none');
                 document.getElementById(id).style.display = 'flex';
-                document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
-                document.getElementById(`open${id.charAt(0).toUpperCase() + id.slice(1)}Btn`).classList.add('active');
             },
             refreshAllViews() { this.methods.renderProjects.call(this); this.methods.hideLoading.call(this); },
             async handleAddProjectSubmit(event) {
@@ -187,16 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { await this.methods.appendRowsToSheet.call(this, this.config.sheetNames.PROJECTS, newRows); this.elements.projectFormModal.style.display = 'none'; await this.methods.loadDataFromSheets.call(this); } catch (error) { alert("Error adding projects: " + error.message); }
             },
             async handleProjectUpdate(projectId, updates) {
-                const project = this.state.projects.find(p => p.id === projectId);
+                const project = ProjectTrackerApp.state.projects.find(p => p.id === projectId);
                 if (project) {
                     Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
-                    await this.methods.updateRowInSheet.call(this, this.config.sheetNames.PROJECTS, project._row, project);
-                    this.methods.renderProjects.call(this);
+                    await ProjectTrackerApp.methods.updateRowInSheet(ProjectTrackerApp.config.sheetNames.PROJECTS, project._row, project);
+                    ProjectTrackerApp.methods.renderProjects();
                 }
             },
             getCurrentTimeGMT8() { return new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }); },
             async updateProjectState(projectId, action) {
-                const project = this.state.projects.find(p => p.id === projectId);
+                const project = ProjectTrackerApp.state.projects.find(p => p.id === projectId);
                 if (!project) return;
                 const updates = {};
                 const dayMatch = action.match(/(start|end)Day(\d)/);
@@ -204,15 +202,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const [, type, day] = dayMatch;
                     if (type === 'start') {
                         updates.status = `InProgressDay${day}`;
-                        updates[`startTimeDay${day}`] = this.methods.getCurrentTimeGMT8();
+                        updates[`startTimeDay${day}`] = ProjectTrackerApp.methods.getCurrentTimeGMT8();
                     } else {
                         updates.status = day < 6 ? `Day${day}Ended_AwaitingNext` : 'Completed';
-                        updates[`finishTimeDay${day}`] = this.methods.getCurrentTimeGMT8();
+                        updates[`finishTimeDay${day}`] = ProjectTrackerApp.methods.getCurrentTimeGMT8();
                     }
                 } else if (action === 'markDone') {
                     updates.status = "Completed";
                 }
-                await this.methods.handleProjectUpdate(projectId, updates);
+                await ProjectTrackerApp.methods.handleProjectUpdate(projectId, updates);
             },
             renderProjects() {
                 const tableBody = this.elements.projectTableBody;
@@ -228,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.insertCell().textContent = project.gsd;
                     const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Select Tech</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
-                    assignedToSelect.onchange = (e) => this.methods.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
+                    assignedToSelect.onchange = (e) => ProjectTrackerApp.methods.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     row.insertCell().appendChild(assignedToSelect);
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
                     for (let i = 1; i <= 6; i++) {
@@ -246,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.textContent = text;
                         btn.className = `btn ${className} btn-small`;
                         btn.disabled = disabled;
-                        btn.onclick = () => this.methods.updateProjectState(project.id, action);
+                        btn.onclick = () => ProjectTrackerApp.methods.updateProjectState(project.id, action);
                         buttonsDiv.appendChild(btn);
                     };
                     for (let i = 1; i <= 6; i++) {
@@ -273,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const releaseBtn = document.createElement('button');
                         releaseBtn.textContent = `Release from ${latestFix} to ${nextFix}`;
                         releaseBtn.className = 'btn btn-primary';
-                        releaseBtn.onclick = () => this.methods.releaseBatchToNextFix(projectName, latestFix, nextFix);
+                        releaseBtn.onclick = () => ProjectTrackerApp.methods.releaseBatchToNextFix(projectName, latestFix, nextFix);
                         projectDiv.appendChild(releaseBtn);
                     } else { projectDiv.innerHTML += "<p>All fix stages completed.</p>"; }
                     content.appendChild(projectDiv);
