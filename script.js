@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 month: 'All',
                 project: 'All',
                 fixCategory: 'All',
-                showDays: { 1: true, 2: true, 3: true, 4: true, 5: true }
+                // Default days 2-5 to hidden
+                showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
             }
         },
         elements: {},
@@ -56,25 +57,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAuthUI() {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (isLoggedIn) {
-                // If user was logged in, try to get a token silently.
                 this.showLoading("Restoring session...");
                 this.tokenClient.requestAccessToken({ prompt: 'none' });
             } else {
-                // User was not logged in, show the sign-in screen.
                 this.handleSignedOutUser();
             }
         },
 
         handleAuthClick() {
-            // On explicit sign-in, always show consent prompt if needed.
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
 
         async handleTokenResponse(resp) {
             if (resp.error) {
                 console.error("Auth Error:", resp.error);
-                // This can happen if silent sign-in fails.
-                this.handleSignoutClick(); // Treat as a sign-out
+                this.handleSignoutClick();
                 return;
             }
             gapi.client.setToken(resp);
@@ -89,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     gapi.client.setToken('');
                 });
             }
-            // Clear local state regardless
             localStorage.removeItem('isLoggedIn');
             this.handleSignedOutUser();
         },
@@ -108,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleSignedOutUser() {
-            this.hideLoading(); // Ensure loading screen is hidden
+            this.hideLoading();
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
@@ -122,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!values || values.length < 2) return [];
             const headers = values[0];
             return values.slice(1).map((row, index) => {
-                let obj = { _row: index + 2 }; // Store original row index for updates
+                let obj = { _row: index + 2 };
                 headers.forEach((header, i) => {
                     const propName = headerMap[header.trim()];
                     if (propName) {
@@ -230,7 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     4: document.getElementById('showDay4'),
                     5: document.getElementById('showDay5'),
                 },
-                filterLoadingSpinner: document.getElementById('filterLoadingSpinner')
+                filterLoadingSpinner: document.getElementById('filterLoadingSpinner'),
+                
+                // New elements for view switching
+                openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
+                openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
+                techDashboardContainer: document.getElementById('techDashboardContainer'),
+                projectSettingsView: document.getElementById('projectSettingsView'),
             };
         },
 
@@ -240,6 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
+
+            // View switching listeners
+            this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
+            this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
 
             this.elements.monthFilter.addEventListener('change', (e) => {
                 this.state.filters.month = e.target.value;
@@ -258,6 +264,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.state.filters.showDays[i] = e.target.checked;
                     this.filterAndRenderProjects();
                 });
+            }
+        },
+
+        switchView(viewName) {
+            // Hide all main content views
+            this.elements.techDashboardContainer.style.display = 'none';
+            this.elements.projectSettingsView.style.display = 'none';
+            
+            // Deactivate all sidebar buttons
+            this.elements.openTechDashboardBtn.classList.remove('active');
+            this.elements.openProjectSettingsBtn.classList.remove('active');
+
+            // Show the selected view and activate its button
+            if (viewName === 'dashboard') {
+                this.elements.techDashboardContainer.style.display = 'block';
+                this.elements.openTechDashboardBtn.classList.add('active');
+            } else if (viewName === 'settings') {
+                this.elements.projectSettingsView.style.display = 'grid';
+                this.elements.openProjectSettingsBtn.classList.add('active');
             }
         },
 
