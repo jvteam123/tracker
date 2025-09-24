@@ -55,7 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateAuthUI() {
             const token = gapi.client.getToken();
-            if (token) {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+            if (token && isLoggedIn) {
                 this.handleAuthorizedUser();
             } else {
                 this.handleSignedOutUser();
@@ -76,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             gapi.client.setToken(resp);
+            localStorage.setItem('isLoggedIn', 'true');
             this.handleAuthorizedUser();
         },
 
@@ -84,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (token !== null) {
                 google.accounts.oauth2.revoke(token.access_token);
                 gapi.client.setToken('');
+                localStorage.removeItem('isLoggedIn');
                 this.handleSignedOutUser();
             }
         },
