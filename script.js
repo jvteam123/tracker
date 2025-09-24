@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
-        authTimeoutId: null,
         state: { 
             projects: [], 
             users: [], 
@@ -36,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             this.setupDOMReferences();
             this.attachEventListeners();
+            // Load GAPI first, then GSI
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
 
@@ -45,31 +45,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     apiKey: this.config.google.API_KEY,
                     discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
                 });
-                this.tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: this.config.google.CLIENT_ID,
-                    scope: this.config.google.SCOPES,
-                    callback: this.handleTokenResponse.bind(this),
-                });
-                this.updateAuthUI();
+                // GAPI is ready, now load and initialize GSI
+                this.initializeGsi();
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
-                alert("Critical Error: Could not initialize Google API client. The app may not function.");
                 this.handleSignedOutUser();
             }
         },
-        
-        updateAuthUI() {
-            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-            if (isLoggedIn) {
-                this.showLoading("Restoring session...");
-                this.authTimeoutId = setTimeout(() => {
-                    console.warn("Authentication timed out. Forcing sign-out.");
+
+        initializeGsi() {
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.config.google.CLIENT_ID,
+                scope: this.config.google.SCOPES,
+                callback: this.handleTokenResponse.bind(this),
+            });
+
+            // This is the key change: we attempt a silent sign-in immediately.
+            // If it succeeds, the callback will fire. If it fails, nothing happens,
+            // and we can safely show the sign-in button.
+            this.showLoading("Please wait...");
+            this.tokenClient.requestAccessToken({ prompt: 'none' });
+
+            // As a fallback, if no token is received after a short delay, show the login screen
+            setTimeout(() => {
+                if (!gapi.client.getToken()) {
                     this.handleSignedOutUser();
-                }, 7000);
-                this.tokenClient.requestAccessToken({ prompt: 'none' });
-            } else {
-                this.handleSignedOutUser();
-            }
+                }
+            }, 2000); 
         },
 
         handleAuthClick() {
@@ -77,15 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         async handleTokenResponse(resp) {
-            clearTimeout(this.authTimeoutId);
             if (resp.error) {
-                console.error("Auth Error (likely silent-refresh failure):", resp.error);
-                localStorage.removeItem('isLoggedIn');
-                this.handleSignedOutUser();
+                console.error("Auth Error:", resp.error);
+                this.handleSignedOutUser(); // If any error, always go to signed-out state
                 return;
             }
             gapi.client.setToken(resp);
-            localStorage.setItem('isLoggedIn', 'true');
             this.handleAuthorizedUser();
         },
 
@@ -93,11 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const token = gapi.client.getToken();
             if (token !== null) {
                 google.accounts.oauth2.revoke(token.access_token, () => {
-                    gapi.client.setToken('');
+                    gapi.client.setToken(null);
+                    this.handleSignedOutUser();
                 });
+            } else {
+                 this.handleSignedOutUser();
             }
-            localStorage.removeItem('isLoggedIn');
-            this.handleSignedOutUser();
         },
 
         async handleAuthorizedUser() {
@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         handleSignedOutUser() {
+            gapi.client.setToken(null);
             this.hideLoading();
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
@@ -141,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         async loadDataFromSheets() {
             this.showLoading("Loading data from Google Sheets...");
             try {
-                // Find the sheet ID for "Projects"
                 const spreadsheet = await gapi.client.sheets.spreadsheets.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                 });
@@ -220,21 +220,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading("Deleting rows...");
             try {
                 if (rowsToDelete.length === 0) return;
-
-                // The API requires deleting from the bottom up to not mess up indices.
                 const sortedRows = rowsToDelete.sort((a, b) => b - a);
-
                 const requests = sortedRows.map(rowIndex => ({
                     deleteDimension: {
                         range: {
                             sheetId: this.state.projectSheetId,
                             dimension: 'ROWS',
-                            startIndex: rowIndex - 1, // API is 0-indexed
+                            startIndex: rowIndex - 1,
                             endIndex: rowIndex,
                         },
                     },
                 }));
-
                 await gapi.client.sheets.spreadsheets.batchUpdate({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     resource: { requests },
@@ -252,34 +248,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         setupDOMReferences() {
             this.elements = {
-                body: document.body,
-                authWrapper: document.getElementById('auth-wrapper'),
-                dashboardWrapper: document.querySelector('.dashboard-wrapper'),
-                signInBtn: document.getElementById('signInBtn'),
-                signOutBtn: document.getElementById('signOutBtn'),
-                projectTable: document.getElementById('projectTable'),
-                projectTableHead: document.getElementById('projectTable').querySelector('thead tr'),
-                projectTableBody: document.getElementById('projectTableBody'),
-                loadingOverlay: document.getElementById('loadingOverlay'),
-                openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
-                projectFormModal: document.getElementById('projectFormModal'),
-                closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
-                newProjectForm: document.getElementById('newProjectForm'),
-                monthFilter: document.getElementById('monthFilter'),
-                projectFilter: document.getElementById('projectFilter'),
-                fixCategoryFilter: document.getElementById('fixCategoryFilter'),
-                dayCheckboxes: {
-                    2: document.getElementById('showDay2'),
-                    3: document.getElementById('showDay3'),
-                    4: document.getElementById('showDay4'),
-                    5: document.getElementById('showDay5'),
-                },
-                filterLoadingSpinner: document.getElementById('filterLoadingSpinner'),
-                openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
-                openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
-                techDashboardContainer: document.getElementById('techDashboardContainer'),
-                projectSettingsView: document.getElementById('projectSettingsView'),
-                paginationControls: document.getElementById('paginationControls'),
+                body: document.body, authWrapper: document.getElementById('auth-wrapper'),
+                dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
+                signOutBtn: document.getElementById('signOutBtn'), projectTable: document.getElementById('projectTable'),
+                projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
+                loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
+                projectFormModal: document.getElementById('projectFormModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
+                newProjectForm: document.getElementById('newProjectForm'), monthFilter: document.getElementById('monthFilter'),
+                projectFilter: document.getElementById('projectFilter'), fixCategoryFilter: document.getElementById('fixCategoryFilter'),
+                dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
+                filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
+                openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
+                projectSettingsView: document.getElementById('projectSettingsView'), paginationControls: document.getElementById('paginationControls'),
             };
         },
 
@@ -292,24 +272,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.monthFilter.addEventListener('change', (e) => {
-                this.state.filters.month = e.target.value;
-                this.state.pagination.currentPage = 1;
-                this.filterAndRenderProjects();
+                this.state.filters.month = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
             });
             this.elements.projectFilter.addEventListener('change', (e) => {
-                this.state.filters.project = e.target.value;
-                this.state.pagination.currentPage = 1;
-                this.filterAndRenderProjects();
+                this.state.filters.project = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
             });
             this.elements.fixCategoryFilter.addEventListener('change', (e) => {
-                this.state.filters.fixCategory = e.target.value;
-                this.state.pagination.currentPage = 1;
-                this.filterAndRenderProjects();
+                this.state.filters.fixCategory = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
             });
             for (let i = 2; i <= 5; i++) {
                 this.elements.dayCheckboxes[i].addEventListener('change', (e) => {
-                    this.state.filters.showDays[i] = e.target.checked;
-                    this.filterAndRenderProjects();
+                    this.state.filters.showDays[i] = e.target.checked; this.filterAndRenderProjects();
                 });
             }
         },
@@ -320,65 +293,49 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openTechDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
             if (viewName === 'dashboard') {
-                this.elements.techDashboardContainer.style.display = 'block';
-                this.elements.openTechDashboardBtn.classList.add('active');
+                this.elements.techDashboardContainer.style.display = 'block'; this.elements.openTechDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
-                this.renderProjectSettings();
-                this.elements.projectSettingsView.style.display = 'flex';
-                this.elements.openProjectSettingsBtn.classList.add('active');
+                this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'flex'; this.elements.openProjectSettingsBtn.classList.add('active');
             }
         },
 
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
-            this.elements.projectFilter.value = this.state.filters.project; // Preserve filter selection
+            this.elements.projectFilter.value = this.state.filters.project;
         },
 
         async handleAddProjectSubmit(event) {
-            event.preventDefault();
-            this.showLoading("Adding project(s)...");
+            event.preventDefault(); this.showLoading("Adding project(s)...");
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
-            const gsd = document.getElementById('gsd').value;
-            const batchId = `batch_${Date.now()}`;
+            const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
             try {
                  const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                     range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
-                const headers = getHeaders.result.values[0];
-                const newRows = [];
+                const headers = getHeaders.result.values[0]; const newRows = [];
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
                         id: `proj_${Date.now()}_${i}`, batchId, baseProjectName,
                         areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
-                    newRows.push(row);
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
-                this.elements.projectFormModal.style.display = 'none';
-                this.elements.newProjectForm.reset();
-                await this.loadDataFromSheets();
+                this.elements.projectFormModal.style.display = 'none'; this.elements.newProjectForm.reset(); await this.loadDataFromSheets();
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-            } finally {
-                this.hideLoading();
-            }
+            } finally { this.hideLoading(); }
         },
         
         calculateTotalMinutes(project) {
-            let totalWorkMinutes = 0;
-            let totalBreakMinutes = 0;
+            let totalWorkMinutes = 0; let totalBreakMinutes = 0;
             for (let i = 1; i <= 5; i++) {
-                const startTime = project[`startTimeDay${i}`] || '';
-                const finishTime = project[`finishTimeDay${i}`] || '';
+                const startTime = project[`startTimeDay${i}`] || ''; const finishTime = project[`finishTimeDay${i}`] || '';
                 const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
-                if (startTime && finishTime) {
-                    totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
-                }
+                if (startTime && finishTime) totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
                 totalBreakMinutes += breakMins;
             }
             const totalNetMinutes = totalWorkMinutes - totalBreakMinutes;
@@ -391,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tempUpdatedProject = { ...project, ...updates };
                 updates.totalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
-                this.filterAndRenderProjects(); // Optimistically update UI
+                this.filterAndRenderProjects();
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
@@ -402,12 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
-            if (!project) return;
-            const updates = {};
+            if (!project) return; const updates = {};
             const dayMatch = action.match(/(start|end)Day(\d)/);
             if (dayMatch) {
-                const [, type, day] = dayMatch;
-                const dayNum = parseInt(day, 10);
+                const [, type, day] = dayMatch; const dayNum = parseInt(day, 10);
                 updates.status = type === 'start' ? `InProgressDay${dayNum}` : (dayNum < 5 ? `Day${dayNum}Ended_AwaitingNext` : 'Completed');
                 if (type === 'start') updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
                 if (type === 'end') updates[`finishTimeDay${dayNum}`] = this.getCurrentTime();
@@ -438,9 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
-                const headers = getHeaders.result.values[0];
-                const newRows = [];
-                const batchId = `batch_release_${Date.now()}`;
+                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
                     const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
@@ -448,23 +401,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
                     delete newRowObj._row;
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
-                    newRows.push(row);
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 });
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
-                await this.loadDataFromSheets();
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
                 alert(`${fromFix} released to ${toFix} successfully!`);
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
-            } finally {
-                this.hideLoading();
-            }
+            } finally { this.hideLoading(); }
         },
 
         async handleAddExtraArea(baseProjectName) {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
-            if (isNaN(numToAdd) || numToAdd < 1) return;
-            this.showLoading(`Adding ${numToAdd} area(s)...`);
+            if (isNaN(numToAdd) || numToAdd < 1) return; this.showLoading(`Adding ${numToAdd} area(s)...`);
             try {
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
                 if (projectTasks.length === 0) throw new Error(`Could not find project: ${baseProjectName}`);
@@ -473,10 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
-                const headers = getHeaders.result.values[0];
-                const newRows = [];
-                const batchId = `batch_extra_${Date.now()}`;
-
+                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_extra_${Date.now()}`;
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
                     const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
@@ -485,33 +430,40 @@ document.addEventListener('DOMContentLoaded', () => {
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
                      delete newRowObj._row;
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
-                    newRows.push(row);
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
-                await this.loadDataFromSheets();
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
                 alert(`${numToAdd} area(s) added successfully!`);
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
-            } finally {
-                this.hideLoading();
-            }
+            } finally { this.hideLoading(); }
         },
         
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
-
             try {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
                 if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
-
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(rowNumbersToDelete);
-                await this.loadDataFromSheets();
+                await this.deleteSheetRows(rowNumbersToDelete); await this.loadDataFromSheets();
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
-
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
+            }
+        },
+        
+        async handleDeleteProject(baseProjectName) {
+            if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
+            try {
+                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                if (tasksToDelete.length === 0) throw new Error(`No tasks found for project ${baseProjectName}.`);
+                const rowNumbersToDelete = tasksToDelete.map(p => p._row);
+                await this.deleteSheetRows(rowNumbersToDelete);
+                this.state.filters.project = 'All'; // Reset filter
+                await this.loadDataFromSheets();
+                alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
+            } catch(error) {
+                alert("Error deleting project: " + error.message);
             }
         },
 
@@ -519,12 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // == FILTERING & RENDERING ========================================================
         // =================================================================================
         renderProjectSettings() {
-            const container = this.elements.projectSettingsView;
-            container.innerHTML = "";
+            const container = this.elements.projectSettingsView; container.innerHTML = "";
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             if (uniqueProjects.length === 0) {
-                container.innerHTML = `<p>No projects found to configure.</p>`;
-                return;
+                container.innerHTML = `<p>No projects found to configure.</p>`; return;
             }
             uniqueProjects.forEach(projectName => {
                 if (!projectName) return;
@@ -532,8 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
                 const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
                 const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
-                const nextFix = `Fix${currentFixNum + 1}`;
-                const canRollback = fixCategories.length > 1;
+                const nextFix = `Fix${currentFixNum + 1}`; const canRollback = fixCategories.length > 1;
 
                 const cardHTML = `
                     <div class="project-settings-card">
@@ -546,10 +495,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <button class="btn btn-success" data-action="add-area" data-project="${projectName}">Add Extra Area</button>
                                 </div>
                             </div>
-                             <div class="settings-card">
+                            <div class="settings-card">
                                 <h3>Rollback Project:</h3>
                                 <div class="btn-group">
-                                    <button class="btn btn-danger" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks & Rollback</button>
+                                    <button class="btn btn-warning" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks & Rollback</button>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h3>Delete Project:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-danger" data-action="delete-project" data-project="${projectName}">DELETE ENTIRE PROJECT</button>
                                 </div>
                             </div>
                         </div>
@@ -562,6 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (action === 'release') this.handleReleaseFix(project, from, to);
                     else if (action === 'add-area') this.handleAddExtraArea(project);
                     else if (action === 'rollback') this.handleRollback(project, fix);
+                    else if (action === 'delete-project') this.handleDeleteProject(project);
                 });
             });
         },
@@ -569,36 +525,23 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPaginationControls(totalRows) {
             const { currentPage, rowsPerPage } = this.state.pagination;
             const totalPages = Math.ceil(totalRows / rowsPerPage);
-            const container = this.elements.paginationControls;
-            container.innerHTML = "";
-
+            const container = this.elements.paginationControls; container.innerHTML = "";
             if (totalPages <= 1) return;
 
             const prevButton = document.createElement('button');
-            prevButton.textContent = 'Previous';
-            prevButton.className = 'btn';
+            prevButton.textContent = 'Previous'; prevButton.className = 'btn';
             prevButton.disabled = currentPage === 1;
-            prevButton.onclick = () => {
-                this.state.pagination.currentPage--;
-                this.filterAndRenderProjects();
-            };
+            prevButton.onclick = () => { this.state.pagination.currentPage--; this.filterAndRenderProjects(); };
 
             const pageInfo = document.createElement('span');
-            pageInfo.textContent = ` Page ${currentPage} of ${totalPages} `;
-            pageInfo.style.margin = "0 15px";
+            pageInfo.textContent = ` Page ${currentPage} of ${totalPages} `; pageInfo.style.margin = "0 15px";
 
             const nextButton = document.createElement('button');
-            nextButton.textContent = 'Next';
-            nextButton.className = 'btn';
+            nextButton.textContent = 'Next'; nextButton.className = 'btn';
             nextButton.disabled = currentPage === totalPages;
-            nextButton.onclick = () => {
-                this.state.pagination.currentPage++;
-                this.filterAndRenderProjects();
-            };
+            nextButton.onclick = () => { this.state.pagination.currentPage++; this.filterAndRenderProjects(); };
 
-            container.appendChild(prevButton);
-            container.appendChild(pageInfo);
-            container.appendChild(nextButton);
+            container.appendChild(prevButton); container.appendChild(pageInfo); container.appendChild(nextButton);
         },
 
         filterAndRenderProjects() {
@@ -612,126 +555,89 @@ document.addEventListener('DOMContentLoaded', () => {
                     filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
                 }
                 
-                // --- PAGINATION LOGIC ---
                 let projectsToRender = filteredProjects;
                 if (this.state.filters.project !== 'All') {
                     const { currentPage, rowsPerPage } = this.state.pagination;
-                    const startIndex = (currentPage - 1) * rowsPerPage;
-                    const endIndex = startIndex + rowsPerPage;
+                    const startIndex = (currentPage - 1) * rowsPerPage; const endIndex = startIndex + rowsPerPage;
                     projectsToRender = filteredProjects.slice(startIndex, endIndex);
                     this.renderPaginationControls(filteredProjects.length);
                 } else {
-                    this.elements.paginationControls.innerHTML = ""; // Clear pagination if all projects are shown
+                    this.elements.paginationControls.innerHTML = "";
                 }
                 
-                this.renderProjects(projectsToRender);
-                this.hideFilterSpinner();
+                this.renderProjects(projectsToRender); this.hideFilterSpinner();
             }, 100);
         },
 
         renderProjects(projectsToRender = this.state.projects) {
-            const tableBody = this.elements.projectTableBody;
-            const tableHead = this.elements.projectTableHead;
-            tableBody.innerHTML = "";
+            const tableBody = this.elements.projectTableBody; const tableHead = this.elements.projectTableHead; tableBody.innerHTML = "";
             const headers = ['Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'];
             for (let i = 1; i <= 5; i++) {
-                if (this.state.filters.showDays[i]) {
-                    headers.push(`Day ${i} Start`, `Day ${i} Finish`, `Day ${i} Break`);
-                }
+                if (this.state.filters.showDays[i]) { headers.push(`Day ${i} Start`, `Day ${i} Finish`, `Day ${i} Break`); }
             }
             headers.push('Total (min)', 'Actions');
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
             
             if (projectsToRender.length === 0) {
                 const row = tableBody.insertRow();
-                row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`;
-                return;
+                row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`; return;
             }
 
-            // --- GROUPING LOGIC ---
             const groupedProjects = projectsToRender.reduce((acc, project) => {
                 const key = project.fixCategory || 'Uncategorized';
-                if (!acc[key]) acc[key] = [];
-                acc[key].push(project);
-                return acc;
+                if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
             }, {});
-
             const sortedGroupKeys = Object.keys(groupedProjects).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
 
             sortedGroupKeys.forEach(fixKey => {
-                // Add group header row
-                const headerRow = tableBody.insertRow();
-                headerRow.className = 'fix-group-header';
+                const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
                 headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
                 headerRow.onclick = () => {
                     const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
-                    document.querySelectorAll(`tr[data-fix-group="${fixKey}"]`).forEach(r => {
-                        r.style.display = isCollapsed ? '' : 'none';
-                    });
+                    document.querySelectorAll(`tr[data-fix-group="${fixKey}"]`).forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
                     headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
                 };
 
-                // Add project rows for the group
                 const projectsInGroup = groupedProjects[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
                 projectsInGroup.forEach(project => {
-                    const row = tableBody.insertRow();
-                    row.dataset.fixGroup = fixKey; // For collapsing
-                    row.insertCell().textContent = project.fixCategory || '';
-                    row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
-                    row.insertCell().textContent = project.areaTask || '';
-                    row.insertCell().textContent = project.gsd || '';
-                    const assignedToCell = row.insertCell();
-                    const assignedToSelect = document.createElement('select');
+                    const row = tableBody.insertRow(); row.dataset.fixGroup = fixKey;
+                    row.insertCell().textContent = project.fixCategory || ''; row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
+                    row.insertCell().textContent = project.areaTask || ''; row.insertCell().textContent = project.gsd || '';
+                    const assignedToCell = row.insertCell(); const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Unassigned</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
                     assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     assignedToCell.appendChild(assignedToSelect);
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
                     
-                    let totalWorkMinutes = 0;
-                    let totalBreakMinutes = 0;
                     for (let i = 1; i <= 5; i++) {
                         if (this.state.filters.showDays[i]) {
-                            row.insertCell().textContent = project[`startTimeDay${i}`] || '';
-                            row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
-                            const breakCell = row.insertCell();
-                            const breakSelect = document.createElement('select');
+                            row.insertCell().textContent = project[`startTimeDay${i}`] || ''; row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
+                            const breakCell = row.insertCell(); const breakSelect = document.createElement('select');
                             const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
                             const currentBreak = project[`breakDurationMinutesDay${i}`] || '0';
                             for (const value in breakOptions) {
-                                const option = document.createElement('option');
-                                option.value = value;
-                                option.textContent = breakOptions[value];
-                                if (currentBreak == value) option.selected = true;
-                                breakSelect.appendChild(option);
+                                const option = document.createElement('option'); option.value = value; option.textContent = breakOptions[value];
+                                if (currentBreak == value) option.selected = true; breakSelect.appendChild(option);
                             }
                             breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
                             breakCell.appendChild(breakSelect);
                         }
                     }
-
                     row.insertCell().textContent = project.totalMinutes || '';
 
                     const actionsCell = row.insertCell();
                     for (let i = 1; i <= 5; i++) {
                          if (this.state.filters.showDays[i]) {
-                            const startBtn = document.createElement('button');
-                            startBtn.textContent = `Start D${i}`;
-                            startBtn.className = 'btn btn-primary btn-small';
+                            const startBtn = document.createElement('button'); startBtn.textContent = `Start D${i}`; startBtn.className = 'btn btn-primary btn-small';
                             startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
-                            startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
-                            actionsCell.appendChild(startBtn);
+                            startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`); actionsCell.appendChild(startBtn);
 
-                            const endBtn = document.createElement('button');
-                            endBtn.textContent = `End D${i}`;
-                            endBtn.className = 'btn btn-warning btn-small';
+                            const endBtn = document.createElement('button'); endBtn.textContent = `End D${i}`; endBtn.className = 'btn btn-warning btn-small';
                             endBtn.disabled = project.status !== `InProgressDay${i}`;
-                            endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
-                            actionsCell.appendChild(endBtn);
+                            endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`); actionsCell.appendChild(endBtn);
                         }
                     }
-                    const doneBtn = document.createElement('button');
-                    doneBtn.textContent = 'Done';
-                    doneBtn.className = 'btn btn-success btn-small';
+                    const doneBtn = document.createElement('button'); doneBtn.textContent = 'Done'; doneBtn.className = 'btn btn-success btn-small';
                     doneBtn.disabled = project.status === 'Completed';
                     doneBtn.onclick = () => {
                         if (confirm('Are you sure you want to mark this project as "Completed"?')) {
@@ -745,27 +651,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading(message = "Loading...") {
             if (this.elements.loadingOverlay) {
-                this.elements.loadingOverlay.querySelector('p').textContent = message;
-                this.elements.loadingOverlay.style.display = 'flex';
+                this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex';
             }
         },
 
         hideLoading() {
-            if (this.elements.loadingOverlay) {
-                this.elements.loadingOverlay.style.display = 'none';
-            }
+            if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; }
         },
 
         showFilterSpinner() {
-            if (this.elements.filterLoadingSpinner) {
-                this.elements.filterLoadingSpinner.style.display = 'block';
-            }
+            if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'block'; }
         },
 
         hideFilterSpinner() {
-            if (this.elements.filterLoadingSpinner) {
-                this.elements.filterLoadingSpinner.style.display = 'none';
-            }
+            if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'none'; }
         }
     };
 
