@@ -58,12 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (isLoggedIn) {
                 this.showLoading("Restoring session...");
-
                 this.authTimeoutId = setTimeout(() => {
                     console.warn("Authentication timed out. Forcing sign-out.");
                     this.handleSignedOutUser();
                 }, 7000);
-
                 this.tokenClient.requestAccessToken({ prompt: 'none' });
             } else {
                 this.handleSignedOutUser();
@@ -76,14 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         async handleTokenResponse(resp) {
             clearTimeout(this.authTimeoutId);
-
             if (resp.error) {
                 console.error("Auth Error (likely silent-refresh failure):", resp.error);
                 localStorage.removeItem('isLoggedIn');
                 this.handleSignedOutUser();
                 return;
             }
-            
             gapi.client.setToken(resp);
             localStorage.setItem('isLoggedIn', 'true');
             this.handleAuthorizedUser();
@@ -104,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('login-view-active');
             this.elements.authWrapper.style.display = 'none';
             this.elements.dashboardWrapper.style.display = 'flex';
-
             if (!this.state.isAppInitialized) {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
@@ -153,10 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
-
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
-
             } catch (err) {
                 console.error("Data Error: Failed to load data from Sheets.", err);
                 alert("Could not load data. Check Spreadsheet ID, sheet names, and sharing permissions. See console (F12) for details.");
@@ -172,14 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
                      spreadsheetId: this.config.google.SPREADSHEET_ID,
                      range: `${sheetName}!1:1`,
                 });
-                
                 const headers = getHeaders.result.values[0];
-                
                 const values = [headers.map(header => {
                     const propName = this.config.HEADER_MAP[header.trim()];
                     return dataObject[propName] !== undefined ? dataObject[propName] : "";
                 })];
-
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${sheetName}!A${rowIndex}`,
@@ -237,18 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     5: document.getElementById('showDay5'),
                 },
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'),
-                
                 openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
                 techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
-
-                // Project Settings Buttons
-                releaseFixBtn: document.getElementById('releaseFixBtn'),
-                addAreaBtn: document.getElementById('addAreaBtn'),
-                lockFixBtn: document.getElementById('lockFixBtn'),
-                deleteProjectBtn: document.getElementById('deleteProjectBtn'),
-                deleteFixTasksBtn: document.getElementById('deleteFixTasksBtn'),
             };
         },
 
@@ -258,17 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
-
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
-
-            // --- PROJECT SETTINGS BUTTON LISTENERS ---
-            this.elements.releaseFixBtn.onclick = () => alert("Release Fix button clicked!");
-            this.elements.addAreaBtn.onclick = () => alert("Add Extra Area button clicked!");
-            this.elements.lockFixBtn.onclick = () => alert("Lock Fix button clicked!");
-            this.elements.deleteProjectBtn.onclick = () => alert("DELETE PROJECT button clicked!");
-            this.elements.deleteFixTasksBtn.onclick = () => alert("Delete Fix Tasks button clicked!");
-
             this.elements.monthFilter.addEventListener('change', (e) => {
                 this.state.filters.month = e.target.value;
                 this.filterAndRenderProjects();
@@ -292,15 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
-            
             this.elements.openTechDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
-
             if (viewName === 'dashboard') {
                 this.elements.techDashboardContainer.style.display = 'block';
                 this.elements.openTechDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
-                this.elements.projectSettingsView.style.display = 'grid';
+                this.renderProjectSettings(); // Dynamically render the settings
+                this.elements.projectSettingsView.style.display = 'flex';
                 this.elements.openProjectSettingsBtn.classList.add('active');
             }
         },
@@ -314,10 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return null;
             }).filter(Boolean))].sort();
             this.elements.monthFilter.innerHTML = '<option value="All">All Months</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
-            
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
-
             const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
             this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
         },
@@ -325,19 +295,16 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleAddProjectSubmit(event) {
             event.preventDefault();
             this.showLoading("Adding project(s)...");
-
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
             const gsd = document.getElementById('gsd').value;
             const batchId = `batch_${Date.now()}`;
-
             try {
                  const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
                      spreadsheetId: this.config.google.SPREADSHEET_ID,
                      range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-
                 const newRows = [];
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
@@ -350,11 +317,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
                     newRows.push(row);
                 }
-
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
                 this.elements.projectFormModal.style.display = 'none';
                 this.elements.newProjectForm.reset();
@@ -382,16 +347,12 @@ document.addEventListener('DOMContentLoaded', () => {
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return;
-            
             const updates = {};
             const dayMatch = action.match(/(start|end)Day(\d)/);
-            
             if (dayMatch) {
                 const [, type, day] = dayMatch;
                 const dayNum = parseInt(day, 10);
-                
                 updates.status = type === 'start' ? `InProgressDay${dayNum}` : (dayNum < 5 ? `Day${dayNum}Ended_AwaitingNext` : 'Completed');
-                
                 if (type === 'start') {
                     updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
                 }
@@ -414,13 +375,181 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
+        // == PROJECT SETTINGS LOGIC =======================================================
+        // =================================================================================
+        async handleReleaseFix(baseProjectName, fromFix, toFix) {
+            if (!confirm(`This will create new '${toFix}' tasks for all '${fromFix}' areas in project '${this.formatProjectName(baseProjectName)}'. The original tech will be assigned. Continue?`)) {
+                return;
+            }
+            this.showLoading(`Releasing ${fromFix} to ${toFix}...`);
+            try {
+                const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
+                if (tasksToClone.length === 0) {
+                    throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
+                }
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                const newRows = [];
+                const batchId = `batch_release_${Date.now()}`;
+                tasksToClone.forEach((task, index) => {
+                    const newRowObj = {
+                        ...task, // Copy all data
+                        // Override specific fields for the new task
+                        id: `proj_${Date.now()}_${index}`,
+                        batchId,
+                        fixCategory: toFix,
+                        status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
+                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
+                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "",
+                        totalMinutes: "",
+                        lastModifiedTimestamp: new Date().toISOString()
+                    };
+                    delete newRowObj._row; // Remove internal row property
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
+                    newRows.push(row);
+                });
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
+                await this.loadDataFromSheets();
+                alert(`${fromFix} released to ${toFix} successfully!`);
+            } catch (error) {
+                alert("Error releasing fix: " + error.message);
+            } finally {
+                this.hideLoading();
+            }
+        },
+
+        async handleAddExtraArea(baseProjectName) {
+            const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
+            if (isNaN(numToAdd) || numToAdd < 1) {
+                return;
+            }
+            this.showLoading(`Adding ${numToAdd} area(s)...`);
+            try {
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                if (projectTasks.length === 0) {
+                    throw new Error(`Could not find project: ${baseProjectName}`);
+                }
+                const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
+                const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                const newRows = [];
+                const batchId = `batch_extra_${Date.now()}`;
+
+                for (let i = 1; i <= numToAdd; i++) {
+                    const newAreaNumber = lastAreaNumber + i;
+                    const newRowObj = {
+                        ...latestTask, // Copy data from the last task
+                        id: `proj_${Date.now()}_${i}`,
+                        batchId,
+                        areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`,
+                        status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
+                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
+                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "",
+                        totalMinutes: "",
+                        lastModifiedTimestamp: new Date().toISOString()
+                    };
+                     delete newRowObj._row;
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
+                    newRows.push(row);
+                }
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
+                await this.loadDataFromSheets();
+                alert(`${numToAdd} area(s) added successfully!`);
+            } catch (error) {
+                alert("Error adding extra areas: " + error.message);
+            } finally {
+                this.hideLoading();
+            }
+        },
+
+        // =================================================================================
         // == FILTERING & RENDERING ========================================================
         // =================================================================================
+        renderProjectSettings() {
+            const container = this.elements.projectSettingsView;
+            container.innerHTML = ""; // Clear previous content
+
+            const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
+
+            if (uniqueProjects.length === 0) {
+                container.innerHTML = `<p>No projects found to configure.</p>`;
+                return;
+            }
+
+            uniqueProjects.forEach(projectName => {
+                if (!projectName) return;
+
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
+                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort();
+                const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
+                const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
+                const nextFix = `Fix${currentFixNum + 1}`;
+
+                const cardHTML = `
+                    <div class="project-settings-card">
+                        <h2>${this.formatProjectName(projectName)}</h2>
+                        <div class="settings-grid">
+                            <div class="settings-card">
+                                <h3>Release Tasks:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-primary" data-action="release" data-project="${projectName}" data-from="${currentFix}" data-to="${nextFix}">Release ${currentFix} to ${nextFix}</button>
+                                    <button class="btn btn-success" data-action="add-area" data-project="${projectName}">Add Extra Area</button>
+                                </div>
+                            </div>
+                             <div class="settings-card">
+                                <h3>Manage Locking:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-warning" disabled>Lock Fix1</button>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h3>Delete Current Project:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-danger" disabled>DELETE PROJECT</button>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h3>Delete Specific Fix Stages:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-danger" disabled>Delete Fix1 Tasks</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+
+            // Add event listeners to the newly created buttons
+            container.querySelectorAll('button[data-action]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const { action, project, from, to } = e.target.dataset;
+                    if (action === 'release') {
+                        this.handleReleaseFix(project, from, to);
+                    } else if (action === 'add-area') {
+                        this.handleAddExtraArea(project);
+                    }
+                });
+            });
+        },
+
         filterAndRenderProjects() {
             this.showFilterSpinner();
             setTimeout(() => {
                 let filteredProjects = [...this.state.projects];
-
                 if (this.state.filters.month !== 'All') {
                     filteredProjects = filteredProjects.filter(p => {
                         if (p.lastModifiedTimestamp) {
@@ -430,15 +559,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         return false;
                     });
                 }
-
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
-
                 if (this.state.filters.fixCategory !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
                 }
-                
                 this.renderProjects(filteredProjects);
                 this.hideFilterSpinner();
             }, 100);
@@ -448,17 +574,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const tableBody = this.elements.projectTableBody;
             const tableHead = this.elements.projectTableHead;
             tableBody.innerHTML = "";
-
-            const headers = [
-                'Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'
-            ];
+            const headers = ['Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'];
             for (let i = 1; i <= 5; i++) {
                 if (this.state.filters.showDays[i]) {
                     headers.push(`Day ${i} Start`, `Day ${i} Finish`, `Day ${i} Break`);
                 }
             }
             headers.push('Total (min)', 'Actions');
-
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
             
             if (projectsToRender.length === 0) {
@@ -474,51 +596,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
                     row.insertCell().textContent = project.areaTask || '';
                     row.insertCell().textContent = project.gsd || '';
-
                     const assignedToCell = row.insertCell();
                     const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Unassigned</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
                     assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     assignedToCell.appendChild(assignedToSelect);
-
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
                     
                     let totalWorkMinutes = 0;
                     let totalBreakMinutes = 0;
-
                     for (let i = 1; i <= 5; i++) {
                         if (this.state.filters.showDays[i]) {
                             const startTime = project[`startTimeDay${i}`] || '';
                             const finishTime = project[`finishTimeDay${i}`] || '';
                             const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
-                            
                             row.insertCell().textContent = startTime;
                             row.insertCell().textContent = finishTime;
-
-                            // --- BREAK TIME DROPDOWN ---
                             const breakCell = row.insertCell();
                             const breakSelect = document.createElement('select');
-                            const breakOptions = {
-                                "0": "None",
-                                "15": "15m",
-                                "60": "1hr",
-                                "75": "1hr 15m",
-                                "90": "1hr 30m"
-                            };
+                            const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
                             for (const value in breakOptions) {
                                 const option = document.createElement('option');
                                 option.value = value;
                                 option.textContent = breakOptions[value];
-                                if (breakMins == value) {
-                                    option.selected = true;
-                                }
+                                if (breakMins == value) option.selected = true;
                                 breakSelect.appendChild(option);
                             }
-                            breakSelect.onchange = (e) => {
-                                this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
-                            };
+                            breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
                             breakCell.appendChild(breakSelect);
-
                             if (startTime && finishTime) {
                                 totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
                             }
@@ -530,23 +635,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.insertCell().textContent = totalNetMinutes > 0 ? totalNetMinutes : '';
 
                     const actionsCell = row.insertCell();
-                    for (let i = 1; i <= 5; i++) {
-                        if (this.state.filters.showDays[i]) {
-                            const startBtn = document.createElement('button');
-                            startBtn.textContent = `Start D${i}`;
-                            startBtn.className = 'btn btn-primary btn-small';
-                            startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
-                            startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
-                            actionsCell.appendChild(startBtn);
+                    if (this.state.filters.showDays[1]) { // Only add start/end if Day 1 is visible as a proxy
+                        for (let i = 1; i <= 5; i++) {
+                             if (this.state.filters.showDays[i]) {
+                                const startBtn = document.createElement('button');
+                                startBtn.textContent = `Start D${i}`;
+                                startBtn.className = 'btn btn-primary btn-small';
+                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
+                                startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
+                                actionsCell.appendChild(startBtn);
 
-                            const endBtn = document.createElement('button');
-                            endBtn.textContent = `End D${i}`;
-                            endBtn.className = 'btn btn-warning btn-small';
-                            endBtn.disabled = project.status !== `InProgressDay${i}`;
-                            endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
-                            actionsCell.appendChild(endBtn);
+                                const endBtn = document.createElement('button');
+                                endBtn.textContent = `End D${i}`;
+                                endBtn.className = 'btn btn-warning btn-small';
+                                endBtn.disabled = project.status !== `InProgressDay${i}`;
+                                endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
+                                actionsCell.appendChild(endBtn);
+                            }
                         }
                     }
+                    // --- "DONE" BUTTON ---
+                    const doneBtn = document.createElement('button');
+                    doneBtn.textContent = 'Done';
+                    doneBtn.className = 'btn btn-success btn-small';
+                    doneBtn.disabled = project.status === 'Completed';
+                    doneBtn.onclick = () => {
+                        if (confirm('Are you sure you want to mark this project as "Completed"?')) {
+                            this.handleProjectUpdate(project.id, { 'status': 'Completed' });
+                        }
+                    };
+                    actionsCell.appendChild(doneBtn);
                 });
         },
 
