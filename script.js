@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
-        state: { 
-            projects: [], 
-            users: [], 
+        state: {
+            projects: [],
+            users: [],
             isAppInitialized: false,
             filters: {
                 month: 'All',
@@ -56,11 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 client_id: this.config.google.CLIENT_ID,
                 scope: this.config.google.SCOPES,
                 callback: (tokenResponse) => {
-                    // This now directly handles both success and implicit failure
                     if (tokenResponse && tokenResponse.access_token) {
                         this.handleTokenResponse(tokenResponse);
                     } else {
-                        // This handles cases where the silent login fails without an explicit error object
                         this.handleSignedOutUser();
                     }
                 },
@@ -72,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleAuthClick() {
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
-        
+
         async handleTokenResponse(resp) {
             if (resp.error) {
                 console.error("Auth Error:", resp.error);
@@ -102,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
             } else {
-                this.filterAndRenderProjects(); 
+                this.filterAndRenderProjects();
             }
         },
 
@@ -147,11 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS],
                 });
-                
+
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
-                
+
                 this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.populateFilterDropdowns();
@@ -168,8 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading("Saving...");
             try {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                     range: `${sheetName}!1:1`,
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${sheetName}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
                 const values = [headers.map(header => {
@@ -231,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
-        
+
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
@@ -245,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectFormModal: document.getElementById('projectFormModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
                 newProjectForm: document.getElementById('newProjectForm'), monthFilter: document.getElementById('monthFilter'),
                 projectFilter: document.getElementById('projectFilter'), fixCategoryFilter: document.getElementById('fixCategoryFilter'),
-                dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
+                dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'), },
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'), paginationControls: document.getElementById('paginationControls'),
@@ -298,8 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
             const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
             try {
-                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0]; const newRows = [];
                 for (let i = 1; i <= numRows; i++) {
@@ -316,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Error adding projects: " + error.message);
             } finally { this.hideLoading(); }
         },
-        
+
         calculateTotalMinutes(project) {
             let totalWorkMinutes = 0; let totalBreakMinutes = 0;
             for (let i = 1; i <= 5; i++) {
@@ -339,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
-        
+
         getCurrentTime() {
             return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         },
@@ -382,7 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
-                    const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
+                    const newRowObj = {
+                        ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
@@ -411,12 +410,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_extra_${Date.now()}`;
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
-                    const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
+                    const newRowObj = {
+                        ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
-                     delete newRowObj._row;
+                    delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Error adding extra areas: " + error.message);
             } finally { this.hideLoading(); }
         },
-        
+
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
             try {
@@ -434,11 +434,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(rowNumbersToDelete); await this.loadDataFromSheets();
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
-            } catch(error) {
+            } catch (error) {
                 alert("Error rolling back project: " + error.message);
             }
         },
-        
+
         async handleDeleteProject(baseProjectName) {
             if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
             try {
@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.filters.project = 'All';
                 await this.loadDataFromSheets();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
-            } catch(error) {
+            } catch (error) {
                 alert("Error deleting project: " + error.message);
             }
         },
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uniqueProjects.forEach(projectName => {
                 if (!projectName) return;
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
-                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
                 const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
                 const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
                 const nextFix = `Fix${currentFixNum + 1}`; const canRollback = fixCategories.length > 1;
@@ -564,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
-                
+
                 let projectsToRender = filteredProjects;
                 if (this.state.filters.project !== 'All') {
                     const { currentPage, rowsPerPage } = this.state.pagination;
@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     this.elements.paginationControls.innerHTML = "";
                 }
-                
+
                 this.renderProjects(projectsToRender); this.hideFilterSpinner();
             }, 100);
         },
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             headers.push('Total (min)', 'Actions');
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
-            
+
             if (projectsToRender.length === 0) {
                 const row = tableBody.insertRow();
                 row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`; return;
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const key = project.fixCategory || 'Uncategorized';
                 if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
             }, {});
-            const sortedGroupKeys = Object.keys(groupedProjects).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+            const sortedGroupKeys = Object.keys(groupedProjects).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
             sortedGroupKeys.forEach(fixKey => {
                 const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     assignedToCell.appendChild(assignedToSelect);
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
-                    
+
                     for (let i = 1; i <= 5; i++) {
                         if (this.state.filters.showDays[i]) {
                             row.insertCell().textContent = project[`startTimeDay${i}`] || ''; row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
@@ -637,9 +637,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const actionsCell = row.insertCell();
                     for (let i = 1; i <= 5; i++) {
-                         if (this.state.filters.showDays[i]) {
+                        if (this.state.filters.showDays[i]) {
                             const startBtn = document.createElement('button'); startBtn.textContent = `Start D${i}`; startBtn.className = 'btn btn-primary btn-small';
-                            startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
+                            startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i - 1}Ended_AwaitingNext`);
                             startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`); actionsCell.appendChild(startBtn);
 
                             const endBtn = document.createElement('button'); endBtn.textContent = `End D${i}`; endBtn.className = 'btn btn-warning btn-small';
