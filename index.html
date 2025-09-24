@@ -22,6 +22,12 @@
             --shadow-light: 0 2px 5px rgba(0,0,0,0.05);
             --border-radius-md: 8px;
             --border-radius-lg: 12px;
+            /* Fix Stage Colors */
+            --fix-color-1: #eaf6ff;
+            --fix-color-2: #eafaf1;
+            --fix-color-3: #fff8e1;
+            --fix-color-4: #fbe9e7;
+            --fix-color-5: #f3e5f5;
         }
         html, body {
             height: 100%;
@@ -138,11 +144,21 @@
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
         .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
-        .project-table tr:hover { background-color: #f0f8ff; }
+        
         .project-table tr.fix-group-header td { background-color: #e9ecef; font-weight: 600; cursor: pointer; }
         .project-table tr.project-separator-row td { padding: 8px; background-color: var(--bg-color); border-top: 2px solid #ccc; border-bottom: 2px solid #ccc;}
         .project-table select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
         .project-table .btn-small { padding: 4px 8px; font-size: 0.8em; margin: 2px; }
+        
+        /* Highlighting Styles */
+        tr.fix-stage-1 { background-color: var(--fix-color-1); }
+        tr.fix-stage-2 { background-color: var(--fix-color-2); }
+        tr.fix-stage-3 { background-color: var(--fix-color-3); }
+        tr.fix-stage-4 { background-color: var(--fix-color-4); }
+        tr.fix-stage-5 { background-color: var(--fix-color-5); }
+        tr.fix-stage-1:hover, tr.fix-stage-2:hover, tr.fix-stage-3:hover, tr.fix-stage-4:hover, tr.fix-stage-5:hover {
+             background-color: #d1eaff; /* A common hover color */
+        }
         
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
@@ -232,7 +248,7 @@
                             <tbody id="projectTableBody"></tbody>
                         </table>
                     </div>
-                    </div>
+                </div>
             </div>
             
             <div id="tlSummaryView" class="table-container" style="display: none;">
