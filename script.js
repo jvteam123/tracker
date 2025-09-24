@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- METHODS ---
         methods: {
             // =================================================================================
-            // == INITIALIZATION & AUTH (Updated with Persistent Login) ========================
+            // == INITIALIZATION & AUTH (with Persistent Login) ===============================
             // =================================================================================
             init() {
                 this.methods.setupDOMReferences.call(this);
@@ -46,13 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
             async initializeGapiClient() {
                 await gapi.client.init({ apiKey: this.config.google.API_KEY, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
                 this.state.isGapiInitialized = true;
-                
-                // **FIX ADDED**: Load token from localStorage on startup
                 const storedToken = localStorage.getItem('google_auth_token');
                 if (storedToken) {
                     gapi.client.setToken(JSON.parse(storedToken));
                 }
-
                 this.methods.updateAuthUI.call(this);
             },
             gisLoaded() {
@@ -66,26 +63,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             handleAuthClick() {
-                this.tokenClient.callback = async (resp) => { 
-                    if (resp.error) throw (resp); 
-                    
-                    // **FIX ADDED**: Save token to localStorage after successful login
+                this.tokenClient.callback = async (resp) => {
+                    if (resp.error) throw (resp);
                     localStorage.setItem('google_auth_token', JSON.stringify(gapi.client.getToken()));
-
-                    await this.methods.handleAuthorizedUser.call(this); 
+                    await this.methods.handleAuthorizedUser.call(this);
                 };
                 if (gapi.client.getToken() === null) { this.tokenClient.requestAccessToken({ prompt: 'consent' }); } else { this.tokenClient.requestAccessToken({ prompt: '' }); }
             },
             handleSignoutClick() {
                 const token = gapi.client.getToken();
-                if (token !== null) { 
-                    google.accounts.oauth2.revoke(token.access_token); 
-                    gapi.client.setToken(''); 
-                    
-                    // **FIX ADDED**: Remove token from localStorage on sign out
+                if (token !== null) {
+                    google.accounts.oauth2.revoke(token.access_token);
+                    gapi.client.setToken('');
                     localStorage.removeItem('google_auth_token');
-
-                    this.methods.handleSignedOutUser.call(this); 
+                    this.methods.handleSignedOutUser.call(this);
                 }
             },
             async handleAuthorizedUser() {
@@ -126,22 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.state.projects = this.methods.sheetValuesToObjects.call(this, projectsData.values);
                     this.state.users = this.methods.sheetValuesToObjects.call(this, usersData.values);
                     this.state.disputes = this.methods.sheetValuesToObjects.call(this, disputesData.values);
-                    const uniqueNames = new Set(this.state.projects.map(p => p.baseProjectName));
-                    this.state.allUniqueProjectNames = Array.from(uniqueNames).sort();
+                    this.state.allUniqueProjectNames = Array.from(new Set(this.state.projects.map(p => p.baseProjectName))).sort();
                     this.methods.refreshAllViews.call(this);
                 } catch (err) {
                     console.error("Error loading data from Sheets: ", err);
                     alert("Could not load data. Check Spreadsheet ID, sheet names, and sharing permissions.");
                 } finally { this.methods.hideLoading.call(this); }
             },
-            async batchUpdateSheet(sheetName, updates) { // updates is an array of {rowIndex, dataObject}
+            async batchUpdateSheet(sheetName, updates) {
                 this.methods.showLoading.call(this, "Saving multiple changes...");
                 try {
                     const headers = (await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!1:1` })).result.values[0];
-                    const data = updates.map(update => ({
-                        range: `${sheetName}!A${update.rowIndex}`,
-                        values: [headers.map(header => update.dataObject[header] || "")]
-                    }));
+                    const data = updates.map(update => ({ range: `${sheetName}!A${update.rowIndex}`, values: [headers.map(header => update.dataObject[header] || "")] }));
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: this.config.google.SPREADSHEET_ID, resource: { valueInputOption: 'USER_ENTERED', data } });
                 } catch(err) {
                     console.error("Batch update failed:", err);
@@ -179,11 +166,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
                 this.elements.openTechDashboardBtn.onclick = () => this.methods.showDashboard.call(this, 'techDashboard');
                 this.elements.openTlDashboardBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { this.methods.showDashboard.call(this, 'tlDashboard'); this.methods.renderTLDashboard.call(this); } else { alert("Incorrect PIN."); }};
-                this.elements.openSettingsBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { this.methods.showDashboard.call(this, 'userManagementDashboard'); /* renderUserManagement needed */ } else { alert("Incorrect PIN."); }};
+                this.elements.openSettingsBtn.onclick = () => { if (prompt("Enter PIN") === this.config.pins.TL_DASHBOARD_PIN) { this.methods.showDashboard.call(this, 'userManagementDashboard'); } else { alert("Incorrect PIN."); }};
             },
             showDashboard(id) {
-                document.querySelectorAll('.dashboard-container').forEach(d => d.classList.remove('active'));
-                document.getElementById(id).classList.add('active');
+                document.querySelectorAll('.dashboard-container').forEach(d => d.style.display = 'none');
+                document.getElementById(id).style.display = 'flex';
+                document.querySelectorAll('.sidebar-nav button').forEach(b => b.classList.remove('active'));
+                document.getElementById(`open${id.charAt(0).toUpperCase() + id.slice(1)}Btn`).classList.add('active');
             },
             refreshAllViews() { this.methods.renderProjects.call(this); this.methods.hideLoading.call(this); },
             async handleAddProjectSubmit(event) {
@@ -199,29 +188,31 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             async handleProjectUpdate(projectId, updates) {
                 const project = this.state.projects.find(p => p.id === projectId);
-                if (project) { Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() }); await this.methods.updateRowInSheet.call(this, this.config.sheetNames.PROJECTS, project._row, project); this.methods.renderProjects.call(this); }
+                if (project) {
+                    Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
+                    await this.methods.updateRowInSheet.call(this, this.config.sheetNames.PROJECTS, project._row, project);
+                    this.methods.renderProjects.call(this);
+                }
             },
-            getCurrentTimeGMT8() {
-                return new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false });
-            },
+            getCurrentTimeGMT8() { return new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false }); },
             async updateProjectState(projectId, action) {
                 const project = this.state.projects.find(p => p.id === projectId);
-                if(!project) return;
+                if (!project) return;
                 const updates = {};
                 const dayMatch = action.match(/(start|end)Day(\d)/);
                 if (dayMatch) {
                     const [, type, day] = dayMatch;
                     if (type === 'start') {
                         updates.status = `InProgressDay${day}`;
-                        updates[`startTimeDay${day}`] = this.methods.getCurrentTimeGMT8.call(this);
+                        updates[`startTimeDay${day}`] = this.methods.getCurrentTimeGMT8();
                     } else {
                         updates.status = day < 6 ? `Day${day}Ended_AwaitingNext` : 'Completed';
-                        updates[`finishTimeDay${day}`] = this.methods.getCurrentTimeGMT8.call(this);
+                        updates[`finishTimeDay${day}`] = this.methods.getCurrentTimeGMT8();
                     }
                 } else if (action === 'markDone') {
                     updates.status = "Completed";
                 }
-                await this.methods.handleProjectUpdate.call(this, projectId, updates);
+                await this.methods.handleProjectUpdate(projectId, updates);
             },
             renderProjects() {
                 const tableBody = this.elements.projectTableBody;
@@ -237,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.insertCell().textContent = project.gsd;
                     const assignedToSelect = document.createElement('select');
                     assignedToSelect.innerHTML = '<option value="">Select Tech</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
-                    assignedToSelect.onchange = (e) => this.methods.handleProjectUpdate.call(this, project.id, { 'assignedTo': e.target.value });
+                    assignedToSelect.onchange = (e) => this.methods.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
                     row.insertCell().appendChild(assignedToSelect);
                     row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
                     for (let i = 1; i <= 6; i++) {
@@ -245,8 +236,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
                         row.insertCell().textContent = project[`breakDurationMinutesDay${i}`] || '0';
                     }
-                    row.insertCell().textContent = '...'; // Progress
-                    row.insertCell().textContent = '...'; // Total
+                    row.insertCell().textContent = '...';
+                    row.insertCell().textContent = '...';
                     const actionsCell = row.insertCell();
                     const buttonsDiv = document.createElement('div');
                     actionsCell.appendChild(buttonsDiv);
@@ -255,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.textContent = text;
                         btn.className = `btn ${className} btn-small`;
                         btn.disabled = disabled;
-                        btn.onclick = () => this.methods.updateProjectState.call(this, project.id, action);
+                        btn.onclick = () => this.methods.updateProjectState(project.id, action);
                         buttonsDiv.appendChild(btn);
                     };
                     for (let i = 1; i <= 6; i++) {
@@ -269,11 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTLDashboard() {
                 const content = this.elements.tlDashboardContent;
                 content.innerHTML = "<h3>Release Projects to Next Fix Stage</h3>";
-                const projectsByName = this.state.projects.reduce((acc, p) => {
-                    acc[p.baseProjectName] = acc[p.baseProjectName] || [];
-                    acc[p.baseProjectName].push(p);
-                    return acc;
-                }, {});
+                const projectsByName = this.state.projects.reduce((acc, p) => { acc[p.baseProjectName] = acc[p.baseProjectName] || []; acc[p.baseProjectName].push(p); return acc; }, {});
                 for (const projectName in projectsByName) {
                     const projectDiv = document.createElement('div');
                     projectDiv.style.border = "1px solid #ccc"; projectDiv.style.padding = "10px"; projectDiv.style.marginBottom = "10px";
@@ -286,11 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const releaseBtn = document.createElement('button');
                         releaseBtn.textContent = `Release from ${latestFix} to ${nextFix}`;
                         releaseBtn.className = 'btn btn-primary';
-                        releaseBtn.onclick = () => this.methods.releaseBatchToNextFix.call(this, projectName, latestFix, nextFix);
+                        releaseBtn.onclick = () => this.methods.releaseBatchToNextFix(projectName, latestFix, nextFix);
                         projectDiv.appendChild(releaseBtn);
-                    } else {
-                        projectDiv.innerHTML += "<p>All fix stages completed.</p>";
-                    }
+                    } else { projectDiv.innerHTML += "<p>All fix stages completed.</p>"; }
                     content.appendChild(projectDiv);
                 }
             },
