@@ -12,9 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
-        state: {
-            projects: [],
-            users: [],
+        state: { 
+            projects: [], 
+            users: [], 
             isAppInitialized: false,
             filters: {
                 month: 'All',
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleAuthClick() {
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
-
+        
         async handleTokenResponse(resp) {
             if (resp.error) {
                 console.error("Auth Error:", resp.error);
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
             } else {
-                this.filterAndRenderProjects();
+                this.filterAndRenderProjects(); 
             }
         },
 
@@ -145,11 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS],
                 });
-
+                
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
-
+                
                 this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.populateFilterDropdowns();
@@ -166,8 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading("Saving...");
             try {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    range: `${sheetName}!1:1`,
+                     spreadsheetId: this.config.google.SPREADSHEET_ID,
+                     range: `${sheetName}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
                 const values = [headers.map(header => {
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
-
+        
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectFormModal: document.getElementById('projectFormModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
                 newProjectForm: document.getElementById('newProjectForm'), monthFilter: document.getElementById('monthFilter'),
                 projectFilter: document.getElementById('projectFilter'), fixCategoryFilter: document.getElementById('fixCategoryFilter'),
-                dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'), },
+                dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'), paginationControls: document.getElementById('paginationControls'),
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Error adding projects: " + error.message);
             } finally { this.hideLoading(); }
         },
-
+        
         calculateTotalMinutes(project) {
             let totalWorkMinutes = 0; let totalBreakMinutes = 0;
             for (let i = 1; i <= 5; i++) {
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
-
+        
         getCurrentTime() {
             return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         },
@@ -380,8 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
-                    const newRowObj = {
-                        ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
+                    const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
@@ -410,13 +409,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_extra_${Date.now()}`;
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
-                    const newRowObj = {
-                        ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
+                    const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
                         startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
-                    delete newRowObj._row;
+                     delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
@@ -425,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Error adding extra areas: " + error.message);
             } finally { this.hideLoading(); }
         },
-
+        
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
             try {
@@ -434,11 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(rowNumbersToDelete); await this.loadDataFromSheets();
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
-            } catch (error) {
+            } catch(error) {
                 alert("Error rolling back project: " + error.message);
             }
         },
-
+        
         async handleDeleteProject(baseProjectName) {
             if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
             try {
@@ -449,8 +447,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.filters.project = 'All';
                 await this.loadDataFromSheets();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
-            } catch (error) {
+            } catch(error) {
                 alert("Error deleting project: " + error.message);
+            }
+        },
+
+        async handleReorganizeSheet() {
+            if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows. This action cannot be undone. Are you sure you want to continue?")) return;
+            this.showLoading("Reorganizing sheet...");
+            try {
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+
+                // 1. Sort all projects
+                const sortedProjects = [...this.state.projects].sort((a, b) => {
+                    if (a.baseProjectName < b.baseProjectName) return -1;
+                    if (a.baseProjectName > b.baseProjectName) return 1;
+                    const fixNumA = parseInt(a.fixCategory.replace('Fix', ''), 10);
+                    const fixNumB = parseInt(b.fixCategory.replace('Fix', ''), 10);
+                    if (fixNumA < fixNumB) return -1;
+                    if (fixNumA > fixNumB) return 1;
+                    if (a.areaTask < b.areaTask) return -1;
+                    if (a.areaTask > b.areaTask) return 1;
+                    return 0;
+                });
+
+                // 2. Build the new rows array with blank rows between fix stages
+                const newSheetData = [];
+                let lastProject = null;
+                let lastFix = null;
+                sortedProjects.forEach(project => {
+                    if ( (lastProject !== null && project.baseProjectName !== lastProject) || (lastFix !== null && project.fixCategory !== lastFix) ) {
+                         newSheetData.push(new Array(headers.length).fill("")); // Add blank row
+                    }
+                    const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                    newSheetData.push(row);
+                    lastProject = project.baseProjectName;
+                    lastFix = project.fixCategory;
+                });
+
+                // 3. Clear the sheet (from row 2 downwards)
+                await gapi.client.sheets.spreadsheets.values.clear({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!A2:Z`,
+                });
+
+                // 4. Write the new, sorted data back
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!A2`,
+                    valueInputOption: 'USER_ENTERED',
+                    resource: { values: newSheetData }
+                });
+
+                await this.loadDataFromSheets();
+                alert("Sheet reorganized successfully!");
+            } catch(error) {
+                alert("Error reorganizing sheet: " + error.message);
+            } finally {
+                this.hideLoading();
             }
         },
 
@@ -459,9 +516,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         renderProjectSettings() {
             const container = this.elements.projectSettingsView; container.innerHTML = "";
+            
+            // Add the Reorganize Sheet card at the top
+            const reorganizeCard = `
+                <div class="project-settings-card">
+                    <h2>Sheet Management</h2>
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <h3>Organize Sheet Data:</h3>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" data-action="reorganize">Reorganize Sheet</button>
+                            </div>
+                            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">Sorts all entries by Project, then Fix Stage. Inserts blank rows for clarity. This can take a moment.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', reorganizeCard);
+
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             if (uniqueProjects.length === 0) {
-                container.innerHTML = `<p>No projects found to configure.</p>`; return;
+                container.insertAdjacentHTML('beforeend', `<p>No projects found to configure.</p>`);
             }
             uniqueProjects.forEach(projectName => {
                 if (!projectName) return;
@@ -505,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (action === 'add-area') this.handleAddExtraArea(project);
                     else if (action === 'rollback') this.handleRollback(project, fix);
                     else if (action === 'delete-project') this.handleDeleteProject(project);
+                    else if (action === 'reorganize') this.handleReorganizeSheet();
                 });
             });
         },
