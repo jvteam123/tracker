@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanilla-calendar-pro/build/vanilla-calendar.min.css">
     <style>
         :root {
             --primary-color: #3498db;
@@ -16,14 +15,11 @@
             --success-color: #2ecc71;
             --warning-color: #f39c12;
             --danger-color: #e74c3c;
-            --info-color: #17a2b8;
             --bg-color: #f0f2f5;
             --card-bg-color: #ffffff;
             --text-color: #2c3e50;
             --border-color: #e0e0e0;
             --shadow-light: 0 2px 5px rgba(0,0,0,0.05);
-            --shadow-medium: 0 4px 12px rgba(0,0,0,0.08);
-            --border-radius-sm: 4px;
             --border-radius-md: 8px;
             --border-radius-lg: 12px;
         }
@@ -39,29 +35,39 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
         }
         .dashboard-wrapper { display: flex; height: 100vh; width: 100%; }
-        .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; }
-        .sidebar h2 { color: #fff; margin-bottom: 30px; }
+        .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #475569; }
+        .sidebar h2 { color: #fff; margin-top: 0; margin-bottom: 30px; font-size: 1.5em; text-align: center; }
         .sidebar-nav button { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color 0.3s ease; text-align: left; gap: 12px; }
         .sidebar-nav button:hover, .sidebar-nav button.active { background-color: #475569; }
+        .sidebar-nav button .icon { font-size: 1.2em; }
         .main-content { flex-grow: 1; padding: 25px; overflow-y: auto; }
-        .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; }
+        .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; font-weight: 500; transition: background-color 0.3s ease; }
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-success { background-color: var(--success-color); color: white; }
-        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); padding: 20px; box-shadow: var(--shadow-light); }
+        .btn-warning { background-color: var(--warning-color); color: white; }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn:disabled { background-color: #bdc3c7 !important; cursor: not-allowed; }
+        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; }
         .table-scroll-wrapper { width: 100%; overflow-x: auto; }
-        .project-table { width: 100%; border-collapse: collapse; }
-        .project-table th, .project-table td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); }
-        .project-table th { background-color: #f8f9fa; text-align: left; }
-        #auth-wrapper { text-align: center; background-color: white; padding: 40px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-medium); }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; }
+        .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
+        .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
+        .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
+        .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
+        .project-table tr:hover { background-color: #f0f8ff; }
+        .project-table select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        .project-table .btn-small { padding: 4px 8px; font-size: 0.8em; margin: 2px; }
+        #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); color: white; z-index: 1001; justify-content: center; align-items: center; flex-direction: column; }
-        .status { padding: 3px 8px; border-radius: 5px; color: white; font-weight: 500; }
+        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); color: white; z-index: 1001; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2em; }
+        .status { padding: 3px 8px; border-radius: 5px; color: white; font-weight: 500; font-size: 0.9em; }
         .status-available { background-color: var(--primary-color); }
-        .status-inprogressday1, .status-inprogressday2, .status-inprogressday3, .status-inprogressday4, .status-inprogressday5 { background-color: var(--warning-color); }
+        .status-inprogressday1, .status-inprogressday2, .status-inprogressday3, .status-inprogressday4, .status-inprogressday5, .status-day1ended_awaitingnext, .status-day2ended_awaitingnext, .status-day3ended_awaitingnext, .status-day4ended_awaitingnext { background-color: var(--warning-color); }
         .status-completed { background-color: var(--success-color); }
     </style>
     <link rel="icon" type="image/png" href="icon.png">
@@ -78,7 +84,7 @@
         <aside class="sidebar">
             <h2>Team123</h2>
             <div class="sidebar-nav">
-                <button id="openTechDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
+                <button id="openTechDashboardBtn" class.active><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
@@ -129,11 +135,11 @@
             <h2>Add New Project</h2>
             <form id="newProjectForm">
                 <label for="numRows">Number of Areas:</label>
-                <input type="number" id="numRows" value="1" min="1" required style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                <input type="number" id="numRows" value="1" min="1" required style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;">
                 <label for="baseProjectName">Project Name:</label>
-                <input type="text" id="baseProjectName" placeholder="e.g., PROJ_ID_XYZ" required style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                <input type="text" id="baseProjectName" placeholder="e.g., PROJ_ID_XYZ" required style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;">
                 <label for="gsd">GSD:</label>
-                <select id="gsd" required style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                <select id="gsd" required style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;">
                     <option value="3in">3in</option>
                     <option value="4in">4in</option>
                     <option value="6in">6in</option>
