@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
-        authTimeoutId: null, // For the timeout safety net
+        authTimeoutId: null, 
         state: { 
             projects: [], 
             users: [], 
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements: {},
 
         // =================================================================================
-        // == INITIALIZATION & AUTH (REVISED) ==============================================
+        // == INITIALIZATION & AUTH ========================================================
         // =================================================================================
         init() {
             this.setupDOMReferences();
@@ -54,18 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 scope: this.config.google.SCOPES,
                 callback: this.handleTokenResponse.bind(this),
             });
-
             this.showLoading("Please wait...");
-            
-            // Set a timeout as a fallback in case the auth process hangs
             this.authTimeoutId = setTimeout(() => {
-                if (!gapi.client.getToken()) { // Check if we are still not logged in
+                if (!gapi.client.getToken()) {
                     console.warn("Authentication timed out. Forcing sign-out.");
-                    this.handleSignedOutUser(); // If so, show the login button
+                    this.handleSignedOutUser();
                 }
-            }, 4000); // 4-second timeout
-
-            // Attempt to get a token silently
+            }, 4000); 
             this.tokenClient.requestAccessToken({ prompt: 'none' });
         },
 
@@ -74,9 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         async handleTokenResponse(resp) {
-            // As soon as we get any response, clear the timeout safety net
             clearTimeout(this.authTimeoutId);
-
             if (resp && resp.access_token) {
                 gapi.client.setToken(resp);
                 this.handleAuthorizedUser();
@@ -155,7 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
                 
-                this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
+                let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
+                
+                // --- GHOST PROJECT FIX ---
+                // Filter out any rows that don't have a baseProjectName
+                this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
+
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
@@ -642,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const sortedProjectKeys = Object.keys(groupedByProject).sort();
 
             sortedProjectKeys.forEach((projectName, index) => {
-                if (index > 0 && this.state.filters.project === 'All') { // Add separator row only in "All Projects" view
+                if (index > 0 && this.state.filters.project === 'All') {
                     const separatorRow = tableBody.insertRow();
                     separatorRow.className = 'project-separator-row';
                     separatorRow.innerHTML = `<td colspan="${headers.length}"></td>`;
