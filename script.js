@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             this.setupDOMReferences();
             this.attachEventListeners();
-            // Load GAPI first, then GSI
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
 
@@ -45,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     apiKey: this.config.google.API_KEY,
                     discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
                 });
-                // GAPI is ready, now load and initialize GSI
                 this.initializeGsi();
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
@@ -57,21 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
             this.tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: this.config.google.CLIENT_ID,
                 scope: this.config.google.SCOPES,
-                callback: this.handleTokenResponse.bind(this),
+                callback: (tokenResponse) => {
+                    // This now directly handles both success and implicit failure
+                    if (tokenResponse && tokenResponse.access_token) {
+                        this.handleTokenResponse(tokenResponse);
+                    } else {
+                        // This handles cases where the silent login fails without an explicit error object
+                        this.handleSignedOutUser();
+                    }
+                },
             });
-
-            // This is the key change: we attempt a silent sign-in immediately.
-            // If it succeeds, the callback will fire. If it fails, nothing happens,
-            // and we can safely show the sign-in button.
             this.showLoading("Please wait...");
             this.tokenClient.requestAccessToken({ prompt: 'none' });
-
-            // As a fallback, if no token is received after a short delay, show the login screen
-            setTimeout(() => {
-                if (!gapi.client.getToken()) {
-                    this.handleSignedOutUser();
-                }
-            }, 2000); 
         },
 
         handleAuthClick() {
@@ -81,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleTokenResponse(resp) {
             if (resp.error) {
                 console.error("Auth Error:", resp.error);
-                this.handleSignedOutUser(); // If any error, always go to signed-out state
+                this.handleSignedOutUser();
                 return;
             }
             gapi.client.setToken(resp);
@@ -90,13 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         handleSignoutClick() {
             const token = gapi.client.getToken();
-            if (token !== null) {
+            if (token) {
                 google.accounts.oauth2.revoke(token.access_token, () => {
-                    gapi.client.setToken(null);
                     this.handleSignedOutUser();
                 });
             } else {
-                 this.handleSignedOutUser();
+                this.handleSignedOutUser();
             }
         },
 
@@ -145,14 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const spreadsheet = await gapi.client.sheets.spreadsheets.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                 });
-                const projectSheet = spreadsheet.result.sheets.find(
-                    s => s.properties.title === this.config.sheetNames.PROJECTS
-                );
-                if (!projectSheet) {
-                    throw new Error(`Sheet "${this.config.sheetNames.PROJECTS}" not found.`);
-                }
+                const projectSheet = spreadsheet.result.sheets.find(s => s.properties.title === this.config.sheetNames.PROJECTS);
+                if (!projectSheet) throw new Error(`Sheet "${this.config.sheetNames.PROJECTS}" not found.`);
                 this.state.projectSheetId = projectSheet.properties.sheetId;
-
 
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
@@ -260,6 +249,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'), paginationControls: document.getElementById('paginationControls'),
+                openTlSummaryBtn: document.getElementById('openTlSummaryBtn'),
+                tlSummaryView: document.getElementById('tlSummaryView'),
+                summaryTableBody: document.getElementById('summaryTableBody'),
             };
         },
 
@@ -271,31 +263,26 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
-            this.elements.monthFilter.addEventListener('change', (e) => {
-                this.state.filters.month = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
-            });
+            this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
             });
-            this.elements.fixCategoryFilter.addEventListener('change', (e) => {
-                this.state.filters.fixCategory = e.target.value; this.state.pagination.currentPage = 1; this.filterAndRenderProjects();
-            });
-            for (let i = 2; i <= 5; i++) {
-                this.elements.dayCheckboxes[i].addEventListener('change', (e) => {
-                    this.state.filters.showDays[i] = e.target.checked; this.filterAndRenderProjects();
-                });
-            }
         },
 
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
+            this.elements.tlSummaryView.style.display = 'none';
             this.elements.openTechDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
+            this.elements.openTlSummaryBtn.classList.remove('active');
+
             if (viewName === 'dashboard') {
                 this.elements.techDashboardContainer.style.display = 'block'; this.elements.openTechDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
                 this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'flex'; this.elements.openProjectSettingsBtn.classList.add('active');
+            } else if (viewName === 'summary') {
+                this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'flex'; this.elements.openTlSummaryBtn.classList.add('active');
             }
         },
 
@@ -459,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tasksToDelete.length === 0) throw new Error(`No tasks found for project ${baseProjectName}.`);
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(rowNumbersToDelete);
-                this.state.filters.project = 'All'; // Reset filter
+                this.state.filters.project = 'All';
                 await this.loadDataFromSheets();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
             } catch(error) {
@@ -501,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <button class="btn btn-warning" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks & Rollback</button>
                                 </div>
                             </div>
-                            <div class="settings-card">
+                             <div class="settings-card">
                                 <h3>Delete Project:</h3>
                                 <div class="btn-group">
                                     <button class="btn btn-danger" data-action="delete-project" data-project="${projectName}">DELETE ENTIRE PROJECT</button>
@@ -519,6 +506,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (action === 'rollback') this.handleRollback(project, fix);
                     else if (action === 'delete-project') this.handleDeleteProject(project);
                 });
+            });
+        },
+
+        renderTlSummary() {
+            const tableBody = this.elements.summaryTableBody;
+            tableBody.innerHTML = "";
+            const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+
+            uniqueProjects.forEach(projectName => {
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
+                const totalTasks = projectTasks.length;
+                const completedTasks = projectTasks.filter(p => p.status === 'Completed').length;
+                const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                const totalMinutes = projectTasks.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
+
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = this.formatProjectName(projectName);
+                row.insertCell().textContent = totalTasks;
+                row.insertCell().textContent = completedTasks;
+                const progressCell = row.insertCell();
+                progressCell.innerHTML = `
+                    <div class="progress-bar" title="${progress.toFixed(1)}%">
+                        <div class="progress-bar-fill" style="width: ${progress}%;"></div>
+                    </div>`;
+                row.insertCell().textContent = totalMinutes;
+                row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
             });
         },
 
@@ -550,9 +563,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 let filteredProjects = [...this.state.projects];
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
-                }
-                if (this.state.filters.fixCategory !== 'All') {
-                    filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
                 }
                 
                 let projectsToRender = filteredProjects;
