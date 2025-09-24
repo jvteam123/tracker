@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 project: 'All',
                 fixCategory: 'All',
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
+            },
+            pagination: {
+                currentPage: 1,
+                rowsPerPage: 20,
             }
         },
         elements: {},
@@ -137,6 +141,19 @@ document.addEventListener('DOMContentLoaded', () => {
         async loadDataFromSheets() {
             this.showLoading("Loading data from Google Sheets...");
             try {
+                // Find the sheet ID for "Projects"
+                const spreadsheet = await gapi.client.sheets.spreadsheets.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                });
+                const projectSheet = spreadsheet.result.sheets.find(
+                    s => s.properties.title === this.config.sheetNames.PROJECTS
+                );
+                if (!projectSheet) {
+                    throw new Error(`Sheet "${this.config.sheetNames.PROJECTS}" not found.`);
+                }
+                this.state.projectSheetId = projectSheet.properties.sheetId;
+
+
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS],
@@ -198,6 +215,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("Failed to add data to Google Sheet.");
             }
         },
+
+        async deleteSheetRows(rowsToDelete) {
+            this.showLoading("Deleting rows...");
+            try {
+                if (rowsToDelete.length === 0) return;
+
+                // The API requires deleting from the bottom up to not mess up indices.
+                const sortedRows = rowsToDelete.sort((a, b) => b - a);
+
+                const requests = sortedRows.map(rowIndex => ({
+                    deleteDimension: {
+                        range: {
+                            sheetId: this.state.projectSheetId,
+                            dimension: 'ROWS',
+                            startIndex: rowIndex - 1, // API is 0-indexed
+                            endIndex: rowIndex,
+                        },
+                    },
+                }));
+
+                await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    resource: { requests },
+                });
+            } catch (err) {
+                console.error("API Error: Failed to delete rows.", err);
+                throw new Error("Could not delete rows from the sheet.");
+            } finally {
+                this.hideLoading();
+            }
+        },
         
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
@@ -231,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
                 techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
+                paginationControls: document.getElementById('paginationControls'),
             };
         },
 
@@ -244,14 +293,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.monthFilter.addEventListener('change', (e) => {
                 this.state.filters.month = e.target.value;
+                this.state.pagination.currentPage = 1;
                 this.filterAndRenderProjects();
             });
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value;
+                this.state.pagination.currentPage = 1;
                 this.filterAndRenderProjects();
             });
             this.elements.fixCategoryFilter.addEventListener('change', (e) => {
                 this.state.filters.fixCategory = e.target.value;
+                this.state.pagination.currentPage = 1;
                 this.filterAndRenderProjects();
             });
             for (let i = 2; i <= 5; i++) {
@@ -271,25 +323,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.techDashboardContainer.style.display = 'block';
                 this.elements.openTechDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
-                this.renderProjectSettings(); // Dynamically render the settings
+                this.renderProjectSettings();
                 this.elements.projectSettingsView.style.display = 'flex';
                 this.elements.openProjectSettingsBtn.classList.add('active');
             }
         },
 
         populateFilterDropdowns() {
-            const months = [...new Set(this.state.projects.map(p => {
-                if (p.lastModifiedTimestamp) {
-                    const date = new Date(p.lastModifiedTimestamp);
-                    return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-                }
-                return null;
-            }).filter(Boolean))].sort();
-            this.elements.monthFilter.innerHTML = '<option value="All">All Months</option>' + months.map(m => `<option value="${m}">${m}</option>`).join('');
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
-            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
-            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            this.elements.projectFilter.value = this.state.filters.project; // Preserve filter selection
         },
 
         async handleAddProjectSubmit(event) {
@@ -308,13 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newRows = [];
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
-                        id: `proj_${Date.now()}_${i}`,
-                        batchId: batchId,
-                        baseProjectName,
-                        areaTask: `Area${String(i).padStart(2, '0')}`,
-                        gsd,
-                        fixCategory: "Fix1",
-                        status: "Available",
+                        id: `proj_${Date.now()}_${i}`, batchId, baseProjectName,
+                        areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
@@ -330,12 +368,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
+        
+        calculateTotalMinutes(project) {
+            let totalWorkMinutes = 0;
+            let totalBreakMinutes = 0;
+            for (let i = 1; i <= 5; i++) {
+                const startTime = project[`startTimeDay${i}`] || '';
+                const finishTime = project[`finishTimeDay${i}`] || '';
+                const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
+                if (startTime && finishTime) {
+                    totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
+                }
+                totalBreakMinutes += breakMins;
+            }
+            const totalNetMinutes = totalWorkMinutes - totalBreakMinutes;
+            return totalNetMinutes > 0 ? totalNetMinutes : '';
+        },
 
         async handleProjectUpdate(projectId, updates) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
+                const tempUpdatedProject = { ...project, ...updates };
+                updates.totalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
-                this.filterAndRenderProjects();
+                this.filterAndRenderProjects(); // Optimistically update UI
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
@@ -353,12 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const [, type, day] = dayMatch;
                 const dayNum = parseInt(day, 10);
                 updates.status = type === 'start' ? `InProgressDay${dayNum}` : (dayNum < 5 ? `Day${dayNum}Ended_AwaitingNext` : 'Completed');
-                if (type === 'start') {
-                    updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
-                }
-                if (type === 'end') {
-                    updates[`finishTimeDay${dayNum}`] = this.getCurrentTime();
-                }
+                if (type === 'start') updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
+                if (type === 'end') updates[`finishTimeDay${dayNum}`] = this.getCurrentTime();
             }
             await this.handleProjectUpdate(projectId, updates);
         },
@@ -375,42 +427,27 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == PROJECT SETTINGS LOGIC =======================================================
+        // == PROJECT SETTINGS & ACTIONS ===================================================
         // =================================================================================
         async handleReleaseFix(baseProjectName, fromFix, toFix) {
-            if (!confirm(`This will create new '${toFix}' tasks for all '${fromFix}' areas in project '${this.formatProjectName(baseProjectName)}'. The original tech will be assigned. Continue?`)) {
-                return;
-            }
+            if (!confirm(`This will create new '${toFix}' tasks for all '${fromFix}' areas in project '${this.formatProjectName(baseProjectName)}'. The original tech will be assigned. Continue?`)) return;
             this.showLoading(`Releasing ${fromFix} to ${toFix}...`);
             try {
                 const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
-                if (tasksToClone.length === 0) {
-                    throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
-                }
+                if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
                 const newRows = [];
                 const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
-                    const newRowObj = {
-                        ...task, // Copy all data
-                        // Override specific fields for the new task
-                        id: `proj_${Date.now()}_${index}`,
-                        batchId,
-                        fixCategory: toFix,
-                        status: "Available",
-                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
-                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
-                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
-                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
-                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "",
-                        totalMinutes: "",
-                        lastModifiedTimestamp: new Date().toISOString()
+                    const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
-                    delete newRowObj._row; // Remove internal row property
+                    delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
                     newRows.push(row);
                 });
@@ -426,20 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async handleAddExtraArea(baseProjectName) {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
-            if (isNaN(numToAdd) || numToAdd < 1) {
-                return;
-            }
+            if (isNaN(numToAdd) || numToAdd < 1) return;
             this.showLoading(`Adding ${numToAdd} area(s)...`);
             try {
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
-                if (projectTasks.length === 0) {
-                    throw new Error(`Could not find project: ${baseProjectName}`);
-                }
+                if (projectTasks.length === 0) throw new Error(`Could not find project: ${baseProjectName}`);
                 const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
                 const newRows = [];
@@ -447,19 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
-                    const newRowObj = {
-                        ...latestTask, // Copy data from the last task
-                        id: `proj_${Date.now()}_${i}`,
-                        batchId,
-                        areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`,
-                        status: "Available",
-                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
-                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
-                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
-                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
-                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "",
-                        totalMinutes: "",
-                        lastModifiedTimestamp: new Date().toISOString()
+                    const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
                     };
                      delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || "");
@@ -474,29 +497,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
+        
+        async handleRollback(baseProjectName, fixToDelete) {
+            if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
+
+            try {
+                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
+                if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
+
+                const rowNumbersToDelete = tasksToDelete.map(p => p._row);
+                await this.deleteSheetRows(rowNumbersToDelete);
+                await this.loadDataFromSheets();
+                alert(`${fixToDelete} tasks have been deleted successfully.`);
+
+            } catch(error) {
+                alert("Error rolling back project: " + error.message);
+            }
+        },
 
         // =================================================================================
         // == FILTERING & RENDERING ========================================================
         // =================================================================================
         renderProjectSettings() {
             const container = this.elements.projectSettingsView;
-            container.innerHTML = ""; // Clear previous content
-
+            container.innerHTML = "";
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
-
             if (uniqueProjects.length === 0) {
                 container.innerHTML = `<p>No projects found to configure.</p>`;
                 return;
             }
-
             uniqueProjects.forEach(projectName => {
                 if (!projectName) return;
-
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
-                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort();
+                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
                 const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
                 const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
                 const nextFix = `Fix${currentFixNum + 1}`;
+                const canRollback = fixCategories.length > 1;
 
                 const cardHTML = `
                     <div class="project-settings-card">
@@ -510,62 +547,84 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </div>
                              <div class="settings-card">
-                                <h3>Manage Locking:</h3>
+                                <h3>Rollback Project:</h3>
                                 <div class="btn-group">
-                                    <button class="btn btn-warning" disabled>Lock Fix1</button>
-                                </div>
-                            </div>
-                            <div class="settings-card">
-                                <h3>Delete Current Project:</h3>
-                                <div class="btn-group">
-                                    <button class="btn btn-danger" disabled>DELETE PROJECT</button>
-                                </div>
-                            </div>
-                            <div class="settings-card">
-                                <h3>Delete Specific Fix Stages:</h3>
-                                <div class="btn-group">
-                                    <button class="btn btn-danger" disabled>Delete Fix1 Tasks</button>
+                                    <button class="btn btn-danger" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks & Rollback</button>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 container.insertAdjacentHTML('beforeend', cardHTML);
             });
-
-            // Add event listeners to the newly created buttons
             container.querySelectorAll('button[data-action]').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    const { action, project, from, to } = e.target.dataset;
-                    if (action === 'release') {
-                        this.handleReleaseFix(project, from, to);
-                    } else if (action === 'add-area') {
-                        this.handleAddExtraArea(project);
-                    }
+                    const { action, project, from, to, fix } = e.target.dataset;
+                    if (action === 'release') this.handleReleaseFix(project, from, to);
+                    else if (action === 'add-area') this.handleAddExtraArea(project);
+                    else if (action === 'rollback') this.handleRollback(project, fix);
                 });
             });
+        },
+
+        renderPaginationControls(totalRows) {
+            const { currentPage, rowsPerPage } = this.state.pagination;
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            const container = this.elements.paginationControls;
+            container.innerHTML = "";
+
+            if (totalPages <= 1) return;
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Previous';
+            prevButton.className = 'btn';
+            prevButton.disabled = currentPage === 1;
+            prevButton.onclick = () => {
+                this.state.pagination.currentPage--;
+                this.filterAndRenderProjects();
+            };
+
+            const pageInfo = document.createElement('span');
+            pageInfo.textContent = ` Page ${currentPage} of ${totalPages} `;
+            pageInfo.style.margin = "0 15px";
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next';
+            nextButton.className = 'btn';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.onclick = () => {
+                this.state.pagination.currentPage++;
+                this.filterAndRenderProjects();
+            };
+
+            container.appendChild(prevButton);
+            container.appendChild(pageInfo);
+            container.appendChild(nextButton);
         },
 
         filterAndRenderProjects() {
             this.showFilterSpinner();
             setTimeout(() => {
                 let filteredProjects = [...this.state.projects];
-                if (this.state.filters.month !== 'All') {
-                    filteredProjects = filteredProjects.filter(p => {
-                        if (p.lastModifiedTimestamp) {
-                            const date = new Date(p.lastModifiedTimestamp);
-                            return date.toLocaleString('en-US', { month: 'long', year: 'numeric' }) === this.state.filters.month;
-                        }
-                        return false;
-                    });
-                }
                 if (this.state.filters.project !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
                 }
                 if (this.state.filters.fixCategory !== 'All') {
                     filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
                 }
-                this.renderProjects(filteredProjects);
+                
+                // --- PAGINATION LOGIC ---
+                let projectsToRender = filteredProjects;
+                if (this.state.filters.project !== 'All') {
+                    const { currentPage, rowsPerPage } = this.state.pagination;
+                    const startIndex = (currentPage - 1) * rowsPerPage;
+                    const endIndex = startIndex + rowsPerPage;
+                    projectsToRender = filteredProjects.slice(startIndex, endIndex);
+                    this.renderPaginationControls(filteredProjects.length);
+                } else {
+                    this.elements.paginationControls.innerHTML = ""; // Clear pagination if all projects are shown
+                }
+                
+                this.renderProjects(projectsToRender);
                 this.hideFilterSpinner();
             }, 100);
         },
@@ -585,13 +644,38 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (projectsToRender.length === 0) {
                 const row = tableBody.insertRow();
-                row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found matching current filters.</td>`;
+                row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`;
                 return;
             }
 
-            projectsToRender.sort((a, b) => (a.baseProjectName + a.areaTask).localeCompare(b.baseProjectName + b.areaTask))
-                .forEach(project => {
+            // --- GROUPING LOGIC ---
+            const groupedProjects = projectsToRender.reduce((acc, project) => {
+                const key = project.fixCategory || 'Uncategorized';
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(project);
+                return acc;
+            }, {});
+
+            const sortedGroupKeys = Object.keys(groupedProjects).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+
+            sortedGroupKeys.forEach(fixKey => {
+                // Add group header row
+                const headerRow = tableBody.insertRow();
+                headerRow.className = 'fix-group-header';
+                headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
+                headerRow.onclick = () => {
+                    const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
+                    document.querySelectorAll(`tr[data-fix-group="${fixKey}"]`).forEach(r => {
+                        r.style.display = isCollapsed ? '' : 'none';
+                    });
+                    headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
+                };
+
+                // Add project rows for the group
+                const projectsInGroup = groupedProjects[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
+                projectsInGroup.forEach(project => {
                     const row = tableBody.insertRow();
+                    row.dataset.fixGroup = fixKey; // For collapsing
                     row.insertCell().textContent = project.fixCategory || '';
                     row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
                     row.insertCell().textContent = project.areaTask || '';
@@ -607,54 +691,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     let totalBreakMinutes = 0;
                     for (let i = 1; i <= 5; i++) {
                         if (this.state.filters.showDays[i]) {
-                            const startTime = project[`startTimeDay${i}`] || '';
-                            const finishTime = project[`finishTimeDay${i}`] || '';
-                            const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
-                            row.insertCell().textContent = startTime;
-                            row.insertCell().textContent = finishTime;
+                            row.insertCell().textContent = project[`startTimeDay${i}`] || '';
+                            row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
                             const breakCell = row.insertCell();
                             const breakSelect = document.createElement('select');
                             const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
+                            const currentBreak = project[`breakDurationMinutesDay${i}`] || '0';
                             for (const value in breakOptions) {
                                 const option = document.createElement('option');
                                 option.value = value;
                                 option.textContent = breakOptions[value];
-                                if (breakMins == value) option.selected = true;
+                                if (currentBreak == value) option.selected = true;
                                 breakSelect.appendChild(option);
                             }
                             breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
                             breakCell.appendChild(breakSelect);
-                            if (startTime && finishTime) {
-                                totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
-                            }
-                            totalBreakMinutes += breakMins;
                         }
                     }
 
-                    const totalNetMinutes = totalWorkMinutes - totalBreakMinutes;
-                    row.insertCell().textContent = totalNetMinutes > 0 ? totalNetMinutes : '';
+                    row.insertCell().textContent = project.totalMinutes || '';
 
                     const actionsCell = row.insertCell();
-                    if (this.state.filters.showDays[1]) { // Only add start/end if Day 1 is visible as a proxy
-                        for (let i = 1; i <= 5; i++) {
-                             if (this.state.filters.showDays[i]) {
-                                const startBtn = document.createElement('button');
-                                startBtn.textContent = `Start D${i}`;
-                                startBtn.className = 'btn btn-primary btn-small';
-                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
-                                startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
-                                actionsCell.appendChild(startBtn);
+                    for (let i = 1; i <= 5; i++) {
+                         if (this.state.filters.showDays[i]) {
+                            const startBtn = document.createElement('button');
+                            startBtn.textContent = `Start D${i}`;
+                            startBtn.className = 'btn btn-primary btn-small';
+                            startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i-1}Ended_AwaitingNext`);
+                            startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
+                            actionsCell.appendChild(startBtn);
 
-                                const endBtn = document.createElement('button');
-                                endBtn.textContent = `End D${i}`;
-                                endBtn.className = 'btn btn-warning btn-small';
-                                endBtn.disabled = project.status !== `InProgressDay${i}`;
-                                endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
-                                actionsCell.appendChild(endBtn);
-                            }
+                            const endBtn = document.createElement('button');
+                            endBtn.textContent = `End D${i}`;
+                            endBtn.className = 'btn btn-warning btn-small';
+                            endBtn.disabled = project.status !== `InProgressDay${i}`;
+                            endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
+                            actionsCell.appendChild(endBtn);
                         }
                     }
-                    // --- "DONE" BUTTON ---
                     const doneBtn = document.createElement('button');
                     doneBtn.textContent = 'Done';
                     doneBtn.className = 'btn btn-success btn-small';
@@ -666,6 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     actionsCell.appendChild(doneBtn);
                 });
+            });
         },
 
         showLoading(message = "Loading...") {
