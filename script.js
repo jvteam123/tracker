@@ -1,11 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM fully loaded and parsed.");
     const ProjectTrackerApp = {
         // --- CONFIGURATION ---
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
                 CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
-                SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY", // <-- IMPORTANT: REPLACE THIS
+                SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             sheetNames: { PROJECTS: "Projects", USERS: "Users" },
@@ -23,54 +24,75 @@ document.addEventListener('DOMContentLoaded', () => {
         // == INITIALIZATION & AUTH ========================================================
         // =================================================================================
         init() {
+            console.log("App Init: Starting application setup.");
             this.setupDOMReferences();
             this.attachEventListeners();
+            console.log("App Init: Loading GAPI client...");
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
 
         async initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: this.config.google.API_KEY,
-                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-            });
-            this.tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: this.config.google.CLIENT_ID,
-                scope: this.config.google.SCOPES,
-                callback: this.handleTokenResponse.bind(this),
-            });
-            this.updateAuthUI();
+            console.log("GAPI: Client loaded. Initializing...");
+            try {
+                await gapi.client.init({
+                    apiKey: this.config.google.API_KEY,
+                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                });
+                console.log("GAPI: Client initialized successfully.");
+
+                this.tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.config.google.CLIENT_ID,
+                    scope: this.config.google.SCOPES,
+                    callback: this.handleTokenResponse.bind(this),
+                });
+                console.log("GAPI: Token client initialized.");
+                this.updateAuthUI();
+
+            } catch (error) {
+                console.error("GAPI Error: Failed to initialize GAPI client.", error);
+                alert("Critical Error: Could not initialize Google API client. The app may not function.");
+            }
         },
 
         updateAuthUI() {
+            console.log("Auth: Checking for existing token...");
             const token = gapi.client.getToken();
             if (token) {
+                console.log("Auth: Found existing token. Proceeding to authorized user flow.");
                 this.handleAuthorizedUser();
             } else {
+                console.log("Auth: No token found. Proceeding to signed-out user flow.");
                 this.handleSignedOutUser();
             }
         },
 
         handleAuthClick() {
+            console.log("Auth: Sign-in button clicked.");
             if (gapi.client.getToken() === null) {
+                console.log("Auth: Requesting new access token with consent prompt.");
                 this.tokenClient.requestAccessToken({ prompt: 'consent' });
             } else {
+                console.log("Auth: Refreshing existing access token.");
                 this.tokenClient.requestAccessToken({ prompt: '' });
             }
         },
 
         async handleTokenResponse(resp) {
+            console.log("Auth: Received token response from Google.");
             if (resp.error) {
-                console.error(resp);
+                console.error("Auth Error: Token response contained an error.", resp);
                 return;
             }
-            // THIS IS THE FIX: Ensure the new token is set and then authorize the user
+            console.log("Auth: Token received successfully. Setting token and authorizing user.");
             gapi.client.setToken(resp);
             this.handleAuthorizedUser();
         },
 
         handleSignoutClick() {
+            console.log("Auth: Sign-out button clicked.");
             const token = gapi.client.getToken();
             if (token !== null) {
+                console.log("Auth: Revoking token.");
                 google.accounts.oauth2.revoke(token.access_token);
                 gapi.client.setToken('');
                 this.handleSignedOutUser();
@@ -78,17 +100,23 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async handleAuthorizedUser() {
+            console.log("UI: Setting up for an authorized user.");
             document.body.classList.remove('login-view-active');
             this.elements.authWrapper.style.display = 'none';
             this.elements.dashboardWrapper.style.display = 'flex';
 
             if (!this.state.isAppInitialized) {
+                console.log("App Logic: First-time setup for authorized user. Loading data...");
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
+                console.log("App Logic: Application is now fully initialized.");
+            } else {
+                console.log("App Logic: App already initialized. Skipping data load.");
             }
         },
 
         handleSignedOutUser() {
+            console.log("UI: Setting up for a signed-out user.");
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
@@ -114,12 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         async loadDataFromSheets() {
+            console.log("Data: Starting to load data from Google Sheets...");
             this.showLoading("Loading data from Google Sheets...");
             try {
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS],
                 });
+                console.log("Data: Received response from Sheets API.", response);
                 
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
@@ -127,13 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 this.state.projects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
+                console.log(`Data: Parsed ${this.state.projects.length} projects and ${this.state.users.length} users.`);
 
                 this.renderProjects();
             } catch (err) {
-                console.error("Error loading data:", err);
-                alert("Could not load data. Check Spreadsheet ID, sheet names, and sharing permissions.");
+                console.error("Data Error: Failed to load data from Sheets.", err);
+                alert("Could not load data. Check Spreadsheet ID, sheet names, and sharing permissions. See console (F12) for details.");
             } finally {
                 this.hideLoading();
+                console.log("Data: Finished loading process.");
             }
         },
 
@@ -146,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 const headers = getHeaders.result.values[0];
-                const invertedHeaderMap = Object.fromEntries(Object.entries(this.config.HEADER_MAP).map(a => a.reverse()));
                 const values = [headers.map(header => dataObject[this.config.HEADER_MAP[header.trim()]] || "")];
 
                 await gapi.client.sheets.spreadsheets.values.update({
@@ -156,9 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     resource: { values: values }
                 });
             } catch (err) {
-                console.error(`Error updating row ${rowIndex}:`, err);
-                alert("Failed to save changes.");
-                await this.loadDataFromSheets(); // Refresh data on error to revert optimistic UI
+                console.error(`Data Error: Failed to update row ${rowIndex}.`, err);
+                alert("Failed to save changes. The data will be refreshed to prevent inconsistencies.");
+                await this.loadDataFromSheets();
             } finally {
                 this.hideLoading();
             }
@@ -173,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     resource: { values: rows }
                 });
             } catch (err) {
-                console.error("Failed to add data to Google Sheet:", err);
+                console.error("Data Error: Failed to append rows to sheet.", err);
                 throw new Error("Failed to add data to Google Sheet.");
             }
         },
@@ -253,11 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleProjectUpdate(projectId, updates) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
-                // Optimistic UI update
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
                 this.renderProjects(); 
 
-                // Send update to the sheet
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
@@ -290,16 +319,18 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         renderProjects() {
+            console.log("UI: Rendering projects table...");
             const tableBody = this.elements.projectTableBody;
             tableBody.innerHTML = "";
             
             if (this.state.projects.length === 0) {
                 const row = tableBody.insertRow();
                 const cell = row.insertCell();
-                cell.colSpan = 22;
-                cell.textContent = "No projects found. Add one to get started!";
+                cell.colSpan = 22; // Adjusted colspan
+                cell.textContent = "No projects found in your sheet. Add one to get started!";
                 cell.style.textAlign = "center";
                 cell.style.padding = "20px";
+                console.log("UI: Rendered 'No projects' message.");
                 return;
             }
 
@@ -343,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         actionsCell.appendChild(endBtn);
                     }
                 });
+            console.log(`UI: Successfully rendered ${this.state.projects.length} project rows.`);
         },
 
         showLoading(message = "Loading...") {
