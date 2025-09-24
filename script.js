@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' }
         },
         tokenClient: null,
-        authTimeoutId: null, // To handle auth hangs
+        authTimeoutId: null,
         state: { 
             projects: [], 
             users: [], 
@@ -54,17 +54,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         
-        // --- THIS FUNCTION INCLUDES THE TIMEOUT FIX ---
         updateAuthUI() {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (isLoggedIn) {
                 this.showLoading("Restoring session...");
 
-                // Set a timeout as a fallback in case the auth process hangs
                 this.authTimeoutId = setTimeout(() => {
                     console.warn("Authentication timed out. Forcing sign-out.");
                     this.handleSignedOutUser();
-                }, 7000); // 7-second timeout
+                }, 7000);
 
                 this.tokenClient.requestAccessToken({ prompt: 'none' });
             } else {
@@ -77,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         async handleTokenResponse(resp) {
-            // As soon as we get a response, clear the timeout safety net
             clearTimeout(this.authTimeoutId);
 
             if (resp.error) {
@@ -125,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == DATA HANDLING (No changes) ===================================================
+        // == DATA HANDLING ================================================================
         // =================================================================================
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
@@ -213,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
         // =================================================================================
-        // == UI AND EVENT LOGIC (No changes) ==============================================
+        // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
         setupDOMReferences() {
             this.elements = {
@@ -245,6 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'),
                 techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
+
+                // Project Settings Buttons
+                releaseFixBtn: document.getElementById('releaseFixBtn'),
+                addAreaBtn: document.getElementById('addAreaBtn'),
+                lockFixBtn: document.getElementById('lockFixBtn'),
+                deleteProjectBtn: document.getElementById('deleteProjectBtn'),
+                deleteFixTasksBtn: document.getElementById('deleteFixTasksBtn'),
             };
         },
 
@@ -257,6 +261,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
+
+            // --- PROJECT SETTINGS BUTTON LISTENERS ---
+            this.elements.releaseFixBtn.onclick = () => alert("Release Fix button clicked!");
+            this.elements.addAreaBtn.onclick = () => alert("Add Extra Area button clicked!");
+            this.elements.lockFixBtn.onclick = () => alert("Lock Fix button clicked!");
+            this.elements.deleteProjectBtn.onclick = () => alert("DELETE PROJECT button clicked!");
+            this.elements.deleteFixTasksBtn.onclick = () => alert("Delete Fix Tasks button clicked!");
 
             this.elements.monthFilter.addEventListener('change', (e) => {
                 this.state.filters.month = e.target.value;
@@ -403,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         // =================================================================================
-        // == FILTERING & RENDERING (No changes) ===========================================
+        // == FILTERING & RENDERING ========================================================
         // =================================================================================
         filterAndRenderProjects() {
             this.showFilterSpinner();
@@ -483,7 +494,30 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             row.insertCell().textContent = startTime;
                             row.insertCell().textContent = finishTime;
-                            row.insertCell().textContent = breakMins > 0 ? `${breakMins}m` : '';
+
+                            // --- BREAK TIME DROPDOWN ---
+                            const breakCell = row.insertCell();
+                            const breakSelect = document.createElement('select');
+                            const breakOptions = {
+                                "0": "None",
+                                "15": "15m",
+                                "60": "1hr",
+                                "75": "1hr 15m",
+                                "90": "1hr 30m"
+                            };
+                            for (const value in breakOptions) {
+                                const option = document.createElement('option');
+                                option.value = value;
+                                option.textContent = breakOptions[value];
+                                if (breakMins == value) {
+                                    option.selected = true;
+                                }
+                                breakSelect.appendChild(option);
+                            }
+                            breakSelect.onchange = (e) => {
+                                this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
+                            };
+                            breakCell.appendChild(breakSelect);
 
                             if (startTime && finishTime) {
                                 totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
