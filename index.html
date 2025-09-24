@@ -66,7 +66,6 @@
         .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         
-        /* THIS IS THE FIX */
         #loadingOverlay {
             display: none; /* Make sure it starts hidden */
             position: fixed;
@@ -77,7 +76,7 @@
             background-color: rgba(0,0,0,0.7);
             color: white;
             z-index: 1001;
-            display: flex;
+            /* display: flex; // This is removed so it respects the 'none' above. JS will add it back when needed. */
             justify-content: center;
             align-items: center;
             flex-direction: column;
