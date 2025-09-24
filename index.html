@@ -53,7 +53,6 @@
         .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-danger { background-color: var(--danger-color); color: white; }
         
-        /* Filter Section Styling */
         .filter-section {
             background-color: var(--card-bg-color);
             border-radius: var(--border-radius-md);
@@ -86,9 +85,6 @@
             font-size: 0.9em;
             cursor: pointer;
             min-width: 120px;
-        }
-        .filter-group input[type="checkbox"] {
-            margin-right: 5px;
         }
         .filter-group input[type="checkbox"] {
             position: absolute;
@@ -137,7 +133,8 @@
         }
 
         .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; }
-        .table-scroll-wrapper { width: 100%; overflow-x: auto; flex-grow: 1; }
+        /* --- SCROLLBAR FIX --- */
+        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; } 
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
@@ -260,26 +257,26 @@
                 <div class="settings-card">
                     <h3>Release Tasks:</h3>
                     <div class="btn-group">
-                        <button class="btn btn-primary">Release Fix1 to Fix2</button>
-                        <button class="btn btn-success">Add Extra Area</button>
+                        <button id="releaseFixBtn" class="btn btn-primary">Release Fix1 to Fix2</button>
+                        <button id="addAreaBtn" class="btn btn-success">Add Extra Area</button>
                     </div>
                 </div>
                 <div class="settings-card">
                     <h3>Manage Locking:</h3>
                     <div class="btn-group">
-                        <button class="btn btn-warning">Lock Fix1</button>
+                        <button id="lockFixBtn" class="btn btn-warning">Lock Fix1</button>
                     </div>
                 </div>
                 <div class="settings-card">
                     <h3>Delete Current Project:</h3>
                     <div class="btn-group">
-                        <button class="btn btn-danger">DELETE PROJECT</button>
+                        <button id="deleteProjectBtn" class="btn btn-danger">DELETE PROJECT</button>
                     </div>
                 </div>
                 <div class="settings-card">
                     <h3>Delete Specific Fix Stages:</h3>
                     <div class="btn-group">
-                        <button class="btn btn-danger">Delete Fix1 Tasks</button>
+                        <button id="deleteFixTasksBtn" class="btn btn-danger">Delete Fix1 Tasks</button>
                     </div>
                 </div>
             </div>
