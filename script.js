@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
-                CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
-                SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
-                SCOPES: "https://www.googleapis.com/auth/spreadsheets",
+        CLIENT_ID: "YOUR_NEW_CLIENT_ID_GOES_HERE.apps.googleusercontent.com", // <-- PASTE IT HERE
+        SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
+        SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             pins: { TL_DASHBOARD_PIN: "1234" },
             sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes" },
