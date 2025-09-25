@@ -171,6 +171,9 @@
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
         .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
         .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        .time-edit-group { display: flex; gap: 10px; align-items: center; }
+        .time-edit-group input { flex-grow: 1; }
+        .time-edit-group select { width: 80px; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); color: white; z-index: 1001; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2em; }
 
@@ -250,7 +253,7 @@
         </aside>
 
         <main class="main-content">
-            <div id="techDashboardContainer">
+            <div id="techDashboardContainer" style="display: flex; flex-direction: column; flex-grow: 1;">
                 <div class="filter-section">
                     <div class="filter-group">
                         <label for="projectFilter">Project:</label>
@@ -375,9 +378,21 @@
                 <input type="hidden" id="timeEditProjectId">
                 <input type="hidden" id="timeEditDay">
                 <label for="editStartTime">Start Time (HH:MM):</label>
-                <input type="text" id="editStartTime" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="e.g., 09:30" required>
+                <div class="time-edit-group">
+                    <input type="text" id="editStartTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 09:30" required>
+                    <select id="editStartTimeAmPm">
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                    </select>
+                </div>
                 <label for="editFinishTime">Finish Time (HH:MM):</label>
-                <input type="text" id="editFinishTime" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="e.g., 17:30" required>
+                <div class="time-edit-group">
+                    <input type="text" id="editFinishTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 05:30" required>
+                    <select id="editFinishTimeAmPm">
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-success">Save Time</button>
             </form>
         </div>
