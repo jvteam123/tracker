@@ -123,12 +123,8 @@
             border-color: var(--primary-color);
         }
 
-        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; display: flex; flex-direction: column; overflow: auto; }
-        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; }
-        .table-scroll-wrapper {
-             overflow-x: auto !important;
-             -webkit-overflow-scrolling: touch;
-        }
+        .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; overflow-x: scroll; }
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
