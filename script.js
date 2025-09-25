@@ -7,9 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
-            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes" },
+            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
+            EXTRAS_HEADER_MAP: { 'id': 'id', 'name': 'name', 'url': 'url', 'icon': 'icon' },
             FIX_COLORS: {
                 "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 }, "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
                 "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 }, "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
@@ -21,11 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
             projects: [],
             users: [],
             disputes: [],
+            extras: [],
             isAppInitialized: false,
             filters: {
                 project: 'All',
                 fixCategory: 'All',
-                showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
+                showDays: { 1: true, 2: false, 3: false, 4: false, 5: false },
+                disputeStatus: 'All',
             },
         },
         elements: {},
@@ -92,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 this.filterAndRenderProjects();
             }
+            this.renderExtrasMenu();
         },
         handleSignedOutUser() {
             gapi.client.setToken(null);
@@ -124,20 +128,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES],
+                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS],
                 });
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
                 const disputesData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.DISPUTES));
+                const extrasData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.EXTRAS));
 
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
+                this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
 
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
+                this.renderExtrasMenu();
             } catch (err) {
                 console.error("Data Error:", err);
                 if (err.status === 401 || err.status === 403) {
@@ -163,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
                 } else if (sheetName === this.config.sheetNames.DISPUTES) {
                     headerMap = this.config.DISPUTE_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.EXTRAS) {
+                    headerMap = this.config.EXTRAS_HEADER_MAP;
                 } else {
                     headerMap = this.config.HEADER_MAP;
                 }
@@ -253,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 userTableBody: document.getElementById('userTableBody'), addUserBtn: document.getElementById('addUserBtn'),
                 openDisputeBtn: document.getElementById('openDisputeBtn'), disputeView: document.getElementById('disputeView'),
                 disputeForm: document.getElementById('disputeForm'), disputesTableBody: document.getElementById('disputesTableBody'),
+                disputeStatusFilter: document.getElementById('disputeStatusFilter'),
                 openAdminSettingsBtn: document.getElementById('openAdminSettingsBtn'), adminSettingsView: document.getElementById('adminSettingsView'),
                 timeEditModal: document.getElementById('timeEditModal'), closeTimeEditModalBtn: document.getElementById('closeTimeEditModalBtn'),
                 timeEditForm: document.getElementById('timeEditForm'), timeEditTitle: document.getElementById('timeEditTitle'),
@@ -263,6 +273,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 disputeDetailsModal: document.getElementById('disputeDetailsModal'),
                 closeDisputeDetailsBtn: document.getElementById('closeDisputeDetailsBtn'),
                 disputeDetailsContent: document.getElementById('disputeDetailsContent'),
+                notificationModal: document.getElementById('notificationModal'),
+                notificationTitle: document.getElementById('notificationTitle'),
+                notificationMessage: document.getElementById('notificationMessage'),
+                notificationViewBtn: document.getElementById('notificationViewBtn'),
+                notificationCloseBtn: document.getElementById('notificationCloseBtn'),
+                extrasMenu: document.getElementById('extrasMenu'),
+                extraFormModal: document.getElementById('extraFormModal'),
+                closeExtraFormBtn: document.getElementById('closeExtraFormBtn'),
+                extraForm: document.getElementById('extraForm'),
+                extraFormTitle: document.getElementById('extraFormTitle'),
+                extraId: document.getElementById('extraId'),
+                extraRow: document.getElementById('extraRow'),
+                extraName: document.getElementById('extraName'),
+                extraUrl: document.getElementById('extraUrl'),
+                extraIcon: document.getElementById('extraIcon'),
             };
         },
         attachEventListeners() {
@@ -283,7 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.disputesTableBody.addEventListener('click', (e) => this.handleDisputeActions(e));
             this.elements.closeDisputeDetailsBtn.onclick = () => this.elements.disputeDetailsModal.style.display = 'none';
             this.elements.disputeDetailsContent.addEventListener('click', (e) => this.handleCopyToClipboard(e));
+            this.elements.disputeStatusFilter.addEventListener('change', (e) => {
+                this.state.filters.disputeStatus = e.target.value;
+                this.renderDisputes();
+            });
 
+            this.elements.notificationCloseBtn.onclick = () => this.elements.notificationModal.style.display = 'none';
+
+            this.elements.closeExtraFormBtn.onclick = () => this.elements.extraFormModal.style.display = 'none';
+            this.elements.extraForm.addEventListener('submit', (e) => this.handleExtraFormSubmit(e));
 
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
@@ -362,6 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.projectFormModal.style.display = 'none'; this.elements.newProjectForm.reset();
                 await this.loadDataFromSheets();
                 await this.handleReorganizeSheet(true); // Auto-reorganize
+                this.showReleaseNotification(`Project "${this.formatProjectName(baseProjectName)}" was created successfully!`, baseProjectName);
+
             } catch (error) {
                 alert("Error adding projects: " + error.message);
             } finally { this.hideLoading(); }
@@ -475,6 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 alert(`${fromFix} released to ${toFix} successfully!`);
                 this.renderProjectSettings(); // Refresh the settings view
+                this.showReleaseNotification(`'${toFix}' was released for project '${this.formatProjectName(baseProjectName)}'!`, baseProjectName);
+
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
                 await this.loadDataFromSheets(); // Reload data on error to be safe
@@ -522,15 +559,24 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async handleDeleteProject(baseProjectName) {
             if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
+            
+            this.showLoading("Deleting project...");
             try {
-                this.state.projects = this.state.projects.filter(p => p.baseProjectName !== baseProjectName);
-                this.state.filters.project = 'All';
-                await this.handleReorganizeSheet(true);
+                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                if (tasksToDelete.length > 0) {
+                    const rowNumbersToDelete = tasksToDelete.map(p => p._row);
+                    await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+                }
+        
+                await this.loadDataFromSheets();
                 this.renderProjectSettings();
+                this.populateFilterDropdowns();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
             } catch(error) {
                 alert("Error deleting project: " + error.message);
                 await this.loadDataFromSheets();
+            } finally {
+                this.hideLoading();
             }
         },
         async handleReorganizeSheet(isSilent = false) {
@@ -578,7 +624,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastProject = project.baseProjectName;
                     lastFix = project.fixCategory;
                 });
+
+                // Clear both values and formatting
                 await gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2:Z`, });
+                const clearFormattingRequest = {
+                    repeatCell: {
+                        range: { sheetId: this.state.projectSheetId, startRowIndex: 1 }, // From row 2 to end
+                        cell: { userEnteredFormat: {} },
+                        fields: "userEnteredFormat"
+                    }
+                };
+                 await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    resource: { requests: [clearFormattingRequest] }
+                });
+
+
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2`,
                     valueInputOption: 'USER_ENTERED', resource: { values: newSheetData }
@@ -919,6 +980,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         renderDisputes() {
+            this.elements.disputeStatusFilter.value = this.state.filters.disputeStatus;
+            
             // Populate dropdowns that depend on dynamic data
             const techIdSelect = document.getElementById('disputeTechId');
             techIdSelect.innerHTML = '<option value="">Select Tech ID</option>' + this.state.users.map(u => `<option value="${u.techId}">${u.techId}</option>`).join('');
@@ -931,17 +994,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             projectNameSelect.innerHTML = '<option value="">Select Project</option>' + uniqueProjects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             
+            // Filter disputes
+            let disputesToRender = [...this.state.disputes];
+            if (this.state.filters.disputeStatus !== 'All') {
+                disputesToRender = disputesToRender.filter(d => (d.status || 'Open') === this.state.filters.disputeStatus);
+            }
+
             // Render table
             const tableBody = this.elements.disputesTableBody;
             tableBody.innerHTML = "";
 
-            if (this.state.disputes.length === 0) {
+            if (disputesToRender.length === 0) {
                 const row = tableBody.insertRow();
                 row.innerHTML = `<td colspan="7" style="text-align:center;padding:20px;">No disputes found.</td>`;
                 return;
             }
 
-            this.state.disputes.forEach(dispute => {
+            disputesToRender.forEach(dispute => {
                 const row = tableBody.insertRow();
                 row.insertCell().textContent = this.formatProjectName(dispute.projectName);
                 row.insertCell().textContent = dispute.phase;
@@ -1141,6 +1210,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="project-settings-card">
                     <h2>Admin Tools</h2>
                     <div class="settings-card">
+                        <h3><i class="fas fa-cogs icon"></i> Extras Menu Management</h3>
+                        <p>Add, edit, or delete custom links in the sidebar.</p>
+                        <div id="extrasManagementTableContainer"></div>
+                        <button id="addExtraBtn" class="btn btn-success" style="margin-top: 10px;"><i class="fas fa-plus"></i> Add New Link</button>
+                    </div>
+
+                    <div class="settings-card" style="margin-top: 20px;">
+                        <h3><i class="fas fa-clipboard-list icon"></i> Sheet Header Formats</h3>
+                        <p>Use these formats to ensure your Google Sheets are set up correctly.</p>
+                        <div id="headerFormatsContainer"></div>
+                    </div>
+
+                    <div class="settings-card" style="margin-top: 20px;">
                         <h3><i class="fas fa-database icon"></i> Database Maintenance</h3>
                         <p>Ensure the database headers are correct. This will add any missing columns and correct any misspelled ones.</p>
                         <div class="btn-group">
@@ -1164,6 +1246,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+
+            this.renderExtrasManagement();
+            this.renderHeaderFormats();
+            document.getElementById('addExtraBtn').onclick = () => this.openExtraModal();
+            container.querySelector('#headerFormatsContainer').addEventListener('click', (e) => this.handleCopyToClipboard(e));
         },
         async handleFixDb() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
@@ -1220,10 +1307,147 @@ document.addEventListener('DOMContentLoaded', () => {
             await this.handleProjectUpdate(projectId, updates);
             this.elements.timeEditModal.style.display = 'none';
         },
+        showReleaseNotification(message, projectFilterValue) {
+            this.elements.notificationMessage.textContent = message;
+            this.elements.notificationModal.style.display = 'flex';
+        
+            // Clone and replace the button to remove old event listeners
+            const oldBtn = this.elements.notificationViewBtn;
+            const newBtn = oldBtn.cloneNode(true);
+            oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+            this.elements.notificationViewBtn = newBtn;
+        
+            newBtn.onclick = () => {
+                this.state.filters.project = projectFilterValue;
+                this.elements.projectFilter.value = projectFilterValue;
+                this.switchView('dashboard');
+                this.filterAndRenderProjects();
+                this.elements.notificationModal.style.display = 'none';
+            };
+        },
+        
         showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
         hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
         showFilterSpinner() { },
-        hideFilterSpinner() { }
+        hideFilterSpinner() { },
+        
+        // =================================================================================
+        // == EXTRAS MENU LOGIC ============================================================
+        // =================================================================================
+        renderExtrasMenu() {
+            const container = this.elements.extrasMenu;
+            container.innerHTML = '';
+            if (this.state.extras.length > 0) {
+                this.state.extras.forEach(extra => {
+                    const link = document.createElement('a');
+                    link.href = extra.url;
+                    link.target = "_blank";
+                    link.className = "btn-extra";
+                    link.innerHTML = `<i class="${extra.icon} icon"></i> ${extra.name}`;
+                    container.appendChild(link);
+                });
+            }
+        },
+        renderExtrasManagement() {
+            const container = document.getElementById('extrasManagementTableContainer');
+            if (!container) return;
+            
+            let tableHTML = `<table class="project-table">
+                <thead><tr><th>Name</th><th>URL</th><th>Icon</th><th>Actions</th></tr></thead>
+                <tbody>`;
+
+            if (this.state.extras.length > 0) {
+                this.state.extras.forEach(extra => {
+                    tableHTML += `
+                        <tr>
+                            <td>${extra.name}</td>
+                            <td>${extra.url}</td>
+                            <td><i class="${extra.icon}"></i> (${extra.icon})</td>
+                            <td class="actions-btn-group">
+                                <button class="btn btn-warning btn-small" onclick="ProjectTrackerApp.openExtraModal(ProjectTrackerApp.state.extras.find(e => e.id === '${extra.id}'))">Edit</button>
+                                <button class="btn btn-danger btn-small" onclick="ProjectTrackerApp.handleDeleteExtra('${extra.id}')">Delete</button>
+                            </td>
+                        </tr>`;
+                });
+            } else {
+                tableHTML += `<tr><td colspan="4" style="text-align:center;">No extra links configured.</td></tr>`;
+            }
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+        },
+        openExtraModal(extra = null) {
+            this.elements.extraForm.reset();
+            if (extra) {
+                this.elements.extraFormTitle.textContent = "Edit Extra Link";
+                this.elements.extraId.value = extra.id;
+                this.elements.extraRow.value = extra._row;
+                this.elements.extraName.value = extra.name;
+                this.elements.extraUrl.value = extra.url;
+                this.elements.extraIcon.value = extra.icon;
+            } else {
+                this.elements.extraFormTitle.textContent = "Add Extra Link";
+                this.elements.extraId.value = `extra_${Date.now()}`;
+                this.elements.extraRow.value = "";
+            }
+            this.elements.extraFormModal.style.display = 'block';
+        },
+        async handleExtraFormSubmit(event) {
+            event.preventDefault();
+            const extra = {
+                id: this.elements.extraId.value,
+                name: this.elements.extraName.value,
+                url: this.elements.extraUrl.value,
+                icon: this.elements.extraIcon.value,
+            };
+            const rowIndex = this.elements.extraRow.value;
+
+            if (rowIndex) { // Update existing
+                extra._row = rowIndex;
+                await this.updateRowInSheet(this.config.sheetNames.EXTRAS, rowIndex, extra);
+            } else { // Add new
+                const headers = Object.keys(this.config.EXTRAS_HEADER_MAP);
+                const newRow = [headers.map(h => extra[this.config.EXTRAS_HEADER_MAP[h]] || "")];
+                await this.appendRowsToSheet(this.config.sheetNames.EXTRAS, newRow);
+            }
+            this.elements.extraFormModal.style.display = 'none';
+            await this.loadDataFromSheets();
+            this.renderExtrasManagement();
+        },
+        async handleDeleteExtra(extraId) {
+            const extra = this.state.extras.find(e => e.id === extraId);
+            if (!extra) return;
+
+            if (confirm(`Are you sure you want to delete the link: ${extra.name}?`)) {
+                await this.deleteSheetRows(this.config.sheetNames.EXTRAS, [extra._row]);
+                await this.loadDataFromSheets();
+                this.renderExtrasManagement();
+            }
+        },
+
+        renderHeaderFormats() {
+            const container = document.getElementById('headerFormatsContainer');
+            if (!container) return;
+            const headers = {
+                "Projects": Object.keys(this.config.HEADER_MAP).join(', '),
+                "Users": "id, name, email, techId",
+                "Disputes": Object.keys(this.config.DISPUTE_HEADER_MAP).join(', '),
+                "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP).join(', ')
+            };
+
+            let content = '';
+            for (const [sheet, headerString] of Object.entries(headers)) {
+                content += `
+                    <div class="header-format-card">
+                        <h4>${sheet} Sheet</h4>
+                        <div class="header-format-value" id="header-${sheet}">
+                            <span>${headerString}</span>
+                            <i class="fas fa-copy copy-icon" data-clipboard-target="#header-${sheet}"></i>
+                        </div>
+                    </div>`;
+            }
+            container.innerHTML = content;
+        }
+
     };
 
     // Make the app object globally accessible so the inline onclicks can find it.
