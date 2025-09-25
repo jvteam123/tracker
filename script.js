@@ -7,10 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
-            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive" },
+            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
             EXTRAS_HEADER_MAP: { 'id': 'id', 'name': 'name', 'url': 'url', 'icon': 'icon' },
+            NOTIFICATIONS_HEADER_MAP: { 'id': 'id', 'message': 'message', 'projectName': 'projectName', 'timestamp': 'timestamp', 'read': 'read' },
             FIX_COLORS: {
                 "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 }, "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
                 "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 }, "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
             users: [],
             disputes: [],
             extras: [],
+            notifications: [],
             isAppInitialized: false,
             filters: {
                 project: 'All',
@@ -33,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         elements: {},
 
-        // =================================================================================
+       // =================================================================================
         // == INITIALIZATION & AUTH ========================================================
         // =================================================================================
         init() {
