@@ -32,7 +32,7 @@
         html, body {
             height: 100%;
             margin: 0;
-            overflow: hidden; 
+            overflow: hidden;
         }
         body {
             font-family: 'Inter', Arial, sans-serif;
@@ -60,7 +60,7 @@
         .btn-success { background-color: var(--success-color); color: white; }
         .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-danger { background-color: var(--danger-color); color: white; }
-        
+
         .filter-section {
             background-color: var(--card-bg-color);
             border-radius: var(--border-radius-md);
@@ -69,7 +69,7 @@
             padding: 15px 20px;
             margin-bottom: 20px;
             display: flex;
-            flex-wrap: wrap; 
+            flex-wrap: wrap;
             gap: 15px;
             align-items: center;
             position: relative;
@@ -124,12 +124,16 @@
         }
 
         .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; display: flex; flex-direction: column; overflow: auto; }
-        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; } 
+        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; }
+        .table-scroll-wrapper {
+             overflow-x: auto !important;
+             -webkit-overflow-scrolling: touch;
+        }
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
         .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
-        
+
         /* Highlighting Styles */
         tr.fix-stage-1 { background-color: var(--fix-color-1); }
         tr.fix-stage-2 { background-color: var(--fix-color-2); }
@@ -139,14 +143,43 @@
         tr.fix-stage-1:hover, tr.fix-stage-2:hover, tr.fix-stage-3:hover, tr.fix-stage-4:hover, tr.fix-stage-5:hover {
              background-color: #d1eaff; /* A common hover color */
         }
-        
+
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
         .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
         .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); color: white; z-index: 1001; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2em; }
-        
+
+        /* Project Settings & Summary UI */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .project-settings-card, .summary-card {
+            background: #fff;
+            border-radius: var(--border-radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        .project-settings-card h2, .summary-card h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .settings-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: var(--border-radius-md);
+            border: 1px solid #eee;
+        }
+        .settings-card h3 { margin-top: 0; font-size: 1.1em; color: var(--primary-color); }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+
     </style>
     <link rel="icon" type="image/png" href="icon.png">
 </head>
@@ -169,6 +202,7 @@
                 <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
                 <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
                 <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
+                <button id="openAdminSettingsBtn"><i class="fas fa-user-shield icon"></i> Admin Settings</button>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
@@ -207,24 +241,10 @@
                     </div>
                 </div>
             </div>
-            
+
             <div id="tlSummaryView" class="table-container" style="display: none;">
                 <h2>Project Summary</h2>
-                <div class="table-scroll-wrapper">
-                    <table id="summaryTable" class="project-table">
-                        <thead>
-                            <tr>
-                                <th>Project Name</th>
-                                <th>Total Areas</th>
-                                <th>Completed</th>
-                                <th>Progress</th>
-                                <th>Total Minutes</th>
-                                <th>Total Hours (Decimal)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody"></tbody>
-                    </table>
-                </div>
+                <div id="summaryGrid" class="settings-grid"></div>
             </div>
 
             <div id="userManagementView" class="table-container" style="display: none;">
@@ -248,6 +268,7 @@
             </div>
 
             <div id="projectSettingsView" style="display: none;"></div>
+            <div id="adminSettingsView" style="display: none;"></div>
 
         </main>
     </div>
