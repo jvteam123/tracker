@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const ProjectTrackerApp = {
-        // --- CONFIGURATION ---
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
@@ -18,12 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         tokenClient: null,
         authTimeoutId: null, 
-        state: { 
+        state: {
             projects: [], 
             users: [], 
             isAppInitialized: false,
             filters: {
-                month: 'All',
                 project: 'All',
                 fixCategory: 'All',
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
@@ -48,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.initializeGsi();
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
+                this.handleSignedOutUser();
             }
         },
         initializeGsi() {
@@ -56,25 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 scope: this.config.google.SCOPES,
                 callback: this.handleTokenResponse.bind(this),
             });
-            this.showLoading("Please wait...");
-            this.authTimeoutId = setTimeout(() => {
-                if (!gapi.client.getToken()) {
-                    console.warn("Authentication timed out. Forcing sign-out.");
-                    this.handleSignedOutUser();
-                }
-            }, 4000); 
             this.tokenClient.requestAccessToken({ prompt: 'none' });
         },
         handleAuthClick() {
+            this.showLoading("Signing in...");
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
         async handleTokenResponse(resp) {
-            clearTimeout(this.authTimeoutId);
             if (resp && resp.access_token) {
                 gapi.client.setToken(resp);
                 this.handleAuthorizedUser();
             } else {
-                console.error("Auth Error:", resp.error || "Token response was invalid.");
+                console.log("Silent sign-in failed. Awaiting manual login.");
                 this.handleSignedOutUser();
             }
         },
@@ -93,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.authWrapper.style.display = 'none';
             this.elements.dashboardWrapper.style.display = 'flex';
             this.elements.loggedInUser.textContent = `Signed In`;
-
             if (!this.state.isAppInitialized) {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
@@ -162,11 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     range: `${sheetName}!1:1`,
                 });
                 const headers = headersResult.result.values[0];
-                const headerMap = sheetName === this.config.sheetNames.PROJECTS ? this.config.HEADER_MAP : { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
-                const invertedHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => { acc[value] = key; return acc; }, {});
+                const headerMap = sheetName === this.config.sheetNames.USERS 
+                    ? { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' } 
+                    : this.config.HEADER_MAP;
         
                 const values = [headers.map(header => {
-                    const propName = headerMap[header.trim()] || header.toLowerCase();
+                    const propName = headerMap[header.trim()] || headerMap[header.trim().toLowerCase()];
                     return dataObject[propName] !== undefined ? dataObject[propName] : "";
                 })];
         
@@ -240,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 userId: document.getElementById('userId'), userRow: document.getElementById('userRow'), 
                 userName: document.getElementById('userName'), userEmail: document.getElementById('userEmail'), userTechId: document.getElementById('userTechId'),
                 projectFilter: document.getElementById('projectFilter'), 
+                fixCategoryFilter: document.getElementById('fixCategoryFilter'),
                 dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
                 openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
@@ -267,6 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openUserManagementBtn.onclick = () => this.switchView('users');
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value; this.filterAndRenderProjects();
+            });
+            this.elements.fixCategoryFilter.addEventListener('change', (e) => {
+                this.state.filters.fixCategory = e.target.value; this.filterAndRenderProjects();
             });
             for (let i = 2; i <= 5; i++) {
                 this.elements.dayCheckboxes[i].addEventListener('change', (e) => {
@@ -299,6 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             this.elements.projectFilter.value = this.state.filters.project;
+
+            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
+            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
         },
         async handleAddProjectSubmit(event) {
             event.preventDefault(); this.showLoading("Adding project(s)...");
