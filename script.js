@@ -713,6 +713,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionsCell.appendChild(deleteBtn);
             });
         },
+        openUserModal(user = null) {
+            this.elements.userForm.reset();
+            if (user) {
+                this.elements.userFormTitle.textContent = "Edit User";
+                this.elements.userId.value = user.id;
+                this.elements.userRow.value = user._row;
+                this.elements.userName.value = user.name;
+                this.elements.userEmail.value = user.email;
+                this.elements.userTechId.value = user.techId;
+            } else {
+                this.elements.userFormTitle.textContent = "Add User";
+                this.elements.userId.value = `user_${Date.now()}`;
+                this.elements.userRow.value = "";
+            }
+            this.elements.userFormModal.style.display = 'block';
+        },
+        async handleUserFormSubmit(event) {
+            event.preventDefault();
+            const user = {
+                id: this.elements.userId.value,
+                name: this.elements.userName.value,
+                email: this.elements.userEmail.value,
+                techId: this.elements.userTechId.value,
+            };
+            const rowIndex = this.elements.userRow.value;
+
+            if (rowIndex) {
+                user._row = rowIndex;
+                await this.updateRowInSheet(this.config.sheetNames.USERS, rowIndex, user);
+            } else {
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.USERS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                const newRow = [headers.map(h => user[h.toLowerCase()] || "")];
+                await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
+            }
+            this.elements.userFormModal.style.display = 'none';
+            await this.loadDataFromSheets();
+            this.renderUserManagement();
+        },
+        async handleDeleteUser(user) {
+            if (confirm(`Are you sure you want to delete user: ${user.name}?`)) {
+                await this.deleteSheetRows(this.config.sheetNames.USERS, [user._row]);
+                await this.loadDataFromSheets();
+                this.renderUserManagement();
+            }
+        },
         showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
         hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
         showFilterSpinner() { },
