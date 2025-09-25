@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         renderDisputes() {
-            // Populate dropdowns
+            // Populate dropdowns that depend on dynamic data
             const techIdSelect = document.getElementById('disputeTechId');
             techIdSelect.innerHTML = '<option value="">Select Tech ID</option>' + this.state.users.map(u => `<option value="${u.techId}">${u.techId}</option>`).join('');
             techIdSelect.onchange = (e) => {
@@ -930,6 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 partial: document.getElementById('disputePartial').value,
                 phase: document.getElementById('disputePhase').value,
                 uid: document.getElementById('disputeUid').value,
+                warning: document.getElementById('disputeWarning').value,
                 rqaTechId: document.getElementById('disputeRqaTechId').value,
                 reasonForDispute: document.getElementById('disputeReason').value,
                 techId: document.getElementById('disputeTechId').value,
