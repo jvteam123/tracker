@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements: {},
 
         // =================================================================================
-        // == INITIALIZATION & AUTH (NEW TECH ID SYSTEM) ===================================
+        // == INITIALIZATION & AUTH ========================================================
         // =================================================================================
         init() {
             this.setupDOMReferences();
@@ -280,7 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         
-        // --- ALL FUNCTIONS BELOW THIS POINT ARE UNCHANGED FROM THE PREVIOUS VERSION ---
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
@@ -355,19 +354,344 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!name) return '';
             return name.replace(/__/g, '  ').replace(/_/g, ' ');
         },
-        async handleReleaseFix(baseProjectName, fromFix, toFix) { /* Unchanged */ },
-        async handleAddExtraArea(baseProjectName) { /* Unchanged */ },
-        async handleRollback(baseProjectName, fixToDelete) { /* Unchanged */ },
-        async handleDeleteProject(baseProjectName) { /* Unchanged */ },
-        async handleReorganizeSheet() { /* Unchanged */ },
-        renderProjectSettings() { /* Unchanged */ },
-        renderTlSummary() { /* Unchanged */ },
-        filterAndRenderProjects() { /* Unchanged */ },
-        renderProjects(projectsToRender = this.state.projects) { /* Unchanged */ },
-        renderUserManagement() { /* Unchanged */ },
-        showLoading(message = "Loading...") {
-            if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; }
+        async handleReleaseFix(baseProjectName, fromFix, toFix) {
+            if (!confirm(`This will create new '${toFix}' tasks for all '${fromFix}' areas in project '${this.formatProjectName(baseProjectName)}'. The original tech will be assigned. Continue?`)) return;
+            this.showLoading(`Releasing ${fromFix} to ${toFix}...`);
+            try {
+                const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
+                if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
+                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_release_${Date.now()}`;
+                tasksToClone.forEach((task, index) => {
+                    const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
+                    };
+                    delete newRowObj._row;
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
+                });
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
+                alert(`${fromFix} released to ${toFix} successfully!`);
+            } catch (error) {
+                alert("Error releasing fix: " + error.message);
+            } finally { this.hideLoading(); }
         },
+        async handleAddExtraArea(baseProjectName) {
+            const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
+            if (isNaN(numToAdd) || numToAdd < 1) return; this.showLoading(`Adding ${numToAdd} area(s)...`);
+            try {
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                if (projectTasks.length === 0) throw new Error(`Could not find project: ${baseProjectName}`);
+                const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
+                const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
+                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_extra_${Date.now()}`;
+                for (let i = 1; i <= numToAdd; i++) {
+                    const newAreaNumber = lastAreaNumber + i;
+                    const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
+                    };
+                     delete newRowObj._row;
+                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
+                }
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
+                alert(`${numToAdd} area(s) added successfully!`);
+            } catch (error) {
+                alert("Error adding extra areas: " + error.message);
+            } finally { this.hideLoading(); }
+        },
+        async handleRollback(baseProjectName, fixToDelete) {
+            if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
+            try {
+                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
+                if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
+                const rowNumbersToDelete = tasksToDelete.map(p => p._row);
+                await this.deleteSheetRows(rowNumbersToDelete); await this.loadDataFromSheets();
+                alert(`${fixToDelete} tasks have been deleted successfully.`);
+            } catch(error) {
+                alert("Error rolling back project: " + error.message);
+            }
+        },
+        async handleDeleteProject(baseProjectName) {
+            if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
+            try {
+                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                if (tasksToDelete.length === 0) throw new Error(`No tasks found for project ${baseProjectName}.`);
+                const rowNumbersToDelete = tasksToDelete.map(p => p._row);
+                await this.deleteSheetRows(rowNumbersToDelete);
+                this.state.filters.project = 'All';
+                await this.loadDataFromSheets();
+                alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
+            } catch(error) {
+                alert("Error deleting project: " + error.message);
+            }
+        },
+        async handleReorganizeSheet() {
+            if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows and applying colors. This action cannot be undone. Are you sure?")) return;
+            this.showLoading("Reorganizing sheet...");
+            try {
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
+                const headers = getHeaders.result.values[0];
+                const sortedProjects = [...this.state.projects].sort((a, b) => {
+                    if (a.baseProjectName < b.baseProjectName) return -1;
+                    if (a.baseProjectName > b.baseProjectName) return 1;
+                    const fixNumA = parseInt(a.fixCategory.replace('Fix', ''), 10);
+                    const fixNumB = parseInt(b.fixCategory.replace('Fix', ''), 10);
+                    if (fixNumA < fixNumB) return -1;
+                    if (fixNumA > fixNumB) return 1;
+                    if (a.areaTask < b.areaTask) return -1;
+                    if (a.areaTask > b.areaTask) return 1;
+                    return 0;
+                });
+                const newSheetData = [];
+                const formattingRequests = [];
+                let lastProject = null;
+                let lastFix = null;
+                let currentRowIndex = 1; 
+                sortedProjects.forEach(project => {
+                    currentRowIndex++;
+                    if ( (lastProject !== null && project.baseProjectName !== lastProject) || (lastFix !== null && project.fixCategory !== lastFix) ) {
+                         newSheetData.push(new Array(headers.length).fill(""));
+                         currentRowIndex++;
+                    }
+                    const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                    newSheetData.push(row);
+                    const color = this.config.FIX_COLORS[project.fixCategory];
+                    if (color) {
+                        formattingRequests.push({
+                            repeatCell: {
+                                range: { sheetId: this.state.projectSheetId, startRowIndex: currentRowIndex -1, endRowIndex: currentRowIndex },
+                                cell: { userEnteredFormat: { backgroundColor: color } },
+                                fields: "userEnteredFormat.backgroundColor"
+                            }
+                        });
+                    }
+                    lastProject = project.baseProjectName;
+                    lastFix = project.fixCategory;
+                });
+                await gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2:Z`, });
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2`,
+                    valueInputOption: 'USER_ENTERED', resource: { values: newSheetData }
+                });
+                if (formattingRequests.length > 0) {
+                    await gapi.client.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.config.google.SPREADSHEET_ID, resource: { requests: formattingRequests } });
+                }
+                await this.loadDataFromSheets();
+                alert("Sheet reorganized and colored successfully!");
+            } catch(error) {
+                console.error("Reorganization Error:", error);
+                alert("Error reorganizing sheet: " + error.message);
+            } finally {
+                this.hideLoading();
+            }
+        },
+        renderProjectSettings() {
+            const container = this.elements.projectSettingsView; container.innerHTML = "";
+            const reorganizeCard = `
+                <div class="project-settings-card">
+                    <h2>Sheet Management</h2>
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <h3>Organize Sheet Data:</h3>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" data-action="reorganize">Reorganize Sheet</button>
+                            </div>
+                            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">Sorts all entries by Project, then Fix Stage. Inserts blank rows and applies colors for clarity.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', reorganizeCard);
+            const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
+            if (uniqueProjects.length === 0) {
+                container.insertAdjacentHTML('beforeend', `<p>No projects found to configure.</p>`);
+            }
+            uniqueProjects.forEach(projectName => {
+                if (!projectName) return;
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
+                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
+                const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
+                const nextFix = `Fix${currentFixNum + 1}`; const canRollback = fixCategories.length > 1;
+                const cardHTML = `
+                    <div class="project-settings-card">
+                        <h2>${this.formatProjectName(projectName)}</h2>
+                        <div class="settings-grid">
+                            <div class="settings-card">
+                                <h3>Release Tasks:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-primary" data-action="release" data-project="${projectName}" data-from="${currentFix}" data-to="${nextFix}">Release ${currentFix} to ${nextFix}</button>
+                                    <button class="btn btn-success" data-action="add-area" data-project="${projectName}">Add Extra Area</button>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h3>Rollback Project:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-warning" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks & Rollback</button>
+                                </div>
+                            </div>
+                             <div class="settings-card">
+                                <h3>Delete Project:</h3>
+                                <div class="btn-group">
+                                    <button class="btn btn-danger" data-action="delete-project" data-project="${projectName}">DELETE ENTIRE PROJECT</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            container.querySelectorAll('button[data-action]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const { action, project, from, to, fix } = e.target.dataset;
+                    if (action === 'release') this.handleReleaseFix(project, from, to);
+                    else if (action === 'add-area') this.handleAddExtraArea(project);
+                    else if (action === 'rollback') this.handleRollback(project, fix);
+                    else if (action === 'delete-project') this.handleDeleteProject(project);
+                    else if (action === 'reorganize') this.handleReorganizeSheet();
+                });
+            });
+        },
+        renderTlSummary() {
+            const tableBody = this.elements.summaryTableBody;
+            tableBody.innerHTML = "";
+            const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+            uniqueProjects.forEach(projectName => {
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
+                const totalTasks = projectTasks.length;
+                const completedTasks = projectTasks.filter(p => p.status === 'Completed').length;
+                const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                const totalMinutes = projectTasks.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = this.formatProjectName(projectName);
+                row.insertCell().textContent = totalTasks;
+                row.insertCell().textContent = completedTasks;
+                const progressCell = row.insertCell();
+                progressCell.innerHTML = `
+                    <div class="progress-bar" title="${progress.toFixed(1)}%">
+                        <div class="progress-bar-fill" style="width: ${progress}%;"></div>
+                    </div>`;
+                row.insertCell().textContent = totalMinutes;
+                row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
+            });
+        },
+        filterAndRenderProjects() {
+            this.showFilterSpinner();
+            setTimeout(() => {
+                let filteredProjects = [...this.state.projects];
+                if (this.state.filters.project !== 'All') {
+                    filteredProjects = filteredProjects.filter(p => p.baseProjectName === this.state.filters.project);
+                }
+                if (this.state.filters.fixCategory !== 'All') {
+                    filteredProjects = filteredProjects.filter(p => p.fixCategory === this.state.filters.fixCategory);
+                }
+                this.renderProjects(filteredProjects); 
+                this.hideFilterSpinner();
+            }, 100);
+        },
+        renderProjects(projectsToRender = this.state.projects) {
+            const tableBody = this.elements.projectTableBody; const tableHead = this.elements.projectTableHead; tableBody.innerHTML = "";
+            const headers = ['Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'];
+            for (let i = 1; i <= 5; i++) {
+                if (this.state.filters.showDays[i]) { headers.push(`Day ${i} Start`, `Day ${i} Finish`, `Day ${i} Break`); }
+            }
+            headers.push('Total (min)', 'Actions');
+            tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+
+            if (projectsToRender.length === 0) {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`; return;
+            }
+            const groupedByProject = projectsToRender.reduce((acc, project) => {
+                const key = project.baseProjectName || 'Uncategorized';
+                if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
+            }, {});
+            const sortedProjectKeys = Object.keys(groupedByProject).sort();
+            sortedProjectKeys.forEach((projectName, index) => {
+                if (index > 0 && this.state.filters.project === 'All') {
+                    const separatorRow = tableBody.insertRow();
+                    separatorRow.className = 'project-separator-row';
+                    separatorRow.innerHTML = `<td colspan="${headers.length}"></td>`;
+                }
+                const projectsInGroup = groupedByProject[projectName];
+                const groupedByFix = projectsInGroup.reduce((acc, project) => {
+                    const key = project.fixCategory || 'Uncategorized';
+                    if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
+                }, {});
+                const sortedFixKeys = Object.keys(groupedByFix).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                sortedFixKeys.forEach(fixKey => {
+                    const fixNum = parseInt(fixKey.replace('Fix', ''), 10);
+                    const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
+                    headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${this.formatProjectName(projectName)} - ${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
+                    headerRow.onclick = () => {
+                        const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
+                        document.querySelectorAll(`tr[data-project-group="${projectName}"][data-fix-group="${fixKey}"]`).forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
+                        headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
+                    };
+                    const tasksInFixGroup = groupedByFix[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
+                    tasksInFixGroup.forEach(project => {
+                        const row = tableBody.insertRow(); 
+                        row.className = `fix-stage-${fixNum}`;
+                        row.dataset.projectGroup = projectName; row.dataset.fixGroup = fixKey;
+                        row.insertCell().textContent = project.fixCategory || ''; row.insertCell().textContent = this.formatProjectName(project.baseProjectName);
+                        row.insertCell().textContent = project.areaTask || ''; row.insertCell().textContent = project.gsd || '';
+                        const assignedToCell = row.insertCell(); const assignedToSelect = document.createElement('select');
+                        assignedToSelect.innerHTML = '<option value="">Unassigned</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
+                        assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
+                        assignedToCell.appendChild(assignedToSelect);
+                        row.insertCell().innerHTML = `<span class="status status-${(project.status || "").toLowerCase()}">${project.status}</span>`;
+                        for (let i = 1; i <= 5; i++) {
+                            if (this.state.filters.showDays[i]) {
+                                row.insertCell().textContent = project[`startTimeDay${i}`] || ''; row.insertCell().textContent = project[`finishTimeDay${i}`] || '';
+                                const breakCell = row.insertCell(); const breakSelect = document.createElement('select');
+                                const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
+                                const currentBreak = project[`breakDurationMinutesDay${i}`] || '0';
+                                for (const value in breakOptions) {
+                                    const option = document.createElement('option'); option.value = value; option.textContent = breakOptions[value];
+                                    if (currentBreak == value) option.selected = true; breakSelect.appendChild(option);
+                                }
+                                breakSelect.onchange = (e) => this.handleProjectUpdate(project.id, { [`breakDurationMinutesDay${i}`]: e.target.value });
+                                breakCell.appendChild(breakSelect);
+                            }
+                        }
+                        row.insertCell().textContent = project.totalMinutes || '';
+                        const actionsCell = row.insertCell();
+                        for (let i = 1; i <= 5; i++) {
+                            if (this.state.filters.showDays[i]) {
+                                const startBtn = document.createElement('button'); startBtn.textContent = `Start D${i}`; startBtn.className = 'btn btn-primary btn-small';
+                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === `Day${i - 1}Ended_AwaitingNext`);
+                                startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`); actionsCell.appendChild(startBtn);
+                                const endBtn = document.createElement('button'); endBtn.textContent = `End D${i}`; endBtn.className = 'btn btn-warning btn-small';
+                                endBtn.disabled = project.status !== `InProgressDay${i}`;
+                                endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`); actionsCell.appendChild(endBtn);
+                            }
+                        }
+                        const doneBtn = document.createElement('button'); doneBtn.textContent = 'Done'; doneBtn.className = 'btn btn-success btn-small';
+                        doneBtn.disabled = project.status === 'Completed';
+                        doneBtn.onclick = () => {
+                            if (confirm('Are you sure you want to mark this project as "Completed"?')) {
+                                this.handleProjectUpdate(project.id, { 'status': 'Completed' });
+                            }
+                        };
+                        actionsCell.appendChild(doneBtn);
+                    });
+                });
+            });
+        },
+        renderUserManagement() {
+            const tableBody = this.elements.userTableBody;
+            tableBody.innerHTML = "";
+            this.state.users.forEach(user => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = user.name;
+                row.insertCell().textContent = user.email;
+                row.insertCell().textContent = user.techId;
+            });
+        },
+        showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
         hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
         showFilterSpinner() { if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'block'; } },
         hideFilterSpinner() { if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'none'; } }
