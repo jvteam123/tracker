@@ -739,6 +739,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalMinCell.textContent = project.totalMinutes || '';
 
                         const actionsCell = row.insertCell();
+                        const btnGroup = document.createElement('div');
+                        btnGroup.className = 'actions-btn-group';
+
                         let lastActiveDay = 0;
                         for (let i = 1; i <= 5; i++) {
                             if (project[`startTimeDay${i}`]) {
@@ -753,14 +756,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 startBtn.className = 'btn btn-primary btn-small';
                                 startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === 'Started Available' && i > lastActiveDay);
                                 startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
-                                actionsCell.appendChild(startBtn);
+                                btnGroup.appendChild(startBtn);
 
                                 const endBtn = document.createElement('button');
                                 endBtn.textContent = `End D${i}`;
                                 endBtn.className = 'btn btn-warning btn-small';
                                 endBtn.disabled = project.status !== `InProgressDay${i}`;
                                 endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
-                                actionsCell.appendChild(endBtn);
+                                btnGroup.appendChild(endBtn);
                             }
                         }
                          const doneBtn = document.createElement('button');
@@ -772,7 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 this.handleProjectUpdate(project.id, { 'status': 'Completed' });
                             }
                         };
-                        actionsCell.appendChild(doneBtn);
+                        btnGroup.appendChild(doneBtn);
+                        actionsCell.appendChild(btnGroup);
                     });
                 });
             });
