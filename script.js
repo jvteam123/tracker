@@ -362,27 +362,49 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally { this.hideLoading(); }
         },
         calculateTotalMinutes(project) {
-            let totalWorkMinutes = 0; let totalBreakMinutes = 0;
+            let totalWorkMinutes = 0;
             for (let i = 1; i <= 5; i++) {
-                const startTime = project[`startTimeDay${i}`] || ''; const finishTime = project[`finishTimeDay${i}`] || '';
+                const startTime = project[`startTimeDay${i}`] || '';
+                const finishTime = project[`finishTimeDay${i}`] || '';
                 const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
-                if (startTime && finishTime) totalWorkMinutes += this.parseTimeToMinutes(finishTime) - this.parseTimeToMinutes(startTime);
-                totalBreakMinutes += breakMins;
+                if (startTime && finishTime) {
+                    const startMinutes = this.parseTimeToMinutes(startTime);
+                    const finishMinutes = this.parseTimeToMinutes(finishTime);
+                    const workMinutes = finishMinutes - startMinutes;
+                    if (workMinutes > 0) {
+                        totalWorkMinutes += (workMinutes - breakMins);
+                    }
+                }
             }
-            const totalNetMinutes = totalWorkMinutes - totalBreakMinutes;
-            return totalNetMinutes > 0 ? totalNetMinutes : '';
+            return totalWorkMinutes > 0 ? totalWorkMinutes : '';
         },
         async handleProjectUpdate(projectId, updates) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
+                // Create a temporary copy of the project to calculate the new total minutes
                 const tempUpdatedProject = { ...project, ...updates };
-                updates.totalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
+                const newTotalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
+        
+                // Add the new total to the updates object
+                updates.totalMinutes = newTotalMinutes;
+        
+                // Now, assign all updates to the actual project object
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
+        
                 this.filterAndRenderProjects();
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
+        },        
+        getCurrentTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+            return `${hours}:${minutesStr} ${ampm}`;
         },
-        getCurrentTime() { return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); },
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return; const updates = {};
