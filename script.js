@@ -245,6 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeEditForm: document.getElementById('timeEditForm'), timeEditTitle: document.getElementById('timeEditTitle'),
                 timeEditProjectId: document.getElementById('timeEditProjectId'), timeEditDay: document.getElementById('timeEditDay'),
                 editStartTime: document.getElementById('editStartTime'), editFinishTime: document.getElementById('editFinishTime'),
+                editStartTimeAmPm: document.getElementById('editStartTimeAmPm'),
+                editFinishTimeAmPm: document.getElementById('editFinishTimeAmPm'),
             };
         },
         attachEventListeners() {
@@ -357,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
         },
-        getCurrentTime() { return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); },
+        getCurrentTime() { return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); },
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return; const updates = {};
@@ -371,9 +373,19 @@ document.addEventListener('DOMContentLoaded', () => {
             await this.handleProjectUpdate(projectId, updates);
         },
         parseTimeToMinutes(timeStr) {
-            if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return (hours * 60) + minutes;
+            if (!timeStr || typeof timeStr !== 'string') return 0;
+            const time = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!time) { // Fallback for 24-hour format
+                const parts = timeStr.split(':');
+                if (parts.length !== 2) return 0;
+                return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+            }
+            let [ , hours, minutes, ampm ] = time;
+            hours = parseInt(hours, 10);
+            minutes = parseInt(minutes, 10);
+            if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+            if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+            return hours * 60 + minutes;
         },
         formatProjectName(name) {
             if (!name) return '';
@@ -739,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const startBtn = document.createElement('button');
                                 startBtn.textContent = `Start D${i}`;
                                 startBtn.className = 'btn btn-primary btn-small';
-                                startBtn.disabled = (i === 1 && project.startTimeDay1) || (i > 1 && project.status !== 'Started Available');
+                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === 'Started Available' && i > lastActiveDay);
                                 startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
                                 actionsCell.appendChild(startBtn);
 
@@ -749,21 +761,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                 endBtn.disabled = project.status !== `InProgressDay${i}`;
                                 endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
                                 actionsCell.appendChild(endBtn);
-
-                                if (i === lastActiveDay + 1 || (lastActiveDay === 0 && i === 1)) {
-                                    const doneBtn = document.createElement('button');
-                                    doneBtn.textContent = 'Done';
-                                    doneBtn.className = 'btn btn-success btn-small';
-                                    doneBtn.disabled = project.status === 'Completed';
-                                    doneBtn.onclick = () => {
-                                        if (confirm('Are you sure you want to mark this project as "Completed"?')) {
-                                            this.handleProjectUpdate(project.id, { 'status': 'Completed' });
-                                        }
-                                    };
-                                    actionsCell.appendChild(doneBtn);
-                                }
                             }
                         }
+                         const doneBtn = document.createElement('button');
+                        doneBtn.textContent = 'Done';
+                        doneBtn.className = 'btn btn-success btn-small';
+                        doneBtn.disabled = project.status === 'Completed';
+                        doneBtn.onclick = () => {
+                            if (confirm('Are you sure you want to mark this project as "Completed"?')) {
+                                this.handleProjectUpdate(project.id, { 'status': 'Completed' });
+                            }
+                        };
+                        actionsCell.appendChild(doneBtn);
                     });
                 });
             });
@@ -884,10 +893,22 @@ document.addEventListener('DOMContentLoaded', () => {
         openTimeEditModal(projectId, day) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return;
+        
             this.elements.timeEditProjectId.value = projectId;
             this.elements.timeEditDay.value = day;
-            this.elements.editStartTime.value = project[`startTimeDay${day}`] || '';
-            this.elements.editFinishTime.value = project[`finishTimeDay${day}`] || '';
+        
+            const startTimeStr = project[`startTimeDay${day}`] || '';
+            const finishTimeStr = project[`finishTimeDay${day}`] || '';
+        
+            const startTimeMatch = startTimeStr.match(/(\d+:\d+)\s*(AM|PM)/i);
+            const finishTimeMatch = finishTimeStr.match(/(\d+:\d+)\s*(AM|PM)/i);
+        
+            this.elements.editStartTime.value = startTimeMatch ? startTimeMatch[1] : startTimeStr;
+            this.elements.editStartTimeAmPm.value = startTimeMatch ? startTimeMatch[2].toUpperCase() : 'AM';
+        
+            this.elements.editFinishTime.value = finishTimeMatch ? finishTimeMatch[1] : finishTimeStr;
+            this.elements.editFinishTimeAmPm.value = finishTimeMatch ? finishTimeMatch[2].toUpperCase() : 'PM';
+        
             this.elements.timeEditTitle.textContent = `Edit Day ${day} Time for ${project.areaTask}`;
             this.elements.timeEditModal.style.display = 'block';
         },
@@ -895,14 +916,19 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             const projectId = this.elements.timeEditProjectId.value;
             const day = this.elements.timeEditDay.value;
-            const startTime = this.elements.editStartTime.value;
-            const finishTime = this.elements.editFinishTime.value;
-
+            const startTime = `${this.elements.editStartTime.value} ${this.elements.editStartTimeAmPm.value}`;
+            const finishTime = `${this.elements.editFinishTime.value} ${this.elements.editFinishTimeAmPm.value}`;
+        
             const updates = {
                 [`startTimeDay${day}`]: startTime,
                 [`finishTimeDay${day}`]: finishTime,
             };
             
+            // Recalculate total minutes before updating
+            const project = this.state.projects.find(p => p.id === projectId);
+            const tempUpdatedProject = { ...project, ...updates };
+            updates.totalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
+        
             await this.handleProjectUpdate(projectId, updates);
             this.elements.timeEditModal.style.display = 'none';
         },
