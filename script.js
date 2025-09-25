@@ -277,6 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.timeEditForm.addEventListener('submit', (e) => this.handleTimeEditSubmit(e));
             
             this.elements.disputeForm.addEventListener('submit', (e) => this.handleDisputeFormSubmit(e));
+            this.elements.disputesTableBody.addEventListener('click', (e) => this.handleDisputeActions(e));
+
 
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
@@ -915,11 +917,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.insertCell().innerHTML = `<span class="status status-${(dispute.status || "open").toLowerCase()}">${dispute.status || 'Open'}</span>`;
 
                 const actionsCell = row.insertCell();
+                actionsCell.className = 'actions-btn-group';
                 actionsCell.innerHTML = `
-                    <button class="btn btn-primary btn-small">View</button>
-                    <button class="btn btn-secondary btn-small">Copy</button>
-                    <button class="btn btn-success btn-small">Done</button>
-                    <button class="btn btn-danger btn-small">Delete</button>
+                    <button class="btn btn-primary btn-small" data-action="view" data-id="${dispute.id}">View</button>
+                    <button class="btn btn-secondary btn-small" data-action="copy" data-id="${dispute.id}">Copy</button>
+                    <button class="btn btn-success btn-small" data-action="done" data-id="${dispute.id}" ${dispute.status === 'Done' ? 'disabled' : ''}>Done</button>
+                    <button class="btn btn-danger btn-small" data-action="delete" data-id="${dispute.id}">Delete</button>
                 `;
             });
         },
@@ -942,7 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 team: document.getElementById('disputeTeam').value,
                 type: document.getElementById('disputeType').value,
                 category: document.getElementById('disputeCategory').value,
-                status: 'Done', // Default status
+                status: 'Open', // Default status is now Open
             };
 
             try {
@@ -967,6 +970,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(error);
             } finally {
                 this.hideLoading();
+            }
+        },
+        handleDisputeActions(event) {
+            const target = event.target;
+            if (target.tagName === 'BUTTON') {
+                const action = target.dataset.action;
+                const id = target.dataset.id;
+                if (!action || !id) return;
+
+                if (action === 'view') this.handleViewDispute(id);
+                if (action === 'copy') this.handleCopyDispute(id);
+                if (action === 'done') this.handleUpdateDisputeStatus(id, 'Done');
+                if (action === 'delete') this.handleDeleteDispute(id);
+            }
+        },
+        handleViewDispute(disputeId) {
+            const dispute = this.state.disputes.find(d => d.id === disputeId);
+            if (!dispute) return;
+            const details = Object.entries(dispute)
+                .filter(([key]) => key !== '_row')
+                .map(([key, value]) => `${key}: ${value}`)
+                .join('\n');
+            alert('Dispute Details:\n\n' + details);
+        },
+        handleCopyDispute(disputeId) {
+            const dispute = this.state.disputes.find(d => d.id === disputeId);
+            if (!dispute) return;
+            document.getElementById('disputeBlockId').value = dispute.blockId || '';
+            document.getElementById('disputeProjectName').value = dispute.projectName || '';
+            document.getElementById('disputePartial').value = dispute.partial || '';
+            document.getElementById('disputePhase').value = dispute.phase || '';
+            document.getElementById('disputeUid').value = dispute.uid || '';
+            document.getElementById('disputeWarning').value = dispute.warning || 'N/A';
+            document.getElementById('disputeRqaTechId').value = dispute.rqaTechId || '';
+            document.getElementById('disputeReason').value = `Copy of: ${dispute.reasonForDispute || ''}`;
+            document.getElementById('disputeTechId').value = dispute.techId || '';
+            document.getElementById('disputeTechName').value = dispute.techName || '';
+            document.getElementById('disputeTeam').value = dispute.team || '';
+            document.getElementById('disputeType').value = dispute.type || '';
+            document.getElementById('disputeCategory').value = dispute.category || '';
+            alert('Dispute details copied to the form.');
+        },
+        async handleUpdateDisputeStatus(disputeId, newStatus) {
+            const dispute = this.state.disputes.find(d => d.id === disputeId);
+            if (!dispute) return;
+
+            dispute.status = newStatus;
+            await this.updateRowInSheet(this.config.sheetNames.DISPUTES, dispute._row, dispute);
+            
+            // Refresh the view
+            this.renderDisputes();
+        },
+        async handleDeleteDispute(disputeId) {
+            const dispute = this.state.disputes.find(d => d.id === disputeId);
+            if (!dispute) return;
+
+            if (confirm(`Are you sure you want to delete the dispute for project "${this.formatProjectName(dispute.projectName)}"?`)) {
+                try {
+                    await this.deleteSheetRows(this.config.sheetNames.DISPUTES, [dispute._row]);
+                    await this.loadDataFromSheets();
+                    this.renderDisputes();
+                    alert('Dispute deleted successfully.');
+                } catch (error) {
+                    alert('Failed to delete dispute: ' + error.message);
+                }
             }
         },
         renderAdminSettings() {
