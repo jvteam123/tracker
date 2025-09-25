@@ -52,9 +52,9 @@
         .sidebar-header { text-align: center; margin-bottom: 20px;}
         .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
         .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
-        .sidebar-nav button { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; }
-        .sidebar-nav button:hover, .sidebar-nav button.active { background-color: #475569; }
-        .sidebar-nav button .icon { font-size: 1.2em; }
+        .sidebar-nav button, .sidebar-nav a.btn-extra { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; text-decoration: none; }
+        .sidebar-nav button:hover, .sidebar-nav button.active, .sidebar-nav a.btn-extra:hover { background-color: #475569; }
+        .sidebar-nav button .icon, .sidebar-nav a.btn-extra .icon { font-size: 1.2em; }
         .main-content { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; overflow: auto; }
         .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; font-weight: 500; }
         .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
@@ -304,7 +304,34 @@
         #disputeDetailsContent .copy-icon.copied {
             color: var(--success-color);
         }
+        
+        /* Notification Modal */
+        #notificationModal .modal-content { max-width: 450px; text-align: center; }
+        #notificationModal .modal-content .icon { font-size: 3em; color: var(--success-color); margin-bottom: 15px; }
+        #notificationModal .modal-footer { margin-top: 20px; display: flex; justify-content: center; gap: 10px;}
 
+        /* Admin Headers UI */
+        .header-format-card {
+            background-color: #f9f9f9;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .header-format-card h4 { margin-top: 0; }
+        .header-format-value {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-format-value .copy-icon {
+             cursor: pointer;
+        }
 
     </style>
     <link rel="icon" type="image/png" href="icon.png">
@@ -330,6 +357,9 @@
                 <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
                 <button id="openDisputeBtn"><i class="fas fa-exclamation-triangle icon"></i> Dispute</button>
                 <button id="openAdminSettingsBtn"><i class="fas fa-user-shield icon"></i> Admin Settings</button>
+                <hr>
+                <div id="extrasMenu"></div>
+                <hr>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
@@ -515,7 +545,18 @@
                     </div>
                     <button type="submit" class="btn btn-success" style="margin-top: 20px;">Save Dispute</button>
                 </form>
+
                  <div class="disputes-list-container">
+                    <div class="filter-section" style="justify-content: flex-end;">
+                         <div class="filter-group">
+                            <label for="disputeStatusFilter">Status:</label>
+                            <select id="disputeStatusFilter">
+                                <option value="All">All</option>
+                                <option value="Open">Open</option>
+                                <option value="Done">Done</option>
+                            </select>
+                        </div>
+                    </div>
                     <h3>Disputes List</h3>
                     <div class="table-scroll-wrapper">
                         <table id="disputesTable" class="project-table">
@@ -542,11 +583,42 @@
         </main>
     </div>
 
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <i class="fas fa-check-circle icon"></i>
+            <h2 id="notificationTitle">Success!</h2>
+            <p id="notificationMessage"></p>
+            <div class="modal-footer">
+                <button id="notificationViewBtn" class="btn btn-primary">View</button>
+                <button id="notificationCloseBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div id="disputeDetailsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeDisputeDetailsBtn">&times;</span>
             <h2>Dispute Details</h2>
             <div id="disputeDetailsContent"></div>
+        </div>
+    </div>
+
+     <div id="extraFormModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeExtraFormBtn">&times;</span>
+            <h2 id="extraFormTitle">Add Extra Link</h2>
+            <form id="extraForm">
+                <input type="hidden" id="extraId">
+                <input type="hidden" id="extraRow">
+                <label for="extraName">Name:</label>
+                <input type="text" id="extraName" placeholder="e.g., Company Portal" required>
+                <label for="extraUrl">URL:</label>
+                <input type="url" id="extraUrl" placeholder="https://example.com" required>
+                <label for="extraIcon">Icon:</label>
+                <input type="text" id="extraIcon" placeholder="e.g., fas fa-link" required>
+                <p style="font-size: 0.8em; color: #666;">Use a Font Awesome class name (e.g., fas fa-folder, fas fa-chart-bar).</p>
+                <button type="submit" class="btn btn-success">Save Link</button>
+            </form>
         </div>
     </div>
     
