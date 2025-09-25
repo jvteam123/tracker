@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
                 openTlSummaryBtn: document.getElementById('openTlSummaryBtn'), tlSummaryView: document.getElementById('tlSummaryView'),
-                summaryGrid: document.getElementById('summaryGrid'),
+                summaryTableBody: document.getElementById('summaryTableBody'),
                 openUserManagementBtn: document.getElementById('openUserManagementBtn'), userManagementView: document.getElementById('userManagementView'),
                 userTableBody: document.getElementById('userTableBody'), addUserBtn: document.getElementById('addUserBtn'),
                 openAdminSettingsBtn: document.getElementById('openAdminSettingsBtn'), adminSettingsView: document.getElementById('adminSettingsView'),
@@ -389,7 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 });
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
+                await this.loadDataFromSheets();
+                await this.handleReorganizeSheet(true);
                 alert(`${fromFix} released to ${toFix} successfully!`);
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
@@ -442,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 this.state.filters.project = 'All';
                 await this.loadDataFromSheets();
+                this.renderProjectSettings(); // Refresh the view
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
             } catch(error) {
                 alert("Error deleting project: " + error.message);
@@ -563,8 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
         renderTlSummary() {
-            const grid = this.elements.summaryGrid;
-            grid.innerHTML = "";
+            const tableBody = this.elements.summaryTableBody;
+            tableBody.innerHTML = "";
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             uniqueProjects.forEach(projectName => {
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
@@ -572,19 +575,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const completedTasks = projectTasks.filter(p => p.status === 'Completed').length;
                 const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
                 const totalMinutes = projectTasks.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
-                const cardHTML = `
-                    <div class="summary-card">
-                        <h2>${this.formatProjectName(projectName)}</h2>
-                        <p><strong>Total Areas:</strong> ${totalTasks}</p>
-                        <p><strong>Completed:</strong> ${completedTasks}</p>
-                        <p><strong>Total Minutes:</strong> ${totalMinutes}</p>
-                        <p><strong>Total Hours:</strong> ${(totalMinutes / 60).toFixed(2)}</p>
-                        <div class="progress-bar" title="${progress.toFixed(1)}%">
-                            <div class="progress-bar-fill" style="width: ${progress}%;"></div>
-                        </div>
-                    </div>
-                `;
-                grid.insertAdjacentHTML('beforeend', cardHTML);
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = this.formatProjectName(projectName);
+                row.insertCell().textContent = totalTasks;
+                row.insertCell().textContent = completedTasks;
+                const progressCell = row.insertCell();
+                progressCell.innerHTML = `
+                    <div class="progress-bar" title="${progress.toFixed(1)}%">
+                        <div class="progress-bar-fill" style="width: ${progress}%;">${progress.toFixed(1)}%</div>
+                    </div>`;
+                row.insertCell().textContent = totalMinutes;
+                row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
             });
         },
         filterAndRenderProjects() {
@@ -619,8 +620,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
             }, {});
             const sortedProjectKeys = Object.keys(groupedByProject).sort();
-            sortedProjectKeys.forEach((projectName, index) => {
-                if (index > 0 && this.state.filters.project === 'All') {
+            sortedProjectKeys.forEach((projectName, projectIndex) => {
+                if (projectIndex > 0 && this.state.filters.project === 'All') {
                     const separatorRow = tableBody.insertRow();
                     separatorRow.className = 'project-separator-row';
                     separatorRow.innerHTML = `<td colspan="${headers.length}"></td>`;
@@ -631,15 +632,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
                 }, {});
                 const sortedFixKeys = Object.keys(groupedByFix).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-                sortedFixKeys.forEach(fixKey => {
+                sortedFixKeys.forEach((fixKey, fixIndex) => {
+                    if (fixIndex > 0) {
+                        const separatorRow = tableBody.insertRow();
+                        separatorRow.className = 'fix-separator-row';
+                        separatorRow.innerHTML = `<td colspan="${headers.length}"></td>`;
+                    }
+
                     const fixNum = parseInt(fixKey.replace('Fix', ''), 10);
-                    const headerRow = tableBody.insertRow(); headerRow.className = 'fix-group-header';
-                    headerRow.innerHTML = `<td colspan="${headers.length}"><strong>${this.formatProjectName(projectName)} - ${fixKey}</strong> <span style="float:right;">Collapse</span></td>`;
-                    headerRow.onclick = () => {
-                        const isCollapsed = headerRow.nextElementSibling && headerRow.nextElementSibling.style.display === 'none';
-                        document.querySelectorAll(`tr[data-project-group="${projectName}"][data-fix-group="${fixKey}"]`).forEach(r => { r.style.display = isCollapsed ? '' : 'none'; });
-                        headerRow.querySelector('span').textContent = isCollapsed ? 'Collapse' : 'Expand';
-                    };
                     const tasksInFixGroup = groupedByFix[fixKey].sort((a, b) => a.areaTask.localeCompare(b.areaTask));
                     tasksInFixGroup.forEach(project => {
                         const row = tableBody.insertRow();
@@ -699,6 +699,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.insertCell().textContent = user.email;
                 row.insertCell().textContent = user.techId;
                 const actionsCell = row.insertCell();
+                actionsCell.className = 'user-actions';
+
                 const editBtn = document.createElement('button');
                 editBtn.innerHTML = `<i class="fas fa-edit"></i> Edit`;
                 editBtn.className = 'btn btn-warning btn-small';
