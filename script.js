@@ -924,11 +924,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 [`finishTimeDay${day}`]: finishTime,
             };
             
-            // Recalculate total minutes before updating
-            const project = this.state.projects.find(p => p.id === projectId);
-            const tempUpdatedProject = { ...project, ...updates };
-            updates.totalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
-        
             await this.handleProjectUpdate(projectId, updates);
             this.elements.timeEditModal.style.display = 'none';
         },
