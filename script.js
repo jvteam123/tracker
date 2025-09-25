@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         elements: {},
 
-       // =================================================================================
+        // =================================================================================
         // == INITIALIZATION & AUTH ========================================================
         // =================================================================================
         init() {
@@ -130,23 +130,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS],
+                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS, this.config.sheetNames.NOTIFICATIONS],
                 });
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
                 const disputesData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.DISPUTES));
                 const extrasData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.EXTRAS));
+                const notificationsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.NOTIFICATIONS));
 
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
                 this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
+                this.state.notifications = (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP) : [];
 
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
                 this.renderExtrasMenu();
+                this.renderNotificationBell();
             } catch (err) {
                 console.error("Data Error:", err);
                 if (err.status === 401 || err.status === 403) {
@@ -174,6 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerMap = this.config.DISPUTE_HEADER_MAP;
                 } else if (sheetName === this.config.sheetNames.EXTRAS) {
                     headerMap = this.config.EXTRAS_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.NOTIFICATIONS) {
+                    headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
                 } else {
                     headerMap = this.config.HEADER_MAP;
                 }
@@ -255,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectFilter: document.getElementById('projectFilter'),
                 fixCategoryFilter: document.getElementById('fixCategoryFilter'),
                 dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
-                openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
+                openDashboardBtn: document.getElementById('openDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
                 openTlSummaryBtn: document.getElementById('openTlSummaryBtn'), tlSummaryView: document.getElementById('tlSummaryView'),
@@ -280,6 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 notificationMessage: document.getElementById('notificationMessage'),
                 notificationViewBtn: document.getElementById('notificationViewBtn'),
                 notificationCloseBtn: document.getElementById('notificationCloseBtn'),
+                notificationBell: document.getElementById('notificationBell'),
+                notificationBadge: document.getElementById('notificationBadge'),
+                notificationList: document.getElementById('notificationList'),
                 extrasMenu: document.getElementById('extrasMenu'),
                 extraFormModal: document.getElementById('extraFormModal'),
                 closeExtraFormBtn: document.getElementById('closeExtraFormBtn'),
@@ -316,11 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             this.elements.notificationCloseBtn.onclick = () => this.elements.notificationModal.style.display = 'none';
+            this.elements.notificationBell.onclick = () => this.toggleNotificationList();
 
             this.elements.closeExtraFormBtn.onclick = () => this.elements.extraFormModal.style.display = 'none';
             this.elements.extraForm.addEventListener('submit', (e) => this.handleExtraFormSubmit(e));
 
-            this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
+            this.elements.openDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
             this.elements.openUserManagementBtn.onclick = () => this.switchView('users');
@@ -347,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.disputeView.style.display = 'none';
             this.elements.adminSettingsView.style.display = 'none';
 
-            this.elements.openTechDashboardBtn.classList.remove('active');
+            this.elements.openDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
             this.elements.openTlSummaryBtn.classList.remove('active');
             this.elements.openUserManagementBtn.classList.remove('active');
@@ -355,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openAdminSettingsBtn.classList.remove('active');
 
             if (viewName === 'dashboard') {
-                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openTechDashboardBtn.classList.add('active');
+                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
                 this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
             } else if (viewName === 'summary') {
@@ -378,20 +387,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
         },
         async handleAddProjectSubmit(event) {
-            event.preventDefault(); this.showLoading("Adding project(s)...");
+            event.preventDefault(); 
+            const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            this.showLoading("Adding project(s)...");
+
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
             
             if (!baseProjectName) {
                 alert("Project Name is required.");
                 this.hideLoading();
+                submitBtn.disabled = false;
                 return;
             }
 
             const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
-            const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-
+            
             try {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
                 const headers = getHeaders.result.values[0]; const newRows = [];
@@ -405,9 +417,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
                 this.elements.projectFormModal.style.display = 'none'; this.elements.newProjectForm.reset();
+                
+                const message = `Project "${this.formatProjectName(baseProjectName)}" was created successfully!`;
+                await this.logNotification(message, baseProjectName);
                 await this.loadDataFromSheets();
                 await this.handleReorganizeSheet(true); // Auto-reorganize
-                this.showReleaseNotification(`Project "${this.formatProjectName(baseProjectName)}" was created successfully!`, baseProjectName);
+                this.showReleaseNotification(message, baseProjectName);
 
             } catch (error) {
                 alert("Error adding projects: " + error.message);
@@ -458,8 +473,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
             hours = hours ? hours : 12; // the hour '0' should be '12'
-            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-            return `${hours}:${minutesStr} ${ampm}`;
+            const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
+            const hoursStr = hours < 10 ? '0' + hours : String(hours);
+            return `${hoursStr}:${minutesStr} ${ampm}`;
         },
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
@@ -522,10 +538,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.state.projects.push(newRowObj); // Add new project object to the state in memory
                 });
 
+                const message = `'${toFix}' was released for project '${this.formatProjectName(baseProjectName)}'!`;
+                await this.logNotification(message, baseProjectName);
                 await this.handleReorganizeSheet(true);
                 
                 this.renderProjectSettings(); // Refresh the settings view
-                this.showReleaseNotification(`'${toFix}' was released for project '${this.formatProjectName(baseProjectName)}'!`, baseProjectName);
+                this.showReleaseNotification(message, baseProjectName);
 
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
@@ -554,10 +572,13 @@ document.addEventListener('DOMContentLoaded', () => {
                      delete newRowObj._row;
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); await this.loadDataFromSheets();
+                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); 
+                await this.loadDataFromSheets();
+                await this.handleReorganizeSheet(true);
                 alert(`${numToAdd} area(s) added successfully!`);
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
+                await this.loadDataFromSheets();
             } finally { this.hideLoading(); }
         },
         async handleRollback(baseProjectName, fixToDelete) {
@@ -566,7 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
                 if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete); await this.loadDataFromSheets();
+                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete); 
+                await this.loadDataFromSheets();
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
@@ -582,19 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tasksToDelete.length > 0) {
                     const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                     await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
-
-                     // Also clear formatting
-                    const clearFormattingRequest = {
-                        repeatCell: {
-                            range: { sheetId: this.state.projectSheetId, startRowIndex: rowNumbersToDelete.min() - 1, endRowIndex: rowNumbersToDelete.max() },
-                            cell: { userEnteredFormat: {} },
-                            fields: "userEnteredFormat"
-                        }
-                    };
-                     await gapi.client.sheets.spreadsheets.batchUpdate({
-                        spreadsheetId: this.config.google.SPREADSHEET_ID,
-                        resource: { requests: [clearFormattingRequest] }
-                    });
                 }
         
                 await this.loadDataFromSheets();
@@ -1398,7 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hideFilterSpinner() { },
         
         // =================================================================================
-        // == EXTRAS MENU LOGIC ============================================================
+        // == EXTRAS & NOTIFICATIONS =======================================================
         // =================================================================================
         renderExtrasMenu() {
             const container = this.elements.extrasMenu;
@@ -1500,7 +1509,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Projects": Object.keys(this.config.HEADER_MAP).join(', '),
                 "Users": "id, name, email, techId",
                 "Disputes": Object.keys(this.config.DISPUTE_HEADER_MAP).join(', '),
-                "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP).join(', ')
+                "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP).join(', '),
+                "Archive": Object.keys(this.config.HEADER_MAP).join(', '),
+                "Notifications": Object.keys(this.config.NOTIFICATIONS_HEADER_MAP).join(', '),
             };
 
             let content = '';
@@ -1515,6 +1526,69 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>`;
             }
             container.innerHTML = content;
+        },
+        async logNotification(message, projectName) {
+            try {
+                const notification = {
+                    id: `notif_${Date.now()}`,
+                    message: message,
+                    projectName: projectName,
+                    timestamp: new Date().toISOString(),
+                    read: 'FALSE'
+                };
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.NOTIFICATIONS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                const newRow = [headers.map(h => notification[this.config.NOTIFICATIONS_HEADER_MAP[h.toLowerCase()]] || "")];
+                await this.appendRowsToSheet(this.config.sheetNames.NOTIFICATIONS, newRow);
+            } catch (err) {
+                console.error("Failed to log notification:", err);
+            }
+        },
+        renderNotificationBell() {
+            const unreadCount = this.state.notifications.filter(n => n.read === 'FALSE').length;
+            if (unreadCount > 0) {
+                this.elements.notificationBadge.textContent = unreadCount;
+                this.elements.notificationBadge.style.display = 'block';
+            } else {
+                this.elements.notificationBadge.style.display = 'none';
+            }
+        },
+        toggleNotificationList() {
+            const list = this.elements.notificationList;
+            if (list.style.display === 'block') {
+                list.style.display = 'none';
+                return;
+            }
+            
+            const sortedNotifications = [...this.state.notifications].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
+            list.innerHTML = '';
+
+            if (sortedNotifications.length === 0) {
+                list.innerHTML = '<div class="notification-item"><p>No recent notifications.</p></div>';
+            } else {
+                sortedNotifications.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = 'notification-item';
+                    item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
+                    item.onclick = async () => {
+                        this.state.filters.project = n.projectName;
+                        this.elements.projectFilter.value = n.projectName;
+                        this.switchView('dashboard');
+                        this.filterAndRenderProjects();
+                        list.style.display = 'none';
+                        // Mark as read
+                        if (n.read === 'FALSE') {
+                            n.read = 'TRUE';
+                            await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
+                            this.renderNotificationBell();
+                        }
+                    };
+                    list.appendChild(item);
+                });
+            }
+            list.style.display = 'block';
         }
 
     };
