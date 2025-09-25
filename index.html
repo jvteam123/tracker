@@ -49,7 +49,7 @@
         }
         .dashboard-wrapper { display: flex; height: 100vh; width: 100%; }
         .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #475569; flex-shrink: 0; }
-        .sidebar-header { text-align: center; margin-bottom: 20px;}
+        .sidebar-header { text-align: center; margin-bottom: 20px; position: relative; }
         .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
         .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
         .sidebar-nav button, .sidebar-nav a.btn-extra { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; text-decoration: none; }
@@ -305,10 +305,60 @@
             color: var(--success-color);
         }
         
-        /* Notification Modal */
-        #notificationModal .modal-content { max-width: 450px; text-align: center; }
-        #notificationModal .modal-content .icon { font-size: 3em; color: var(--success-color); margin-bottom: 15px; }
-        #notificationModal .modal-footer { margin-top: 20px; display: flex; justify-content: center; gap: 10px;}
+        /* Notification Modal & Bell*/
+        #notificationModal .modal-content { max-width: 400px; padding: 20px; text-align: center; }
+        #notificationModal .modal-content .icon { font-size: 2.5em; color: var(--success-color); margin-bottom: 10px; }
+        #notificationModal .modal-footer { margin-top: 15px; display: flex; justify-content: center; gap: 10px;}
+        #notificationBell {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 1.5em;
+            color: #ecf0f1;
+            cursor: pointer;
+        }
+        #notificationBadge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.6em;
+            font-weight: bold;
+            display: none; /* Hidden by default */
+        }
+        #notificationList {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 0;
+            width: 300px;
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            z-index: 1010;
+            color: var(--text-color);
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+         #notificationList .notification-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+        #notificationList .notification-item:last-child {
+            border-bottom: none;
+        }
+         #notificationList .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+         #notificationList .notification-item p { margin: 0; font-size: 0.9em; }
+         #notificationList .notification-item small { color: #777; font-size: 0.75em; }
+
 
         /* Admin Headers UI */
         .header-format-card {
@@ -349,9 +399,15 @@
             <div class="sidebar-header">
                 <h2>Team123</h2>
                 <div id="loggedInUser"></div>
+                 <div id="notificationBell">
+                    <i class="fas fa-bell"></i>
+                    <span id="notificationBadge"></span>
+                </div>
+                <div id="notificationList"></div>
             </div>
             <div class="sidebar-nav">
-                <button id="openTechDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
+                <button id="openDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Dashboard</button>
+                <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
                 <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
                 <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
@@ -360,7 +416,6 @@
                 <hr>
                 <div id="extrasMenu"></div>
                 <hr>
-                <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
         </aside>
