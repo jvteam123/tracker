@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async appendRowsToSheet(sheetName, rows) {
             try {
                 await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: sheetName,
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A1`,
                     valueInputOption: 'USER_ENTERED', resource: { values: rows }
                 });
             } catch (err) {
