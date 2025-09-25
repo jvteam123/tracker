@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
-            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras" },
+            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
             EXTRAS_HEADER_MAP: { 'id': 'id', 'name': 'name', 'url': 'url', 'icon': 'icon' },
@@ -379,7 +379,17 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault(); this.showLoading("Adding project(s)...");
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
+            
+            if (!baseProjectName) {
+                alert("Project Name is required.");
+                this.hideLoading();
+                return;
+            }
+
             const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
+            const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+
             try {
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
                 const headers = getHeaders.result.values[0]; const newRows = [];
@@ -399,7 +409,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-            } finally { this.hideLoading(); }
+                await this.loadDataFromSheets(); // Reload on error
+            } finally { 
+                this.hideLoading();
+                submitBtn.disabled = false;
+            }
         },
         calculateTotalMinutes(project) {
             let totalWorkMinutes = 0;
@@ -508,7 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await this.handleReorganizeSheet(true);
                 
-                alert(`${fromFix} released to ${toFix} successfully!`);
                 this.renderProjectSettings(); // Refresh the settings view
                 this.showReleaseNotification(`'${toFix}' was released for project '${this.formatProjectName(baseProjectName)}'!`, baseProjectName);
 
@@ -555,6 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
+                await this.loadDataFromSheets();
             }
         },
         async handleDeleteProject(baseProjectName) {
@@ -566,6 +580,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tasksToDelete.length > 0) {
                     const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                     await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+
+                     // Also clear formatting
+                    const clearFormattingRequest = {
+                        repeatCell: {
+                            range: { sheetId: this.state.projectSheetId, startRowIndex: rowNumbersToDelete.min() - 1, endRowIndex: rowNumbersToDelete.max() },
+                            cell: { userEnteredFormat: {} },
+                            fields: "userEnteredFormat"
+                        }
+                    };
+                     await gapi.client.sheets.spreadsheets.batchUpdate({
+                        spreadsheetId: this.config.google.SPREADSHEET_ID,
+                        resource: { requests: [clearFormattingRequest] }
+                    });
                 }
         
                 await this.loadDataFromSheets();
@@ -657,6 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(error) {
                 console.error("Reorganization Error:", error);
                 alert("Error reorganizing sheet: " + error.message);
+                await this.loadDataFromSheets();
             } finally {
                 this.hideLoading();
             }
@@ -1256,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
             if (code !== "248617") { alert("Incorrect code. Operation cancelled."); return; }
             if (!confirm("Are you sure you want to check and fix the database headers?")) return;
-            // Full logic for fixing DB headers
+            alert("Placeholder: DB Fix logic would run here.");
         },
         handleCleanDb() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
@@ -1264,11 +1292,47 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm("This will scan for errors and orphaned rows. Continue?")) return;
             alert("Placeholder: Clean DB logic would run here.");
         },
-        handleArchiveProjects() {
+        async handleArchiveProjects() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
-            if (code !== "248617") { alert("Incorrect code. Operation cancelled."); return; }
-            if (!confirm("Are you sure you want to archive all completed projects?")) return;
-            alert("Placeholder: Archiving logic would run here.");
+            if (code !== "248617") { 
+                alert("Incorrect code. Operation cancelled."); 
+                return; 
+            }
+            if (!confirm("Are you sure you want to archive all completed projects? This cannot be undone.")) return;
+
+            this.showLoading("Archiving completed projects...");
+            try {
+                const projectsToArchive = this.state.projects.filter(p => p.status === 'Completed');
+                if (projectsToArchive.length === 0) {
+                    alert("No completed projects to archive.");
+                    return;
+                }
+
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+
+                const rowsToAppend = projectsToArchive.map(project => {
+                    return headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                });
+
+                await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
+                
+                const rowNumbersToDelete = projectsToArchive.map(p => p._row);
+                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+
+                await this.loadDataFromSheets();
+                alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
+
+            } catch (error) {
+                alert("Error archiving projects: " + error.message);
+                console.error("Archive Error:", error);
+                await this.loadDataFromSheets();
+            } finally {
+                this.hideLoading();
+            }
         },
         openTimeEditModal(projectId, day) {
             const project = this.state.projects.find(p => p.id === projectId);
@@ -1405,8 +1469,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 extra._row = rowIndex;
                 await this.updateRowInSheet(this.config.sheetNames.EXTRAS, rowIndex, extra);
             } else { // Add new
-                const headers = Object.keys(this.config.EXTRAS_HEADER_MAP);
-                const newRow = [headers.map(h => extra[this.config.EXTRAS_HEADER_MAP[h]] || "")];
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.EXTRAS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                const newRow = [headers.map(h => extra[this.config.EXTRAS_HEADER_MAP[h.toLowerCase()]] || "")];
                 await this.appendRowsToSheet(this.config.sheetNames.EXTRAS, newRow);
             }
             this.elements.extraFormModal.style.display = 'none';
