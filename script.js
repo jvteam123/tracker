@@ -716,10 +716,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
         hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
         showFilterSpinner() {
-            // This element was removed from the HTML, so this function is no longer needed.
+            // This element was removed, this function is no longer needed but kept to prevent errors.
         },
         hideFilterSpinner() {
-            // This element was removed from the HTML, so this function is no longer needed.
+            // This element was removed, this function is no longer needed but kept to prevent errors.
         }
     };
 
