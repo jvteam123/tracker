@@ -207,7 +207,8 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.7); color: white;
             z-index: 1001;
-            display: flex; /* Always flex for centering, JS will toggle parent display */
+            /* display: none; */ /* Let JS handle this */
+            display: flex; 
             justify-content: center;
             align-items: center; flex-direction: column;
             font-size: 1.2em;
@@ -355,7 +356,7 @@
             display: none;
             position: absolute;
             top: 40px;
-            right: 0;
+            left: 0; /* Align to the left of the sidebar header */
             width: 300px;
             background-color: var(--card-bg-color);
             border: 1px solid var(--border-color);
