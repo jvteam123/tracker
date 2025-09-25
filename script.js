@@ -907,6 +907,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Render table
             const tableBody = this.elements.disputesTableBody;
             tableBody.innerHTML = "";
+
+            if (this.state.disputes.length === 0) {
+                const row = tableBody.insertRow();
+                row.innerHTML = `<td colspan="7" style="text-align:center;padding:20px;">No disputes found.</td>`;
+                return;
+            }
+
             this.state.disputes.forEach(dispute => {
                 const row = tableBody.insertRow();
                 row.insertCell().textContent = this.formatProjectName(dispute.projectName);
