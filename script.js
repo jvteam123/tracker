@@ -871,7 +871,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.USERS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-                const newRow = [headers.map(h => user[h.toLowerCase()] || "")];
+                const userHeaderMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
+                const newRow = [headers.map(h => {
+                    const propName = userHeaderMap[h.toLowerCase()];
+                    return user[propName] || "";
+                })];
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
             }
             this.elements.userFormModal.style.display = 'none';
