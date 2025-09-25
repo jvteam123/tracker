@@ -7,8 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
-            sheetNames: { PROJECTS: "Projects", USERS: "Users" },
+            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
+            DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
             FIX_COLORS: {
                 "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 }, "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
                 "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 }, "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state: {
             projects: [],
             users: [],
+            disputes: [],
             isAppInitialized: false,
             filters: {
                 project: 'All',
@@ -122,14 +124,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS],
+                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES],
                 });
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
+                const disputesData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.DISPUTES));
+
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
+                this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
+
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
             } catch (err) {
@@ -152,10 +158,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     range: `${sheetName}!1:1`,
                 });
                 const headers = headersResult.result.values[0];
-                const headerMap = sheetName === this.config.sheetNames.USERS
-                    ? { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' }
-                    : this.config.HEADER_MAP;
-
+                let headerMap;
+                if(sheetName === this.config.sheetNames.USERS) {
+                    headerMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
+                } else if (sheetName === this.config.sheetNames.DISPUTES) {
+                    headerMap = this.config.DISPUTE_HEADER_MAP;
+                } else {
+                    headerMap = this.config.HEADER_MAP;
+                }
+                
                 const values = [headers.map(header => {
                     const propName = headerMap[header.trim()] || headerMap[header.trim().toLowerCase()];
                     return dataObject[propName] !== undefined ? dataObject[propName] : "";
@@ -240,6 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 summaryTableBody: document.getElementById('summaryTableBody'),
                 openUserManagementBtn: document.getElementById('openUserManagementBtn'), userManagementView: document.getElementById('userManagementView'),
                 userTableBody: document.getElementById('userTableBody'), addUserBtn: document.getElementById('addUserBtn'),
+                openDisputeBtn: document.getElementById('openDisputeBtn'), disputeView: document.getElementById('disputeView'),
+                disputeForm: document.getElementById('disputeForm'), disputesTableBody: document.getElementById('disputesTableBody'),
                 openAdminSettingsBtn: document.getElementById('openAdminSettingsBtn'), adminSettingsView: document.getElementById('adminSettingsView'),
                 timeEditModal: document.getElementById('timeEditModal'), closeTimeEditModalBtn: document.getElementById('closeTimeEditModalBtn'),
                 timeEditForm: document.getElementById('timeEditForm'), timeEditTitle: document.getElementById('timeEditTitle'),
@@ -262,11 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.elements.closeTimeEditModalBtn.onclick = () => this.elements.timeEditModal.style.display = 'none';
             this.elements.timeEditForm.addEventListener('submit', (e) => this.handleTimeEditSubmit(e));
+            
+            this.elements.disputeForm.addEventListener('submit', (e) => this.handleDisputeFormSubmit(e));
 
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
             this.elements.openUserManagementBtn.onclick = () => this.switchView('users');
+            this.elements.openDisputeBtn.onclick = () => this.switchView('disputes');
             this.elements.openAdminSettingsBtn.onclick = () => this.switchView('admin');
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value; this.filterAndRenderProjects();
@@ -286,11 +302,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.projectSettingsView.style.display = 'none';
             this.elements.tlSummaryView.style.display = 'none';
             this.elements.userManagementView.style.display = 'none';
+            this.elements.disputeView.style.display = 'none';
             this.elements.adminSettingsView.style.display = 'none';
+
             this.elements.openTechDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
             this.elements.openTlSummaryBtn.classList.remove('active');
             this.elements.openUserManagementBtn.classList.remove('active');
+            this.elements.openDisputeBtn.classList.remove('active');
             this.elements.openAdminSettingsBtn.classList.remove('active');
 
             if (viewName === 'dashboard') {
@@ -301,6 +320,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'block'; this.elements.openTlSummaryBtn.classList.add('active');
             } else if (viewName === 'users') {
                 this.renderUserManagement(); this.elements.userManagementView.style.display = 'block'; this.elements.openUserManagementBtn.classList.add('active');
+            } else if (viewName === 'disputes') {
+                this.renderDisputes(); this.elements.disputeView.style.display = 'block'; this.elements.openDisputeBtn.classList.add('active');
             } else if (viewName === 'admin') {
                 this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
             }
@@ -392,6 +413,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return name.replace(/__/g, '  ').replace(/_/g, ' ');
         },
         async handleReleaseFix(baseProjectName, fromFix, toFix) {
+             if (!toFix || !toFix.match(/^Fix\d+$/)) {
+                alert("Invalid format for 'To Fix'. Please use 'Fix' followed by a number (e.g., 'Fix4').");
+                return;
+            }
             if (!confirm(`This will create new '${toFix}' tasks for all '${fromFix}' areas in project '${this.formatProjectName(baseProjectName)}'. The original tech will be assigned. Continue?`)) return;
             this.showLoading(`Releasing ${fromFix} to ${toFix}...`);
             try {
@@ -420,6 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.handleReorganizeSheet(true);
                 
                 alert(`${fromFix} released to ${toFix} successfully!`);
+                this.renderProjectSettings(); // Refresh the settings view
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
                 await this.loadDataFromSheets(); // Reload data on error to be safe
@@ -565,8 +591,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="settings-grid">
                             <div class="settings-card">
                                 <h3><i class="fas fa-rocket icon"></i> Release Tasks</h3>
-                                <div class="btn-group">
-                                    <button class="btn btn-primary" data-action="release" data-project="${projectName}" data-from="${currentFix}" data-to="${nextFix}">Release ${currentFix} to ${nextFix}</button>
+                                <p>Releasing from: <strong>${currentFix}</strong></p>
+                                <div class="filter-group">
+                                    <label for="releaseToFix_${projectName}">To Fix:</label>
+                                    <input type="text" id="releaseToFix_${projectName}" value="${nextFix}" style="padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100px;">
+                                </div>
+                                <div class="btn-group" style="margin-top: 10px;">
+                                    <button class="btn btn-primary" data-action="release" data-project="${projectName}" data-from="${currentFix}">Release</button>
                                     <button class="btn btn-success" data-action="add-area" data-project="${projectName}">Add Extra Area</button>
                                 </div>
                             </div>
@@ -589,7 +620,10 @@ document.addEventListener('DOMContentLoaded', () => {
             container.querySelectorAll('button[data-action]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const { action, project, from, to, fix } = e.target.dataset;
-                    if (action === 'release') this.handleReleaseFix(project, from, to);
+                    if (action === 'release') {
+                        const toFixValue = document.getElementById(`releaseToFix_${project}`).value;
+                        this.handleReleaseFix(project, from, toFixValue);
+                    }
                     else if (action === 'add-area') this.handleAddExtraArea(project);
                     else if (action === 'rollback') this.handleRollback(project, fix);
                     else if (action === 'delete-project') this.handleDeleteProject(project);
@@ -851,6 +885,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderUserManagement();
             }
         },
+        renderDisputes() {
+            // Populate dropdowns
+            const techIdSelect = document.getElementById('disputeTechId');
+            techIdSelect.innerHTML = '<option value="">Select Tech ID</option>' + this.state.users.map(u => `<option value="${u.techId}">${u.techId}</option>`).join('');
+            techIdSelect.onchange = (e) => {
+                const selectedUser = this.state.users.find(u => u.techId === e.target.value);
+                document.getElementById('disputeTechName').value = selectedUser ? selectedUser.name : '';
+            };
+
+            const projectNameSelect = document.getElementById('disputeProjectName');
+            const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
+            projectNameSelect.innerHTML = '<option value="">Select Project</option>' + uniqueProjects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
+            
+            // Render table
+            const tableBody = this.elements.disputesTableBody;
+            tableBody.innerHTML = "";
+            this.state.disputes.forEach(dispute => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = this.formatProjectName(dispute.projectName);
+                row.insertCell().textContent = dispute.phase;
+                row.insertCell().textContent = dispute.techId;
+                row.insertCell().textContent = dispute.team;
+                row.insertCell().textContent = dispute.type;
+                row.insertCell().innerHTML = `<span class="status status-${(dispute.status || "open").toLowerCase()}">${dispute.status || 'Open'}</span>`;
+
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `
+                    <button class="btn btn-primary btn-small">View</button>
+                    <button class="btn btn-secondary btn-small">Copy</button>
+                    <button class="btn btn-success btn-small">Done</button>
+                    <button class="btn btn-danger btn-small">Delete</button>
+                `;
+            });
+        },
+        async handleDisputeFormSubmit(event) {
+            event.preventDefault();
+            this.showLoading("Saving dispute...");
+
+            const disputeData = {
+                id: `dispute_${Date.now()}`,
+                blockId: document.getElementById('disputeBlockId').value,
+                projectName: document.getElementById('disputeProjectName').value,
+                partial: document.getElementById('disputePartial').value,
+                phase: document.getElementById('disputePhase').value,
+                uid: document.getElementById('disputeUid').value,
+                rqaTechId: document.getElementById('disputeRqaTechId').value,
+                reasonForDispute: document.getElementById('disputeReason').value,
+                techId: document.getElementById('disputeTechId').value,
+                techName: document.getElementById('disputeTechName').value,
+                team: document.getElementById('disputeTeam').value,
+                type: document.getElementById('disputeType').value,
+                category: document.getElementById('disputeCategory').value,
+                status: 'Done', // Default status
+            };
+
+            try {
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.DISPUTES}!1:1`,
+                });
+                if (!getHeaders.result.values) {
+                    throw new Error(`Could not find headers in the "${this.config.sheetNames.DISPUTES}" sheet. Make sure the sheet exists and has a header row.`);
+                }
+                const headers = getHeaders.result.values[0];
+                const newRow = [headers.map(header => disputeData[this.config.DISPUTE_HEADER_MAP[header.trim()]] || "")];
+                
+                await this.appendRowsToSheet(this.config.sheetNames.DISPUTES, newRow);
+                
+                this.elements.disputeForm.reset();
+                await this.loadDataFromSheets();
+                this.renderDisputes();
+                alert("Dispute saved successfully!");
+
+            } catch (error) {
+                alert("Error saving dispute: " + error.message);
+                console.error(error);
+            } finally {
+                this.hideLoading();
+            }
+        },
         renderAdminSettings() {
             const container = this.elements.adminSettingsView;
             container.innerHTML = `
@@ -869,6 +982,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p>Move all completed projects to an 'Archive' sheet to improve performance.</p>
                         <div class="btn-group">
                             <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Completed Projects</button>
+                        </div>
+                    </div>
+                     <div class="settings-card" style="margin-top: 20px;">
+                        <h3><i class="fas fa-sort icon"></i> Reorganize Sheet</h3>
+                        <p>Sorts the 'Projects' sheet by Project Name and Fix Stage, applying colors and adding separators. This can improve readability.</p>
+                        <div class="btn-group">
+                            <button class="btn" style="background-color: #34495e; color: white;" onclick="ProjectTrackerApp.handleReorganizeSheet()">Reorganize Project Sheet</button>
                         </div>
                     </div>
                 </div>
