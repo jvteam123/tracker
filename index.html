@@ -48,7 +48,9 @@
         }
         .dashboard-wrapper { display: flex; height: 100vh; width: 100%; }
         .sidebar { width: 250px; background-color: var(--text-color); color: #ecf0f1; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #475569; flex-shrink: 0; }
-        .sidebar h2 { color: #fff; margin-top: 0; margin-bottom: 30px; font-size: 1.5em; text-align: center; }
+        .sidebar-header { text-align: center; margin-bottom: 20px;}
+        .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
+        .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
         .sidebar-nav button { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; }
         .sidebar-nav button:hover, .sidebar-nav button.active { background-color: #475569; }
         .sidebar-nav button .icon { font-size: 1.2em; }
@@ -161,6 +163,10 @@
         }
         
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
+        #auth-wrapper input { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); font-size: 1em; }
+        #auth-wrapper .btn { width: 100%; padding: 12px; }
+        #loginError { color: var(--danger-color); margin-top: 10px; height: 1.2em; }
+
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
         .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -192,17 +198,25 @@
 
     <div id="auth-wrapper">
         <h2>Project Tracker V2</h2>
-        <p>Please sign in to continue.</p>
-        <button id="signInBtn" class="btn btn-primary">Sign in with Google</button>
+        <p>Please enter your Tech ID to continue.</p>
+        <form id="loginForm">
+            <input type="text" id="techIdInput" placeholder="Tech ID" required>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <div id="loginError"></div>
     </div>
 
     <div class="dashboard-wrapper" style="display: none;">
         <aside class="sidebar">
-            <h2>Team123</h2>
+            <div class="sidebar-header">
+                <h2>Team123</h2>
+                <div id="loggedInUser"></div>
+            </div>
             <div class="sidebar-nav">
                 <button id="openTechDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Tech Dashboard</button>
                 <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
                 <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
+                <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
             </div>
@@ -270,6 +284,22 @@
                 </div>
             </div>
 
+            <div id="userManagementView" class="table-container" style="display: none;">
+                <h2>User Management</h2>
+                 <div class="table-scroll-wrapper">
+                    <table id="userTable" class="project-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Tech ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="projectSettingsView" style="display: none;"></div>
 
         </main>
@@ -301,7 +331,6 @@
     </div>
 
     <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
     <script src="script.js"></script>
 </body>
 </html>
