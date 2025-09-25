@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         tokenClient: null,
-        authTimeoutId: null, 
         state: {
             projects: [], 
             users: [], 
