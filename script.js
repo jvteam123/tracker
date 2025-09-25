@@ -378,24 +378,37 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
                 if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
-                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
-                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_release_${Date.now()}`;
+                
+                const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
-                    const newRowObj = { ...task, id: `proj_${Date.now()}_${index}`, batchId, fixCategory: toFix, status: "Available",
-                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
-                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
-                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
+                    const newRowObj = { ...task, 
+                        id: `proj_${Date.now()}_${index}`, 
+                        batchId, 
+                        fixCategory: toFix, 
+                        status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", 
+                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", 
+                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", 
+                        totalMinutes: "", 
+                        lastModifiedTimestamp: new Date().toISOString()
                     };
-                    delete newRowObj._row;
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
+                    delete newRowObj._row; // Remove the old row number
+                    this.state.projects.push(newRowObj); // Add new project object to the state in memory
                 });
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
-                await this.loadDataFromSheets();
-                await this.handleReorganizeSheet(true);
+
+                // Now that the state is updated in memory, reorganize the sheet with the new data.
+                // This is safer than appending and re-reading, avoiding race conditions.
+                await this.handleReorganizeSheet(true); 
+                
                 alert(`${fromFix} released to ${toFix} successfully!`);
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
-            } finally { this.hideLoading(); }
+                await this.loadDataFromSheets(); // Reload data on error to be safe
+            } finally {
+                this.hideLoading();
+            }
         },
         async handleAddExtraArea(baseProjectName) {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
@@ -503,9 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (formattingRequests.length > 0) {
                     await gapi.client.sheets.spreadsheets.batchUpdate({ spreadsheetId: this.config.google.SPREADSHEET_ID, resource: { requests: formattingRequests } });
                 }
-                await this.loadDataFromSheets();
+                
+                // Only load data again if the call wasn't silent, to refresh row numbers.
+                // For silent calls, the in-memory state is already correct.
                 if (!isSilent) {
+                    await this.loadDataFromSheets();
                     alert("Sheet reorganized and colored successfully!");
+                } else {
+                    // For silent calls, we still need to refresh the data to get correct row numbers for future updates
+                    await this.loadDataFromSheets();
                 }
             } catch(error) {
                 console.error("Reorganization Error:", error);
