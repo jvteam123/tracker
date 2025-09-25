@@ -590,23 +590,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const tableBody = this.elements.summaryTableBody;
             tableBody.innerHTML = "";
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+            
             uniqueProjects.forEach(projectName => {
+                const projectHeaderRow = tableBody.insertRow();
+                projectHeaderRow.className = 'summary-project-header';
+                projectHeaderRow.innerHTML = `<td colspan="6">${this.formatProjectName(projectName)}</td>`;
+
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
-                const totalTasks = projectTasks.length;
-                const completedTasks = projectTasks.filter(p => p.status === 'Completed').length;
-                const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-                const totalMinutes = projectTasks.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
-                const row = tableBody.insertRow();
-                row.insertCell().textContent = this.formatProjectName(projectName);
-                row.insertCell().textContent = totalTasks;
-                row.insertCell().textContent = completedTasks;
-                const progressCell = row.insertCell();
-                progressCell.innerHTML = `
-                    <div class="progress-bar" title="${progress.toFixed(1)}%">
-                        <div class="progress-bar-fill" style="width: ${progress}%;">${progress.toFixed(1)}%</div>
-                    </div>`;
-                row.insertCell().textContent = totalMinutes;
-                row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
+                const groupedByFix = projectTasks.reduce((acc, project) => {
+                    const key = project.fixCategory || 'Uncategorized';
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(project);
+                    return acc;
+                }, {});
+
+                const sortedFixKeys = Object.keys(groupedByFix).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+                sortedFixKeys.forEach(fixKey => {
+                    const tasksInFix = groupedByFix[fixKey];
+                    const totalTasks = tasksInFix.length;
+                    const completedTasks = tasksInFix.filter(p => p.status === 'Completed').length;
+                    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                    const totalMinutes = tasksInFix.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
+                    
+                    const row = tableBody.insertRow();
+                    row.className = 'summary-stage-row';
+                    row.insertCell().textContent = fixKey;
+                    row.insertCell().textContent = totalTasks;
+                    row.insertCell().textContent = completedTasks;
+                    const progressCell = row.insertCell();
+                    progressCell.innerHTML = `
+                        <div class="progress-bar" title="${progress.toFixed(1)}%">
+                            <div class="progress-bar-fill" style="width: ${progress}%;">${progress.toFixed(1)}%</div>
+                        </div>`;
+                    row.insertCell().textContent = totalMinutes;
+                    row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
+                });
             });
         },
         filterAndRenderProjects() {
