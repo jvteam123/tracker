@@ -175,7 +175,7 @@
 
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
-        .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 500px; position: relative; }
+        .modal-content { background-color: var(--card-bg-color); margin: 10% auto; padding: 25px; border-radius: var(--border-radius-lg); width: 90%; max-width: 600px; position: relative; }
         .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
         .time-edit-group { display: flex; gap: 10px; align-items: center; }
         .time-edit-group input { flex-grow: 1; }
@@ -262,12 +262,49 @@
         }
         .dispute-form-group textarea { resize: vertical; min-height: 80px; }
         .disputes-list-container { margin-top: 30px; }
-
+        
         /* SCROLL FIX FOR DISPUTE VIEW */
         #disputeView.table-container {
             display: block;
             overflow-y: auto;
         }
+
+        /* Dispute Details Modal */
+        #disputeDetailsContent .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 15px;
+        }
+        #disputeDetailsContent .detail-row:last-child {
+            border-bottom: none;
+        }
+        #disputeDetailsContent .detail-label {
+            font-weight: 600;
+            color: #555;
+            flex-shrink: 0;
+        }
+        #disputeDetailsContent .detail-value {
+            text-align: right;
+            color: #333;
+            word-break: break-all;
+            user-select: text; /* Make text selectable */
+        }
+        #disputeDetailsContent .copy-icon {
+            cursor: pointer;
+            color: var(--secondary-color);
+            margin-left: 8px;
+            transition: color 0.2s;
+        }
+        #disputeDetailsContent .copy-icon:hover {
+            color: var(--primary-color);
+        }
+        #disputeDetailsContent .copy-icon.copied {
+            color: var(--success-color);
+        }
+
 
     </style>
     <link rel="icon" type="image/png" href="icon.png">
@@ -505,6 +542,14 @@
         </main>
     </div>
 
+    <div id="disputeDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeDisputeDetailsBtn">&times;</span>
+            <h2>Dispute Details</h2>
+            <div id="disputeDetailsContent"></div>
+        </div>
+    </div>
+    
     <div id="projectFormModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeProjectFormBtn">&times;</span>
