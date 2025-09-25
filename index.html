@@ -62,6 +62,8 @@
         .btn-success { background-color: var(--success-color); color: white; }
         .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+
 
         .filter-section {
             background-color: var(--card-bg-color);
@@ -137,11 +139,13 @@
 
 
         /* Status Colors */
-        .status { padding: 4px 8px; border-radius: 4px; font-weight: 500; color: #fff; }
+        .status { padding: 4px 8px; border-radius: 4px; font-weight: 500; color: #fff; text-transform: capitalize; }
         .status-available { background-color: var(--secondary-color); }
         .status-inprogress, .status-inprogressday1, .status-inprogressday2, .status-inprogressday3, .status-inprogressday4, .status-inprogressday5 { background-color: var(--warning-color); }
         .status-completed { background-color: var(--success-color); }
         .status-startedavailable { background-color: var(--info-color); }
+        .status-open { background-color: var(--warning-color); }
+        .status-done { background-color: var(--success-color); }
 
         .total-minutes-cell { background-color: #ffedd5; font-weight: 600; }
         .time-cell .edit-icon { margin-left: 8px; cursor: pointer; color: var(--secondary-color); }
