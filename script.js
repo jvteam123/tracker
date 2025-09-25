@@ -4,25 +4,28 @@ document.addEventListener('DOMContentLoaded', () => {
         config: {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
+                CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
+                SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             sheetNames: { PROJECTS: "Projects", USERS: "Users" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             FIX_COLORS: {
-                "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 },
-                "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
-                "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 },
-                "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
+                "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 }, "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
+                "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 }, "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
                 "Fix5": { "red": 0.952, "green": 0.901, "blue": 0.972 },
             }
         },
+        tokenClient: null,
+        authTimeoutId: null, 
         state: { 
             projects: [], 
             users: [], 
-            currentUser: null,
             isAppInitialized: false,
             filters: {
-                month: 'All', project: 'All', fixCategory: 'All',
+                month: 'All',
+                project: 'All',
+                fixCategory: 'All',
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false }
             },
         },
@@ -36,73 +39,60 @@ document.addEventListener('DOMContentLoaded', () => {
             this.attachEventListeners();
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
-
         async initializeGapiClient() {
             try {
                 await gapi.client.init({
                     apiKey: this.config.google.API_KEY,
                     discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
                 });
-                this.checkSession();
+                this.initializeGsi();
             } catch (error) {
                 console.error("GAPI Error: Failed to initialize GAPI client.", error);
-                this.elements.loginError.textContent = "Error initializing. Please refresh.";
             }
         },
-
-        checkSession() {
-            const userData = sessionStorage.getItem('currentUser');
-            if (userData) {
-                this.state.currentUser = JSON.parse(userData);
+        initializeGsi() {
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.config.google.CLIENT_ID,
+                scope: this.config.google.SCOPES,
+                callback: this.handleTokenResponse.bind(this),
+            });
+            this.showLoading("Please wait...");
+            this.authTimeoutId = setTimeout(() => {
+                if (!gapi.client.getToken()) {
+                    console.warn("Authentication timed out. Forcing sign-out.");
+                    this.handleSignedOutUser();
+                }
+            }, 4000); 
+            this.tokenClient.requestAccessToken({ prompt: 'none' });
+        },
+        handleAuthClick() {
+            this.tokenClient.requestAccessToken({ prompt: 'consent' });
+        },
+        async handleTokenResponse(resp) {
+            clearTimeout(this.authTimeoutId);
+            if (resp && resp.access_token) {
+                gapi.client.setToken(resp);
                 this.handleAuthorizedUser();
+            } else {
+                console.error("Auth Error:", resp.error || "Token response was invalid.");
+                this.handleSignedOutUser();
+            }
+        },
+        handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    this.handleSignedOutUser();
+                });
             } else {
                 this.handleSignedOutUser();
             }
         },
-
-        async handleTechIdLogin(event) {
-            event.preventDefault();
-            const techId = this.elements.techIdInput.value.trim().toUpperCase();
-            if (!techId) return;
-
-            this.showLoading("Verifying Tech ID...");
-            this.elements.loginError.textContent = "";
-
-            try {
-                const usersData = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    range: this.config.sheetNames.USERS,
-                });
-
-                const users = this.sheetValuesToObjects(usersData.result.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' });
-                const foundUser = users.find(user => user.techId.toUpperCase() === techId);
-
-                if (foundUser) {
-                    this.state.currentUser = foundUser;
-                    sessionStorage.setItem('currentUser', JSON.stringify(foundUser));
-                    this.handleAuthorizedUser();
-                } else {
-                    this.elements.loginError.textContent = "Invalid Tech ID. Please try again.";
-                    this.hideLoading();
-                }
-            } catch (err) {
-                console.error("Login Error:", err);
-                this.elements.loginError.textContent = "Could not verify ID. Check sheet permissions.";
-                this.hideLoading();
-            }
-        },
-
-        handleSignoutClick() {
-            sessionStorage.removeItem('currentUser');
-            this.state.currentUser = null;
-            this.handleSignedOutUser();
-        },
-
         async handleAuthorizedUser() {
             document.body.classList.remove('login-view-active');
             this.elements.authWrapper.style.display = 'none';
             this.elements.dashboardWrapper.style.display = 'flex';
-            this.elements.loggedInUser.textContent = `Welcome, ${this.state.currentUser.name}`;
+            this.elements.loggedInUser.textContent = `Signed In`;
 
             if (!this.state.isAppInitialized) {
                 await this.loadDataFromSheets();
@@ -111,15 +101,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.filterAndRenderProjects(); 
             }
         },
-
         handleSignedOutUser() {
+            gapi.client.setToken(null);
             this.hideLoading();
             document.body.classList.add('login-view-active');
             this.elements.authWrapper.style.display = 'block';
             this.elements.dashboardWrapper.style.display = 'none';
             this.state.isAppInitialized = false;
         },
-        
+
         // =================================================================================
         // == DATA HANDLING ================================================================
         // =================================================================================
@@ -154,7 +144,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.filterAndRenderProjects();
             } catch (err) {
                 console.error("Data Error:", err);
-                alert("Could not load data. Check Spreadsheet ID and that it is shared so 'Anyone with the link can view'.");
+                if (err.status === 401 || err.status === 403) {
+                     alert("Authentication error. You may need to sign in again.");
+                     this.handleSignoutClick();
+                } else {
+                    alert("Could not load data. Check Spreadsheet ID and sharing permissions.");
+                }
             } finally {
                 this.hideLoading();
             }
@@ -162,23 +157,32 @@ document.addEventListener('DOMContentLoaded', () => {
         async updateRowInSheet(sheetName, rowIndex, dataObject) {
             this.showLoading("Saving...");
             try {
-                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
-                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!1:1`,
+                const headersResult = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${sheetName}!1:1`,
                 });
-                const headers = getHeaders.result.values[0];
+                const headers = headersResult.result.values[0];
+                const headerMap = sheetName === this.config.sheetNames.PROJECTS ? this.config.HEADER_MAP : { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
+                const invertedHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => { acc[value] = key; return acc; }, {});
+        
                 const values = [headers.map(header => {
-                    const propName = this.config.HEADER_MAP[header.trim()];
+                    const propName = headerMap[header.trim()] || header.toLowerCase();
                     return dataObject[propName] !== undefined ? dataObject[propName] : "";
                 })];
+        
                 await gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A${rowIndex}`,
-                    valueInputOption: 'USER_ENTERED', resource: { values: values }
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${sheetName}!A${rowIndex}`,
+                    valueInputOption: 'USER_ENTERED',
+                    resource: { values: values }
                 });
             } catch (err) {
-                console.error(`Data Error: Failed to update row ${rowIndex}.`, err);
+                console.error(`Data Error: Failed to update row ${rowIndex} in ${sheetName}.`, err);
                 alert("Failed to save changes. The data will be refreshed to prevent inconsistencies.");
                 await this.loadDataFromSheets();
-            } finally { this.hideLoading(); }
+            } finally {
+                this.hideLoading();
+            }
         },
         async appendRowsToSheet(sheetName, rows) {
             try {
@@ -191,14 +195,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("Failed to add data to Google Sheet.");
             }
         },
-        async deleteSheetRows(rowsToDelete) {
+        async deleteSheetRows(sheetName, rowsToDelete) {
             this.showLoading("Deleting rows...");
             try {
                 if (rowsToDelete.length === 0) return;
+                
+                const spreadsheet = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: this.config.google.SPREADSHEET_ID });
+                const sheet = spreadsheet.result.sheets.find(s => s.properties.title === sheetName);
+                if (!sheet) throw new Error(`Sheet "${sheetName}" not found.`);
+                const sheetId = sheet.properties.sheetId;
+
                 const sortedRows = rowsToDelete.sort((a, b) => b - a);
                 const requests = sortedRows.map(rowIndex => ({
                     deleteDimension: {
-                        range: { sheetId: this.state.projectSheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex, },
+                        range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex, },
                     },
                 }));
                 await gapi.client.sheets.spreadsheets.batchUpdate({
@@ -207,7 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error("API Error: Failed to delete rows.", err);
                 throw new Error("Could not delete rows from the sheet.");
-            } finally { this.hideLoading(); }
+            } finally {
+                this.hideLoading();
+            }
         },
         
         // =================================================================================
@@ -216,10 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setupDOMReferences() {
             this.elements = {
                 body: document.body, authWrapper: document.getElementById('auth-wrapper'),
-                dashboardWrapper: document.querySelector('.dashboard-wrapper'), 
-                loginForm: document.getElementById('loginForm'), techIdInput: document.getElementById('techIdInput'),
-                loginError: document.getElementById('loginError'), loggedInUser: document.getElementById('loggedInUser'),
-                signOutBtn: document.getElementById('signOutBtn'), projectTable: document.getElementById('projectTable'),
+                dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
+                loggedInUser: document.getElementById('loggedInUser'), signOutBtn: document.getElementById('signOutBtn'), 
+                projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
                 projectFormModal: document.getElementById('projectFormModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
@@ -240,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         },
         attachEventListeners() {
-            this.elements.loginForm.addEventListener('submit', this.handleTechIdLogin.bind(this));
+            this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
@@ -256,9 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openUserManagementBtn.onclick = () => this.switchView('users');
             this.elements.projectFilter.addEventListener('change', (e) => {
                 this.state.filters.project = e.target.value; this.filterAndRenderProjects();
-            });
-            this.elements.fixCategoryFilter.addEventListener('change', (e) => {
-                this.state.filters.fixCategory = e.target.value; this.filterAndRenderProjects();
             });
             for (let i = 2; i <= 5; i++) {
                 this.elements.dayCheckboxes[i].addEventListener('change', (e) => {
@@ -291,10 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             this.elements.projectFilter.value = this.state.filters.project;
-
-            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
-            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
-            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
         },
         async handleAddProjectSubmit(event) {
             event.preventDefault(); this.showLoading("Adding project(s)...");
@@ -416,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
                 if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(rowNumbersToDelete); await this.loadDataFromSheets();
+                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete); await this.loadDataFromSheets();
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
@@ -428,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
                 if (tasksToDelete.length === 0) throw new Error(`No tasks found for project ${baseProjectName}.`);
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(rowNumbersToDelete);
+                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 this.state.filters.project = 'All';
                 await this.loadDataFromSheets();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
