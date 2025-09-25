@@ -177,7 +177,27 @@
         .time-edit-group input { flex-grow: 1; }
         .time-edit-group select { width: 80px; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); color: white; z-index: 1001; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 1.2em; }
+        
+        /* Loading Spinner */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7); color: white;
+            z-index: 1001; display: none; justify-content: center;
+            align-items: center; flex-direction: column;
+            font-size: 1.2em;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
 
         /* Project Settings & Summary UI */
         .settings-grid {
@@ -367,7 +387,12 @@
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeTeam">Team:</label>
-                            <select id="disputeTeam"></select>
+                            <select id="disputeTeam">
+                                <option value="">Select Team</option>
+                                <option value="Team 123">Team 123</option>
+                                <option value="Team 114">Team 114</option>
+                                <option value="Team 64">Team 64</option>
+                            </select>
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputePhase">Phase:</label>
@@ -375,7 +400,12 @@
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeType">Type:</label>
-                            <select id="disputeType"></select>
+                            <select id="disputeType">
+                                <option value="">Select Type</option>
+                                <option value="Incorrect">Incorrect</option>
+                                <option value="Skip">Skip</option>
+                                <option value="Change">Change</option>
+                            </select>
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeUid">UID (Initial FP's UID):</label>
@@ -383,11 +413,31 @@
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeCategory">Category:</label>
-                            <select id="disputeCategory"></select>
+                            <select id="disputeCategory">
+                                <option value="">Select Category</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeWarning">Warning:</label>
-                             <select id="disputeWarning"><option>N/A</option></select>
+                             <select id="disputeWarning">
+                                <option value="N/A">N/A</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="G">G</option>
+                             </select>
                         </div>
                         <div class="dispute-form-group">
                             <label for="disputeRqaTechId">RQA TechID:</label>
@@ -495,6 +545,7 @@
     </div>
 
     <div id="loadingOverlay">
+        <div class="spinner"></div>
         <p>Loading...</p>
     </div>
 
