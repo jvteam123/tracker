@@ -260,6 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 editStartTime: document.getElementById('editStartTime'), editFinishTime: document.getElementById('editFinishTime'),
                 editStartTimeAmPm: document.getElementById('editStartTimeAmPm'),
                 editFinishTimeAmPm: document.getElementById('editFinishTimeAmPm'),
+                disputeDetailsModal: document.getElementById('disputeDetailsModal'),
+                closeDisputeDetailsBtn: document.getElementById('closeDisputeDetailsBtn'),
+                disputeDetailsContent: document.getElementById('disputeDetailsContent'),
             };
         },
         attachEventListeners() {
@@ -278,6 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             this.elements.disputeForm.addEventListener('submit', (e) => this.handleDisputeFormSubmit(e));
             this.elements.disputesTableBody.addEventListener('click', (e) => this.handleDisputeActions(e));
+            this.elements.closeDisputeDetailsBtn.onclick = () => this.elements.disputeDetailsModal.style.display = 'none';
+            this.elements.disputeDetailsContent.addEventListener('click', (e) => this.handleCopyToClipboard(e));
 
 
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
@@ -1017,11 +1022,75 @@ document.addEventListener('DOMContentLoaded', () => {
         handleViewDispute(disputeId) {
             const dispute = this.state.disputes.find(d => d.id === disputeId);
             if (!dispute) return;
-            const details = Object.entries(dispute)
-                .filter(([key]) => key !== '_row')
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
-            alert('Dispute Details:\n\n' + details);
+
+            const techUser = this.state.users.find(u => u.techId === dispute.techId);
+            const techInfo = techUser ? `${dispute.techId} (${techUser.name})` : dispute.techId;
+
+            const content = `
+                <div class="detail-row">
+                    <span class="detail-label">Block ID:</span>
+                    <span class="detail-value" id="detail-blockId">${dispute.blockId || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-blockId"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Project:</span>
+                    <span class="detail-value" id="detail-projectName">${dispute.projectName || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-projectName"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Partial:</span>
+                    <span class="detail-value" id="detail-partial">${dispute.partial || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-partial"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Phase:</span>
+                    <span class="detail-value" id="detail-phase">${dispute.phase || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-phase"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">UID:</span>
+                    <span class="detail-value" id="detail-uid">${dispute.uid || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-uid"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tech ID:</span>
+                    <span class="detail-value" id="detail-techId">${techInfo} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-techId"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Team:</span>
+                    <span class="detail-value" id="detail-team">${dispute.team || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-team"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Type:</span>
+                    <span class="detail-value" id="detail-type">${dispute.type || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-type"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Category:</span>
+                    <span class="detail-value" id="detail-category">${dispute.category || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-category"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Warning:</span>
+                    <span class="detail-value" id="detail-warning">${dispute.warning || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-warning"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">RQA TechID:</span>
+                    <span class="detail-value" id="detail-rqaTechId">${dispute.rqaTechId || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-rqaTechId"></i></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Detailed Reason:</span>
+                    <span class="detail-value" id="detail-reason">${dispute.reasonForDispute || ''} <i class="fas fa-copy copy-icon" data-clipboard-target="#detail-reason"></i></span>
+                </div>
+            `;
+            this.elements.disputeDetailsContent.innerHTML = content;
+            this.elements.disputeDetailsModal.style.display = 'block';
+        },
+        handleCopyToClipboard(event) {
+            const target = event.target;
+            if (target.classList.contains('copy-icon')) {
+                const selector = target.dataset.clipboardTarget;
+                const elementToCopy = document.querySelector(selector);
+                if (elementToCopy) {
+                    navigator.clipboard.writeText(elementToCopy.textContent.trim()).then(() => {
+                        target.classList.add('copied');
+                        setTimeout(() => target.classList.remove('copied'), 1500);
+                    }).catch(err => console.error('Failed to copy text: ', err));
+                }
+            }
         },
         handleCopyDispute(disputeId) {
             const dispute = this.state.disputes.find(d => d.id === disputeId);
