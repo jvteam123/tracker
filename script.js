@@ -9,8 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
             sheetNames: { PROJECTS: "Projects", USERS: "Users" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             FIX_COLORS: {
-                "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 }, "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
-                "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 }, "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
+                "Fix1": { "red": 0.917, "green": 0.964, "blue": 1.0 },
+                "Fix2": { "red": 0.917, "green": 0.980, "blue": 0.945 },
+                "Fix3": { "red": 1.0,   "green": 0.972, "blue": 0.882 },
+                "Fix4": { "red": 0.984, "green": 0.913, "blue": 0.905 },
                 "Fix5": { "red": 0.952, "green": 0.901, "blue": 0.972 },
             }
         },
@@ -221,26 +223,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
                 projectFormModal: document.getElementById('projectFormModal'), closeProjectFormBtn: document.getElementById('closeProjectFormBtn'),
-                newProjectForm: document.getElementById('newProjectForm'), monthFilter: document.getElementById('monthFilter'),
-                projectFilter: document.getElementById('projectFilter'), fixCategoryFilter: document.getElementById('fixCategoryFilter'),
+                newProjectForm: document.getElementById('newProjectForm'),
+                userFormModal: document.getElementById('userFormModal'), closeUserFormBtn: document.getElementById('closeUserFormBtn'),
+                userForm: document.getElementById('userForm'), userFormTitle: document.getElementById('userFormTitle'),
+                userId: document.getElementById('userId'), userRow: document.getElementById('userRow'), 
+                userName: document.getElementById('userName'), userEmail: document.getElementById('userEmail'), userTechId: document.getElementById('userTechId'),
+                projectFilter: document.getElementById('projectFilter'), 
                 dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
-                filterLoadingSpinner: document.getElementById('filterLoadingSpinner'), openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
+                openTechDashboardBtn: document.getElementById('openTechDashboardBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'), 
                 openTlSummaryBtn: document.getElementById('openTlSummaryBtn'), tlSummaryView: document.getElementById('tlSummaryView'),
                 summaryTableBody: document.getElementById('summaryTableBody'),
-                openUserManagementBtn: document.getElementById('openUserManagementBtn'),
-                userManagementView: document.getElementById('userManagementView'),
-                userTableBody: document.getElementById('userTableBody'),
+                openUserManagementBtn: document.getElementById('openUserManagementBtn'), userManagementView: document.getElementById('userManagementView'),
+                userTableBody: document.getElementById('userTableBody'), addUserBtn: document.getElementById('addUserBtn'),
             };
         },
-
         attachEventListeners() {
             this.elements.loginForm.addEventListener('submit', this.handleTechIdLogin.bind(this));
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
+            
+            this.elements.addUserBtn.onclick = () => this.openUserModal();
+            this.elements.closeUserFormBtn.onclick = () => this.elements.userFormModal.style.display = 'none';
+            this.elements.userForm.addEventListener('submit', (e) => this.handleUserFormSubmit(e));
+
             this.elements.openTechDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
@@ -258,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         },
-
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
@@ -279,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderUserManagement(); this.elements.userManagementView.style.display = 'flex'; this.elements.openUserManagementBtn.classList.add('active');
             }
         },
-        
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
@@ -689,6 +696,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.insertCell().textContent = user.name;
                 row.insertCell().textContent = user.email;
                 row.insertCell().textContent = user.techId;
+                const actionsCell = row.insertCell();
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = `<i class="fas fa-edit"></i> Edit`;
+                editBtn.className = 'btn btn-warning btn-small';
+                editBtn.onclick = () => this.openUserModal(user);
+                actionsCell.appendChild(editBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = `<i class="fas fa-trash"></i> Delete`;
+                deleteBtn.className = 'btn btn-danger btn-small';
+                deleteBtn.onclick = () => this.handleDeleteUser(user);
+                actionsCell.appendChild(deleteBtn);
             });
         },
         showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
