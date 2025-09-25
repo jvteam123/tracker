@@ -134,6 +134,17 @@
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
         .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
 
+        /* Status Colors */
+        .status { padding: 4px 8px; border-radius: 4px; font-weight: 500; color: #fff; }
+        .status-available { background-color: var(--secondary-color); }
+        .status-inprogress, .status-inprogressday1, .status-inprogressday2, .status-inprogressday3, .status-inprogressday4, .status-inprogressday5 { background-color: var(--warning-color); }
+        .status-completed { background-color: var(--success-color); }
+        .status-day1ended_awaitingnext, .status-day2ended_awaitingnext, .status-day3ended_awaitingnext, .status-day4ended_awaitingnext { background-color: var(--primary-color); }
+
+        .total-minutes-cell { background-color: #f0f8ff; font-weight: 600; }
+        .time-cell .edit-icon { margin-left: 8px; cursor: pointer; color: var(--secondary-color); }
+        .time-cell .edit-icon:hover { color: var(--primary-color); }
+
         /* Highlighting Styles */
         tr.fix-stage-1 { background-color: var(--fix-color-1); }
         tr.fix-stage-2 { background-color: var(--fix-color-2); }
@@ -351,6 +362,22 @@
                 <label for="userTechId">Tech ID:</label>
                 <input type="text" id="userTechId" required>
                 <button type="submit" class="btn btn-success">Save User</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="timeEditModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeTimeEditModalBtn">&times;</span>
+            <h2 id="timeEditTitle">Edit Time</h2>
+            <form id="timeEditForm">
+                <input type="hidden" id="timeEditProjectId">
+                <input type="hidden" id="timeEditDay">
+                <label for="editStartTime">Start Time (HH:MM):</label>
+                <input type="text" id="editStartTime" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="e.g., 09:30" required>
+                <label for="editFinishTime">Finish Time (HH:MM):</label>
+                <input type="text" id="editFinishTime" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="e.g., 17:30" required>
+                <button type="submit" class="btn btn-success">Save Time</button>
             </form>
         </div>
     </div>
