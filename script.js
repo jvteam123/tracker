@@ -715,8 +715,12 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
         hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
-        showFilterSpinner() { if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'block'; } },
-        hideFilterSpinner() { if (this.elements.filterLoadingSpinner) { this.elements.filterLoadingSpinner.style.display = 'none'; } }
+        showFilterSpinner() {
+            // This element was removed from the HTML, so this function is no longer needed.
+        },
+        hideFilterSpinner() {
+            // This element was removed from the HTML, so this function is no longer needed.
+        }
     };
 
     ProjectTrackerApp.init();
