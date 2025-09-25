@@ -54,7 +54,7 @@
         .sidebar-nav button { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; }
         .sidebar-nav button:hover, .sidebar-nav button.active { background-color: #475569; }
         .sidebar-nav button .icon { font-size: 1.2em; }
-        .main-content { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; overflow-y: scroll; }
+        .main-content { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; overflow: hidden; }
         .btn { padding: 8px 16px; border: none; border-radius: var(--border-radius-md); cursor: pointer; font-size: 1em; font-weight: 500; }
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-success { background-color: var(--success-color); color: white; }
@@ -124,11 +124,14 @@
         }
 
         .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .table-scroll-wrapper { width: 100%; overflow: auto; flex-grow: 1; overflow-x: scroll; }
+        .table-scroll-wrapper { width: 100%; flex-grow: 1; overflow: auto; }
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
         .project-table td:first-child, .project-table th:first-child { border-left: 1px solid var(--border-color); }
+        .summary-project-header td { background-color: #e9ecef; font-weight: 600; }
+        .summary-stage-row td:first-child { padding-left: 30px; }
+
 
         /* Status Colors */
         .status { padding: 4px 8px; border-radius: 4px; font-weight: 500; color: #fff; }
@@ -284,7 +287,7 @@
                     <table id="summaryTable" class="project-table">
                         <thead>
                             <tr>
-                                <th>Project Name</th>
+                                <th>Project / Stage</th>
                                 <th>Total Areas</th>
                                 <th>Completed</th>
                                 <th>Progress</th>
