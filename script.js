@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.openAdminSettingsBtn.classList.remove('active');
 
             if (viewName === 'dashboard') {
-                this.elements.techDashboardContainer.style.display = 'block'; this.elements.openTechDashboardBtn.classList.add('active');
+                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openTechDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
                 this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
             } else if (viewName === 'summary') {
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayMatch = action.match(/(start|end)Day(\d)/);
             if (dayMatch) {
                 const [, type, day] = dayMatch; const dayNum = parseInt(day, 10);
-                updates.status = type === 'start' ? `InProgressDay${dayNum}` : (dayNum < 5 ? `Day${dayNum}Ended_AwaitingNext` : 'Completed');
+                updates.status = type === 'start' ? `InProgressDay${dayNum}` : 'Started Available';
                 if (type === 'start') updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
                 if (type === 'end') updates[`finishTimeDay${dayNum}`] = this.getCurrentTime();
             }
@@ -727,12 +727,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalMinCell.textContent = project.totalMinutes || '';
 
                         const actionsCell = row.insertCell();
+                        let lastActiveDay = 0;
+                        for (let i = 1; i <= 5; i++) {
+                            if (project[`startTimeDay${i}`]) {
+                                lastActiveDay = i;
+                            }
+                        }
+
                         for (let i = 1; i <= 5; i++) {
                             if (i === 1 || this.state.filters.showDays[i]) {
                                 const startBtn = document.createElement('button');
                                 startBtn.textContent = `Start D${i}`;
                                 startBtn.className = 'btn btn-primary btn-small';
-                                startBtn.disabled = !(project.status === 'Available' && i === 1 && !project.startTimeDay1) && !(project.status === `Day${i - 1}Ended_AwaitingNext`);
+                                startBtn.disabled = (i === 1 && project.startTimeDay1) || (i > 1 && project.status !== 'Started Available');
                                 startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
                                 actionsCell.appendChild(startBtn);
 
@@ -742,18 +749,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                 endBtn.disabled = project.status !== `InProgressDay${i}`;
                                 endBtn.onclick = () => this.updateProjectState(project.id, `endDay${i}`);
                                 actionsCell.appendChild(endBtn);
+
+                                if (i === lastActiveDay + 1 || (lastActiveDay === 0 && i === 1)) {
+                                    const doneBtn = document.createElement('button');
+                                    doneBtn.textContent = 'Done';
+                                    doneBtn.className = 'btn btn-success btn-small';
+                                    doneBtn.disabled = project.status === 'Completed';
+                                    doneBtn.onclick = () => {
+                                        if (confirm('Are you sure you want to mark this project as "Completed"?')) {
+                                            this.handleProjectUpdate(project.id, { 'status': 'Completed' });
+                                        }
+                                    };
+                                    actionsCell.appendChild(doneBtn);
+                                }
                             }
                         }
-                        const doneBtn = document.createElement('button');
-                        doneBtn.textContent = 'Done';
-                        doneBtn.className = 'btn btn-success btn-small';
-                        doneBtn.disabled = project.status === 'Completed';
-                        doneBtn.onclick = () => {
-                            if (confirm('Are you sure you want to mark this project as "Completed"?')) {
-                                this.handleProjectUpdate(project.id, { 'status': 'Completed' });
-                            }
-                        };
-                        actionsCell.appendChild(doneBtn);
                     });
                 });
             });
