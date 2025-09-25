@@ -224,7 +224,20 @@
             color: white;
             transition: width 0.3s ease;
         }
-
+        /* Dispute Form */
+        #disputeView { display: none; }
+        .dispute-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .dispute-form-group { display: flex; flex-direction: column; }
+        .dispute-form-group label { margin-bottom: 5px; font-weight: 500; }
+        .dispute-form-group input, .dispute-form-group select, .dispute-form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .dispute-form-group textarea { resize: vertical; min-height: 80px; }
+        .disputes-list-container { margin-top: 30px; }
 
     </style>
     <link rel="icon" type="image/png" href="icon.png">
@@ -248,6 +261,7 @@
                 <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
                 <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
                 <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
+                <button id="openDisputeBtn"><i class="fas fa-exclamation-triangle icon"></i> Dispute</button>
                 <button id="openAdminSettingsBtn"><i class="fas fa-user-shield icon"></i> Admin Settings</button>
                 <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                 <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
@@ -324,6 +338,86 @@
                         </thead>
                         <tbody id="userTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+            
+            <div id="disputeView" class="table-container" style="display: none;">
+                <h2>File a Dispute</h2>
+                <form id="disputeForm">
+                    <div class="dispute-form-grid">
+                        <div class="dispute-form-group">
+                            <label for="disputeBlockId">Block ID:</label>
+                            <input type="text" id="disputeBlockId">
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeTechId">Tech ID:</label>
+                            <select id="disputeTechId"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeProjectName">Project Name:</label>
+                            <select id="disputeProjectName"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeTechName">Tech Name:</label>
+                            <input type="text" id="disputeTechName" readonly>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputePartial">Partial:</label>
+                            <select id="disputePartial"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeTeam">Team:</label>
+                            <select id="disputeTeam"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputePhase">Phase:</label>
+                            <select id="disputePhase"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeType">Type:</label>
+                            <select id="disputeType"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeUid">UID (Initial FP's UID):</label>
+                            <input type="text" id="disputeUid">
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeCategory">Category:</label>
+                            <select id="disputeCategory"></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeWarning">Warning:</label>
+                             <select id="disputeWarning"><option>N/A</option></select>
+                        </div>
+                        <div class="dispute-form-group">
+                            <label for="disputeRqaTechId">RQA TechID:</label>
+                            <input type="text" id="disputeRqaTechId">
+                        </div>
+                    </div>
+                     <div class="dispute-form-group" style="margin-top: 20px;">
+                        <label for="disputeReason">Detailed Reason for Dispute:</label>
+                        <textarea id="disputeReason" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="margin-top: 20px;">Save Dispute</button>
+                </form>
+                 <div class="disputes-list-container">
+                    <h3>Disputes List</h3>
+                    <div class="table-scroll-wrapper">
+                        <table id="disputesTable" class="project-table">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Phase</th>
+                                    <th>Tech ID</th>
+                                    <th>Team</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="disputesTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
