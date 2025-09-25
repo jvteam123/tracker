@@ -468,16 +468,14 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleDeleteProject(baseProjectName) {
             if (!confirm(`EXTREME DANGER: This will permanently delete the ENTIRE project '${this.formatProjectName(baseProjectName)}', including all of its fix stages. This cannot be undone. Are you absolutely sure?`)) return;
             try {
-                const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
-                if (tasksToDelete.length === 0) throw new Error(`No tasks found for project ${baseProjectName}.`);
-                const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+                this.state.projects = this.state.projects.filter(p => p.baseProjectName !== baseProjectName);
                 this.state.filters.project = 'All';
-                await this.loadDataFromSheets();
-                this.renderProjectSettings(); // Refresh the view
+                await this.handleReorganizeSheet(true);
+                this.renderProjectSettings();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
             } catch(error) {
                 alert("Error deleting project: " + error.message);
+                await this.loadDataFromSheets();
             }
         },
         async handleReorganizeSheet(isSilent = false) {
