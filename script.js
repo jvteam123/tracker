@@ -1668,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        list.style.display = 'none'; // Close the list immediately for better UX
+                        list.style.display = 'none'; // Close the list immediately
 
                         const markAsRead = async () => {
                             if (n.read === 'FALSE') {
@@ -1681,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
 
-                        // **THE FIX IS HERE:** If already viewing the correct project, just mark as read and do nothing else.
+                        // If already viewing the correct project, just mark as read and do nothing else.
                         if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
                             await markAsRead();
                             return; // This exits the function, preventing any alerts.
@@ -1695,7 +1695,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                                // Silently handle the case where the project doesn't exist, just in case.
+                                console.warn(`Notification clicked for a non-existent project: ${n.projectName}`);
                                 return;
                             }
     
