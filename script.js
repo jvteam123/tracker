@@ -404,6 +404,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = false;
                 return;
             }
+            
+            const projectExists = this.state.projects.some(p => p.baseProjectName === baseProjectName);
+            if (projectExists) {
+                alert(`Project name "${baseProjectName}" already exists. Please choose a unique name.`);
+                this.hideLoading();
+                submitBtn.disabled = false;
+                return;
+            }
 
             const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
             
@@ -1460,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.extraForm.reset();
             if (extra) {
                 this.elements.extraFormTitle.textContent = "Edit Extra Link";
-                this.elements.extraId.value = extra.id;
+                this.elements.extraId.value = extra..id;
                 this.elements.extraRow.value = extra._row;
                 this.elements.extraName.value = extra.name;
                 this.elements.extraUrl.value = extra.url;
@@ -1579,11 +1587,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        this.switchView('dashboard');
-                        this.elements.projectFilter.value = n.projectName;
-                        this.state.filters.project = n.projectName;
-                        this.filterAndRenderProjects();
+                        const projectExists = this.state.projects.some(p => p.baseProjectName === n.projectName);
+
+                        if (projectExists) {
+                            this.switchView('dashboard');
+                            this.elements.projectFilter.value = n.projectName;
+                            this.state.filters.project = n.projectName;
+                            this.filterAndRenderProjects();
+                        } else {
+                            alert(`Project "${this.formatProjectName(n.projectName)}" may have been deleted.`);
+                        }
+                        
                         list.style.display = 'none';
+                        
                         if (n.read === 'FALSE') {
                             n.read = 'TRUE';
                             await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
