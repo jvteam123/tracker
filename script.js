@@ -628,6 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
                 this.renderProjectSettings();
                 this.filterAndRenderProjects(); // Also update main dashboard view if visible
+                this.populateFilterDropdowns(); // Update dropdowns in case a project was removed
         
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
@@ -956,12 +957,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const startBtn = document.createElement('button');
                                 startBtn.textContent = `Start D${i}`;
                                 startBtn.className = 'btn btn-primary btn-small';
-                                // For Day 1, disable if not Available or if no one is assigned.
-                                let isStartDisabled = (project.status !== 'Available' || !project.assignedTo);
-                                if (i > 1) {
-                                    // For subsequent days, disable unless status is 'Started Available' and it's the next day.
-                                    isStartDisabled = !(project.status === 'Started Available' && i > lastActiveDay);
-                                }
+                                let isStartDisabled = (i === 1 && (project.status !== 'Available' || !project.assignedTo)) ||
+                                                      (i > 1 && !(project.status === 'Started Available' && i > lastActiveDay));
                                 startBtn.disabled = isStartDisabled;
                                 startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
                                 btnGroup.appendChild(startBtn);
@@ -1598,7 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (allNotifications.length > 1) {
                     const sorted = allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     const toDelete = sorted.slice(1);
-                    const rowsToDelete = toDelete.map(n => n._row);
+                    const rowsToDelete = toDelete.map(n => n._row).filter(Boolean); // Ensure _row exists
                     
                     if (rowsToDelete.length > 0) {
                         await this.deleteSheetRows(this.config.sheetNames.NOTIFICATIONS, rowsToDelete);
@@ -1667,7 +1664,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        const projectExists = this.state.projects.some(p => p.baseProjectName === n.projectName);
+                        this.populateFilterDropdowns(); // Refresh dropdown before checking
+                        const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
+                        
                         if (!projectExists) {
                             alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
                             list.style.display = 'none';
