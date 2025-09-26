@@ -1683,7 +1683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.notificationBadge.style.display = 'none';
             }
         },
-        toggleNotificationList() {
+       toggleNotificationList() {
             const list = this.elements.notificationList;
             if (list.style.display === 'block') {
                 list.style.display = 'none';
@@ -1714,11 +1714,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
 
+                        // If already viewing the correct project, just mark as read and do nothing else.
                         if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
                             await markAsRead();
                             return; 
                         }
 
+                        // If not on the right project/view, then proceed to switch and filter.
                         this.switchView('dashboard');
                         
                         setTimeout(async () => {
@@ -1726,7 +1728,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                                // **THE FIX IS HERE:** The alert is removed.
+                                console.warn(`Notification clicked for a non-existent project: ${n.projectName}`);
                                 return;
                             }
     
