@@ -1695,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                                alert(`Project "${this.formatProjectName(n.projectName)}"You are already on the current project.`);
                                 return;
                             }
     
