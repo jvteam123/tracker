@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team123 - Project Tracker V3</title>
+    <title>Team123 - Project Tracker V2</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -198,6 +198,9 @@
             max-width: 600px; 
             position: relative; 
         }
+        .modal-content.modal-lg {
+            max-width: 95%;
+        }
         .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
         .time-edit-group { display: flex; gap: 10px; align-items: center; }
         .time-edit-group input { flex-grow: 1; }
@@ -344,7 +347,7 @@
             color: #ecf0f1;
             cursor: pointer;
         }
-       #notificationBadge {
+        #notificationBadge {
             position: absolute;
             top: -5px;
             right: -8px;
@@ -353,11 +356,11 @@
             border-radius: 50%;
             font-size: 0.6em;
             font-weight: bold;
-            /* Changes for perfect circle and centering */
+            display: none;
             width: 16px;
             height: 16px;
             padding: 0;
-            display: flex; /* This is the key for centering */
+            display: flex;
             align-items: center;
             justify-content: center;
         }
@@ -430,7 +433,7 @@
 <body class="login-view-active">
 
     <div id="auth-wrapper">
-        <h2>Project Tracker V3</h2>
+        <h2>Project Tracker V2</h2>
         <p>Please sign in to continue.</p>
         <button id="signInBtn" class="btn btn-primary">Sign in with Google</button>
     </div>
@@ -678,7 +681,23 @@
 
         </main>
     </div>
-
+    
+    <div id="archiveModal" class="modal">
+        <div class="modal-content modal-lg">
+            <span class="close-btn" id="closeArchiveModalBtn">&times;</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Archived Projects</h2>
+                <button id="copyArchiveBtn" class="btn btn-primary"><i class="fas fa-copy"></i> Copy Table</button>
+            </div>
+            <div class="table-scroll-wrapper" style="max-height: 60vh;">
+                <table id="archiveTable" class="project-table">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
     <div id="notificationModal" class="modal">
         <div class="modal-content">
             <i class="fas fa-check-circle icon"></i>
@@ -766,7 +785,7 @@
                 <input type="hidden" id="timeEditDay">
                 <label for="editStartTime">Start Time (HH:MM):</label>
                 <div class="time-edit-group">
-                    <input type="text" id="editStartTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 09:30" required>
+                    <input type="text" id="editStartTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 09:30">
                     <select id="editStartTimeAmPm">
                         <option value="AM">AM</option>
                         <option value="PM">PM</option>
@@ -774,7 +793,7 @@
                 </div>
                 <label for="editFinishTime">Finish Time (HH:MM):</label>
                 <div class="time-edit-group">
-                    <input type="text" id="editFinishTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 05:30" required>
+                    <input type="text" id="editFinishTime" pattern="(1[0-2]|0?[1-9]):[0-5][0-9]" placeholder="e.g., 05:30">
                     <select id="editFinishTimeAmPm">
                         <option value="AM">AM</option>
                         <option value="PM">PM</option>
