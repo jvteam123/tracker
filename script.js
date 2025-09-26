@@ -380,6 +380,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
             }
         },
+        switchView(viewName) {
+            this.elements.techDashboardContainer.style.display = 'none';
+            this.elements.projectSettingsView.style.display = 'none';
+            this.elements.tlSummaryView.style.display = 'none';
+            this.elements.userManagementView.style.display = 'none';
+            this.elements.disputeView.style.display = 'none';
+            this.elements.adminSettingsView.style.display = 'none';
+
+            this.elements.openDashboardBtn.classList.remove('active');
+            this.elements.openProjectSettingsBtn.classList.remove('active');
+            this.elements.openTlSummaryBtn.classList.remove('active');
+            this.elements.openUserManagementBtn.classList.remove('active');
+            this.elements.openDisputeBtn.classList.remove('active');
+            this.elements.openAdminSettingsBtn.classList.remove('active');
+
+            if (viewName === 'dashboard') {
+                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openDashboardBtn.classList.add('active');
+            } else if (viewName === 'settings') {
+                this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
+            } else if (viewName === 'summary') {
+                this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'block'; this.elements.openTlSummaryBtn.classList.add('active');
+            } else if (viewName === 'users') {
+                this.renderUserManagement(); this.elements.userManagementView.style.display = 'block'; this.elements.openUserManagementBtn.classList.add('active');
+            } else if (viewName === 'disputes') {
+                this.renderDisputes(); this.elements.disputeView.style.display = 'block'; this.elements.openDisputeBtn.classList.add('active');
+            } else if (viewName === 'admin') {
+                this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
+            }
+        },
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
@@ -400,14 +429,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!baseProjectName) {
                 alert("Project Name is required.");
-                this.hideLoading();
-                submitBtn.disabled = false;
-                return;
-            }
-            
-            const projectExists = this.state.projects.some(p => p.baseProjectName === baseProjectName);
-            if (projectExists) {
-                alert(`Project name "${baseProjectName}" already exists. Please choose a unique name.`);
                 this.hideLoading();
                 submitBtn.disabled = false;
                 return;
@@ -1468,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.extraForm.reset();
             if (extra) {
                 this.elements.extraFormTitle.textContent = "Edit Extra Link";
-                this.elements.extraId.value = extra..id;
+                this.elements.extraId.value = extra.id;
                 this.elements.extraRow.value = extra._row;
                 this.elements.extraName.value = extra.name;
                 this.elements.extraUrl.value = extra.url;
@@ -1587,19 +1608,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        const projectExists = this.state.projects.some(p => p.baseProjectName === n.projectName);
-
-                        if (projectExists) {
-                            this.switchView('dashboard');
-                            this.elements.projectFilter.value = n.projectName;
-                            this.state.filters.project = n.projectName;
-                            this.filterAndRenderProjects();
-                        } else {
-                            alert(`Project "${this.formatProjectName(n.projectName)}" may have been deleted.`);
-                        }
-                        
+                        this.switchView('dashboard');
+                        this.elements.projectFilter.value = n.projectName;
+                        this.state.filters.project = n.projectName;
+                        this.filterAndRenderProjects();
                         list.style.display = 'none';
-                        
                         if (n.read === 'FALSE') {
                             n.read = 'TRUE';
                             await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
@@ -1611,11 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             list.style.display = 'block';
         }
-
     };
-
-    // Make the app object globally accessible so the inline onclicks can find it.
     window.ProjectTrackerApp = ProjectTrackerApp;
-    
     ProjectTrackerApp.init();
 });
