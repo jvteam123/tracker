@@ -1700,35 +1700,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     const item = document.createElement('div');
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
-                    item.onclick = async () => {
+                    item.onclick = () => { // No longer needs to be async
                         list.style.display = 'none'; // Close the list immediately
 
-                        const markAsRead = async () => {
+                        const markAsRead = () => {
                             if (n.read === 'FALSE') {
                                 const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
                                 if (notificationInState && notificationInState._row) {
+                                    // 1. Update the state locally first
                                     notificationInState.read = 'TRUE';
-                                    await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
+                                    // 2. Re-render the UI immediately based on the local change
                                     this.renderNotificationBell();
+                                    // 3. Send the update to the sheet in the background
+                                    this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
                                 }
                             }
                         };
 
-                        // If already viewing the correct project, just mark as read and do nothing else.
                         if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
-                            await markAsRead();
+                            markAsRead();
                             return; 
                         }
 
-                        // If not on the right project/view, then proceed to switch and filter.
                         this.switchView('dashboard');
                         
-                        setTimeout(async () => {
+                        setTimeout(() => {
                             this.populateFilterDropdowns(); 
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                // **THE FIX IS HERE:** The alert is removed.
                                 console.warn(`Notification clicked for a non-existent project: ${n.projectName}`);
                                 return;
                             }
@@ -1737,7 +1737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.state.filters.project = n.projectName;
                             this.filterAndRenderProjects();
                             
-                            await markAsRead();
+                            markAsRead();
                         }, 100);
                     };
                     list.appendChild(item);
