@@ -1650,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.notificationBadge.style.display = 'none';
             }
         },
-        toggleNotificationList() {
+       toggleNotificationList() {
             const list = this.elements.notificationList;
             if (list.style.display === 'block') {
                 list.style.display = 'none';
@@ -1668,24 +1668,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        this.switchView('dashboard');
-                        
-                        // Use a short delay to ensure the view switch has processed before filtering
-                        setTimeout(async () => {
-                            this.populateFilterDropdowns(); // Refresh dropdown before checking
-                            const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
-                            
-                            if (!projectExists) {
-                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
-                                list.style.display = 'none';
-                                return;
-                            }
-    
-                            this.elements.projectFilter.value = n.projectName;
-                            this.state.filters.project = n.projectName;
-                            this.filterAndRenderProjects();
-                            list.style.display = 'none';
-                            
+                        list.style.display = 'none'; // Close the list immediately for better UX
+
+                        const markAsRead = async () => {
                             if (n.read === 'FALSE') {
                                 const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
                                 if (notificationInState && notificationInState._row) {
@@ -1694,7 +1679,32 @@ document.addEventListener('DOMContentLoaded', () => {
                                     this.renderNotificationBell();
                                 }
                             }
-                        }, 100); // 100ms delay
+                        };
+
+                        // If we are already viewing the correct project on the dashboard, just mark as read and exit.
+                        if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
+                            await markAsRead();
+                            return; 
+                        }
+
+                        // If not on the right project/view, then proceed to switch and filter.
+                        this.switchView('dashboard');
+                        
+                        setTimeout(async () => {
+                            this.populateFilterDropdowns(); 
+                            const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
+                            
+                            if (!projectExists) {
+                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                                return;
+                            }
+    
+                            this.elements.projectFilter.value = n.projectName;
+                            this.state.filters.project = n.projectName;
+                            this.filterAndRenderProjects();
+                            
+                            await markAsRead();
+                        }, 100);
                     };
                     list.appendChild(item);
                 });
