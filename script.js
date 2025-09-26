@@ -380,6 +380,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
             }
         },
+        // ... (rest of the script is unchanged)
+		switchView(viewName) {
+            this.elements.techDashboardContainer.style.display = 'none';
+            this.elements.projectSettingsView.style.display = 'none';
+            this.elements.tlSummaryView.style.display = 'none';
+            this.elements.userManagementView.style.display = 'none';
+            this.elements.disputeView.style.display = 'none';
+            this.elements.adminSettingsView.style.display = 'none';
+
+            this.elements.openDashboardBtn.classList.remove('active');
+            this.elements.openProjectSettingsBtn.classList.remove('active');
+            this.elements.openTlSummaryBtn.classList.remove('active');
+            this.elements.openUserManagementBtn.classList.remove('active');
+            this.elements.openDisputeBtn.classList.remove('active');
+            this.elements.openAdminSettingsBtn.classList.remove('active');
+
+            if (viewName === 'dashboard') {
+                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openDashboardBtn.classList.add('active');
+            } else if (viewName === 'settings') {
+                this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
+            } else if (viewName === 'summary') {
+                this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'block'; this.elements.openTlSummaryBtn.classList.add('active');
+            } else if (viewName === 'users') {
+                this.renderUserManagement(); this.elements.userManagementView.style.display = 'block'; this.elements.openUserManagementBtn.classList.add('active');
+            } else if (viewName === 'disputes') {
+                this.renderDisputes(); this.elements.disputeView.style.display = 'block'; this.elements.openDisputeBtn.classList.add('active');
+            } else if (viewName === 'admin') {
+                this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
+            }
+        },
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
@@ -1595,11 +1625,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             list.style.display = 'block';
         }
-
     };
-
-    // Make the app object globally accessible so the inline onclicks can find it.
     window.ProjectTrackerApp = ProjectTrackerApp;
-    
     ProjectTrackerApp.init();
 });
