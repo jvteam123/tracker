@@ -608,16 +608,29 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
+            this.showLoading(`Rolling back ${fixToDelete}...`);
             try {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
-                if (tasksToDelete.length === 0) throw new Error(`No tasks found to delete for ${fixToDelete}.`);
+                if (tasksToDelete.length === 0) {
+                    throw new Error(`No tasks found to delete for ${fixToDelete}.`);
+                }
+        
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
-                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete); 
-                await this.loadDataFromSheets();
+                await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+                
+                // Instead of a full reload, just remove from local state and re-render
+                this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
+                this.renderProjectSettings();
+                this.filterAndRenderProjects(); // Also update main dashboard view if visible
+        
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
+                // On error, a full reload is safer to ensure consistency
                 await this.loadDataFromSheets();
+                this.renderProjectSettings();
+            } finally {
+                this.hideLoading();
             }
         },
         async handleDeleteProject(baseProjectName) {
@@ -1393,8 +1406,12 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             const projectId = this.elements.timeEditProjectId.value;
             const day = this.elements.timeEditDay.value;
-            const startTime = `${this.elements.editStartTime.value} ${this.elements.editStartTimeAmPm.value}`;
-            const finishTime = `${this.elements.editFinishTime.value} ${this.elements.editFinishTimeAmPm.value}`;
+            const startTimeValue = this.elements.editStartTime.value.trim();
+            const finishTimeValue = this.elements.editFinishTime.value.trim();
+        
+            // Only format time if input is not empty
+            const startTime = startTimeValue ? `${startTimeValue} ${this.elements.editStartTimeAmPm.value}` : '';
+            const finishTime = finishTimeValue ? `${finishTimeValue} ${this.elements.editFinishTimeAmPm.value}` : '';
         
             const updates = {
                 [`startTimeDay${day}`]: startTime,
@@ -1561,22 +1578,26 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async cleanupOldNotifications() {
             try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    range: this.config.sheetNames.NOTIFICATIONS,
-                });
-        
-                const allNotifications = this.sheetValuesToObjects(response.result.values, this.config.NOTIFICATIONS_HEADER_MAP);
+                // We use the local state which is freshest
+                const allNotifications = [...this.state.notifications];
         
                 if (allNotifications.length > 2) {
                     const sorted = allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    const rowsToDelete = sorted.slice(2).map(n => n._row);
+                    const toDelete = sorted.slice(2);
+                    const rowsToDelete = toDelete.map(n => n._row);
+                    
                     if (rowsToDelete.length > 0) {
                         await this.deleteSheetRows(this.config.sheetNames.NOTIFICATIONS, rowsToDelete);
+                        // Remove from local state as well for immediate UI consistency
+                        toDelete.forEach(n => {
+                            const index = this.state.notifications.findIndex(notif => notif.id === n.id);
+                            if (index > -1) {
+                                this.state.notifications.splice(index, 1);
+                            }
+                        });
                     }
                 }
             } catch (err) {
-                // It's a background task, so we just log the error without alerting the user
                 console.error("Failed to cleanup old notifications:", err);
             }
         },
@@ -1596,13 +1617,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newRow = [headers.map(h => notification[this.config.NOTIFICATIONS_HEADER_MAP[h.toLowerCase()]] || "")];
                 await this.appendRowsToSheet(this.config.sheetNames.NOTIFICATIONS, newRow);
                 
-                // After logging, cleanup old notifications
+                // Add new notification to local state before cleanup
+                // We fake the "_row" property for now, it will be corrected on the next full load
+                notification._row = (this.state.notifications.length > 0 ? Math.max(...this.state.notifications.map(n => n._row)) : 1) + 1;
+                this.state.notifications.push(notification);
+
                 await this.cleanupOldNotifications();
-                // Refresh local notification state after cleanup
-                const updatedNotifications = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: this.config.sheetNames.NOTIFICATIONS,
-                });
-                this.state.notifications = this.sheetValuesToObjects(updatedNotifications.result.values, this.config.NOTIFICATIONS_HEADER_MAP);
                 this.renderNotificationBell();
 
             } catch (err) {
@@ -1636,16 +1656,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
+                        const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
+                        if (!projectExists) {
+                            alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                            list.style.display = 'none';
+                            return;
+                        }
+
                         this.switchView('dashboard');
-                        this.populateFilterDropdowns(); // Refresh dropdown before setting value
                         this.elements.projectFilter.value = n.projectName;
                         this.state.filters.project = n.projectName;
                         this.filterAndRenderProjects();
                         list.style.display = 'none';
+                        
                         if (n.read === 'FALSE') {
                             n.read = 'TRUE';
                             await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
-                            this.state.notifications.find(notif => notif.id === n.id).read = 'TRUE';
+                            const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
+                            if (notificationInState) {
+                                notificationInState.read = 'TRUE';
+                            }
                             this.renderNotificationBell();
                         }
                     };
