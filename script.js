@@ -163,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         async updateRowInSheet(sheetName, rowIndex, dataObject) {
+            const submitBtn = document.querySelector('button:disabled');
+            if(submitBtn) submitBtn.disabled = false;
+            
             this.showLoading("Saving...");
             try {
                 const headersResult = await gapi.client.sheets.spreadsheets.values.get({
@@ -303,30 +306,30 @@ document.addEventListener('DOMContentLoaded', () => {
         attachEventListeners() {
             this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
-            this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.style.display = 'block';
-            this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.style.display = 'none';
+            this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.classList.add('is-open');
+            this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.classList.remove('is-open');
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
 
             this.elements.addUserBtn.onclick = () => this.openUserModal();
-            this.elements.closeUserFormBtn.onclick = () => this.elements.userFormModal.style.display = 'none';
+            this.elements.closeUserFormBtn.onclick = () => this.elements.userFormModal.classList.remove('is-open');
             this.elements.userForm.addEventListener('submit', (e) => this.handleUserFormSubmit(e));
 
-            this.elements.closeTimeEditModalBtn.onclick = () => this.elements.timeEditModal.style.display = 'none';
+            this.elements.closeTimeEditModalBtn.onclick = () => this.elements.timeEditModal.classList.remove('is-open');
             this.elements.timeEditForm.addEventListener('submit', (e) => this.handleTimeEditSubmit(e));
             
             this.elements.disputeForm.addEventListener('submit', (e) => this.handleDisputeFormSubmit(e));
             this.elements.disputesTableBody.addEventListener('click', (e) => this.handleDisputeActions(e));
-            this.elements.closeDisputeDetailsBtn.onclick = () => this.elements.disputeDetailsModal.style.display = 'none';
+            this.elements.closeDisputeDetailsBtn.onclick = () => this.elements.disputeDetailsModal.classList.remove('is-open');
             this.elements.disputeDetailsContent.addEventListener('click', (e) => this.handleCopyToClipboard(e));
             this.elements.disputeStatusFilter.addEventListener('change', (e) => {
                 this.state.filters.disputeStatus = e.target.value;
                 this.renderDisputes();
             });
 
-            this.elements.notificationCloseBtn.onclick = () => this.elements.notificationModal.style.display = 'none';
+            this.elements.notificationCloseBtn.onclick = () => this.elements.notificationModal.classList.remove('is-open');
             this.elements.notificationBell.onclick = () => this.toggleNotificationList();
 
-            this.elements.closeExtraFormBtn.onclick = () => this.elements.extraFormModal.style.display = 'none';
+            this.elements.closeExtraFormBtn.onclick = () => this.elements.extraFormModal.classList.remove('is-open');
             this.elements.extraForm.addEventListener('submit', (e) => this.handleExtraFormSubmit(e));
 
             this.elements.openDashboardBtn.onclick = () => this.switchView('dashboard');
@@ -416,7 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
                 }
                 await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
-                this.elements.projectFormModal.style.display = 'none'; this.elements.newProjectForm.reset();
+                this.elements.projectFormModal.classList.remove('is-open');
+                this.elements.newProjectForm.reset();
                 
                 const message = `Project "${this.formatProjectName(baseProjectName)}" was created successfully!`;
                 await this.logNotification(message, baseProjectName);
@@ -452,16 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleProjectUpdate(projectId, updates) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (project) {
-                // Create a temporary copy of the project to calculate the new total minutes
                 const tempUpdatedProject = { ...project, ...updates };
                 const newTotalMinutes = this.calculateTotalMinutes(tempUpdatedProject);
-        
-                // Add the new total to the updates object
                 updates.totalMinutes = newTotalMinutes;
-        
-                // Now, assign all updates to the actual project object
                 Object.assign(project, updates, { lastModifiedTimestamp: new Date().toISOString() });
-        
                 this.filterAndRenderProjects();
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
@@ -472,17 +470,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
+            hours = hours ? hours : 12;
             const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
             const hoursStr = hours < 10 ? '0' + hours : String(hours);
             return `${hoursStr}:${minutesStr} ${ampm}`;
         },
         async updateProjectState(projectId, action) {
             const project = this.state.projects.find(p => p.id === projectId);
-            if (!project) return; const updates = {};
+            if (!project) return;
+            const updates = { lastModifiedTimestamp: new Date().toISOString() };
             const dayMatch = action.match(/(start|end)Day(\d)/);
             if (dayMatch) {
-                const [, type, day] = dayMatch; const dayNum = parseInt(day, 10);
+                const [, type, day] = dayMatch;
+                const dayNum = parseInt(day, 10);
                 updates.status = type === 'start' ? `InProgressDay${dayNum}` : 'Started Available';
                 if (type === 'start') updates[`startTimeDay${dayNum}`] = this.getCurrentTime();
                 if (type === 'end') updates[`finishTimeDay${dayNum}`] = this.getCurrentTime();
@@ -492,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         parseTimeToMinutes(timeStr) {
             if (!timeStr || typeof timeStr !== 'string') return 0;
             const time = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (!time) { // Fallback for 24-hour format
+            if (!time) {
                 const parts = timeStr.split(':');
                 if (parts.length !== 2) return 0;
                 return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
@@ -534,20 +534,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalMinutes: "",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    delete newRowObj._row; // Remove the old row number
-                    this.state.projects.push(newRowObj); // Add new project object to the state in memory
+                    delete newRowObj._row;
+                    this.state.projects.push(newRowObj);
                 });
 
                 const message = `'${toFix}' was released for project '${this.formatProjectName(baseProjectName)}'!`;
                 await this.logNotification(message, baseProjectName);
                 await this.handleReorganizeSheet(true);
                 
-                this.renderProjectSettings(); // Refresh the settings view
+                this.renderProjectSettings();
                 this.showReleaseNotification(message, baseProjectName);
 
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
-                await this.loadDataFromSheets(); // Reload data on error to be safe
+                await this.loadDataFromSheets();
             } finally {
                 this.hideLoading();
             }
@@ -980,7 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.userId.value = `user_${Date.now()}`;
                 this.elements.userRow.value = "";
             }
-            this.elements.userFormModal.style.display = 'block';
+            this.elements.userFormModal.classList.add('is-open');
         },
         async handleUserFormSubmit(event) {
             event.preventDefault();
@@ -1007,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 })];
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
             }
-            this.elements.userFormModal.style.display = 'none';
+            this.elements.userFormModal.classList.remove('is-open');
             await this.loadDataFromSheets();
             this.renderUserManagement();
         },
@@ -1185,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             this.elements.disputeDetailsContent.innerHTML = content;
-            this.elements.disputeDetailsModal.style.display = 'block';
+            this.elements.disputeDetailsModal.classList.add('is-open');
         },
         handleCopyToClipboard(event) {
             const target = event.target;
@@ -1365,7 +1365,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.editFinishTimeAmPm.value = finishTimeMatch ? finishTimeMatch[2].toUpperCase() : 'PM';
         
             this.elements.timeEditTitle.textContent = `Edit Day ${day} Time for ${project.areaTask}`;
-            this.elements.timeEditModal.style.display = 'block';
+            this.elements.timeEditModal.classList.add('is-open');
         },
         async handleTimeEditSubmit(event) {
             event.preventDefault();
@@ -1380,11 +1380,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             await this.handleProjectUpdate(projectId, updates);
-            this.elements.timeEditModal.style.display = 'none';
+            this.elements.timeEditModal.classList.remove('is-open');
         },
         showReleaseNotification(message, projectFilterValue) {
             this.elements.notificationMessage.textContent = message;
-            this.elements.notificationModal.style.display = 'flex';
+            this.elements.notificationModal.classList.add('is-open');
         
             // Clone and replace the button to remove old event listeners
             const oldBtn = this.elements.notificationViewBtn;
@@ -1397,12 +1397,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.projectFilter.value = projectFilterValue;
                 this.switchView('dashboard');
                 this.filterAndRenderProjects();
-                this.elements.notificationModal.style.display = 'none';
+                this.elements.notificationModal.classList.remove('is-open');
             };
         },
         
-        showLoading(message = "Loading...") { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.querySelector('p').textContent = message; this.elements.loadingOverlay.style.display = 'flex'; } },
-        hideLoading() { if (this.elements.loadingOverlay) { this.elements.loadingOverlay.style.display = 'none'; } },
+        showLoading(message = "Loading...") { 
+            if (this.elements.loadingOverlay) { 
+                this.elements.loadingOverlay.querySelector('p').textContent = message; 
+                this.elements.loadingOverlay.classList.add('is-open');
+            } 
+        },
+        hideLoading() { 
+            if (this.elements.loadingOverlay) { 
+                this.elements.loadingOverlay.classList.remove('is-open');
+            } 
+        },
         showFilterSpinner() { },
         hideFilterSpinner() { },
         
@@ -1436,11 +1445,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     tableHTML += `
                         <tr>
                             <td>${extra.name}</td>
-                            <td>${extra.url}</td>
+                            <td><span class="truncate" title="${extra.url}">${extra.url}</span></td>
                             <td><i class="${extra.icon}"></i> (${extra.icon})</td>
                             <td class="actions-btn-group">
-                                <button class="btn btn-warning btn-small" onclick="ProjectTrackerApp.openExtraModal(ProjectTrackerApp.state.extras.find(e => e.id === '${extra.id}'))">Edit</button>
-                                <button class="btn btn-danger btn-small" onclick="ProjectTrackerApp.handleDeleteExtra('${extra.id}')">Delete</button>
+                                <button class="btn btn-warning btn-small" onclick="ProjectTrackerApp.openExtraModal(ProjectTrackerApp.state.extras.find(e => e.id === '${extra.id}'))"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-danger btn-small" onclick="ProjectTrackerApp.handleDeleteExtra('${extra.id}')"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>`;
                 });
@@ -1464,7 +1473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.extraId.value = `extra_${Date.now()}`;
                 this.elements.extraRow.value = "";
             }
-            this.elements.extraFormModal.style.display = 'block';
+            this.elements.extraFormModal.classList.add('is-open');
         },
         async handleExtraFormSubmit(event) {
             event.preventDefault();
@@ -1487,7 +1496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newRow = [headers.map(h => extra[this.config.EXTRAS_HEADER_MAP[h.toLowerCase()]] || "")];
                 await this.appendRowsToSheet(this.config.sheetNames.EXTRAS, newRow);
             }
-            this.elements.extraFormModal.style.display = 'none';
+            this.elements.extraFormModal.classList.remove('is-open');
             await this.loadDataFromSheets();
             this.renderExtrasManagement();
         },
