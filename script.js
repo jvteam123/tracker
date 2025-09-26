@@ -452,10 +452,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const finishTime = project[`finishTimeDay${i}`] || '';
                 const breakMins = parseInt(project[`breakDurationMinutesDay${i}`] || '0', 10);
                 if (startTime && finishTime) {
-                    const startMinutes = this.parseTimeToMinutes(startTime);
-                    const finishMinutes = this.parseTimeToMinutes(finishTime);
+                    let startMinutes = this.parseTimeToMinutes(startTime);
+                    let finishMinutes = this.parseTimeToMinutes(finishTime);
+        
+                    // Handle overnight shifts
+                    if (finishMinutes < startMinutes) {
+                        finishMinutes += 24 * 60; // Add 24 hours in minutes
+                    }
+        
                     const workMinutes = finishMinutes - startMinutes;
-                    if (workMinutes > 0) {
+                    if (workMinutes >= 0) { // Allow for zero minute tasks
                         totalWorkMinutes += (workMinutes - breakMins);
                     }
                 }
