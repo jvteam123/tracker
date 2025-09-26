@@ -380,36 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
             }
         },
-        // ... (rest of the script is unchanged)
-		switchView(viewName) {
-            this.elements.techDashboardContainer.style.display = 'none';
-            this.elements.projectSettingsView.style.display = 'none';
-            this.elements.tlSummaryView.style.display = 'none';
-            this.elements.userManagementView.style.display = 'none';
-            this.elements.disputeView.style.display = 'none';
-            this.elements.adminSettingsView.style.display = 'none';
-
-            this.elements.openDashboardBtn.classList.remove('active');
-            this.elements.openProjectSettingsBtn.classList.remove('active');
-            this.elements.openTlSummaryBtn.classList.remove('active');
-            this.elements.openUserManagementBtn.classList.remove('active');
-            this.elements.openDisputeBtn.classList.remove('active');
-            this.elements.openAdminSettingsBtn.classList.remove('active');
-
-            if (viewName === 'dashboard') {
-                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openDashboardBtn.classList.add('active');
-            } else if (viewName === 'settings') {
-                this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
-            } else if (viewName === 'summary') {
-                this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'block'; this.elements.openTlSummaryBtn.classList.add('active');
-            } else if (viewName === 'users') {
-                this.renderUserManagement(); this.elements.userManagementView.style.display = 'block'; this.elements.openUserManagementBtn.classList.add('active');
-            } else if (viewName === 'disputes') {
-                this.renderDisputes(); this.elements.disputeView.style.display = 'block'; this.elements.openDisputeBtn.classList.add('active');
-            } else if (viewName === 'admin') {
-                this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
-            }
-        },
         populateFilterDropdowns() {
             const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
             this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
@@ -586,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
             if (isNaN(numToAdd) || numToAdd < 1) return; this.showLoading(`Adding ${numToAdd} area(s)...`);
             try {
-                const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+                const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === 'Fix1');
                 if (projectTasks.length === 0) throw new Error(`Could not find project: ${baseProjectName}`);
                 const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
@@ -752,6 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
                     const nextFix = `Fix${currentFixNum + 1}`;
                     const canRollback = fixCategories.length > 1;
+                    const isNotFix1 = currentFix !== 'Fix1';
         
                     tableHTML += `
                         <tr>
@@ -760,7 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td><input type="text" id="releaseToFix_${projectName}" value="${nextFix}" style="padding: 5px; border: 1px solid #ccc; border-radius: 5px; width: 80px;"></td>
                             <td class="actions-btn-group">
                                 <button class="btn btn-primary btn-small" title="Release to Next Stage" data-action="release" data-project="${projectName}" data-from="${currentFix}"><i class="fas fa-rocket"></i></button>
-                                <button class="btn btn-success btn-small" title="Add Extra Area" data-action="add-area" data-project="${projectName}"><i class="fas fa-plus"></i></button>
+                                <button class="btn btn-success btn-small" title="${isNotFix1 ? 'Only available for Fix1' : 'Add Extra Area'}" data-action="add-area" data-project="${projectName}" ${isNotFix1 ? 'disabled' : ''}><i class="fas fa-plus"></i></button>
                                 <button class="btn btn-warning btn-small" title="Delete ${currentFix} Tasks" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}><i class="fas fa-history"></i></button>
                                 <button class="btn btn-danger btn-small" title="DELETE ENTIRE PROJECT" data-action="delete-project" data-project="${projectName}"><i class="fas fa-trash-alt"></i></button>
                             </td>
@@ -1419,9 +1390,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.notificationViewBtn = newBtn;
         
             newBtn.onclick = () => {
+                this.switchView('dashboard');
                 this.state.filters.project = projectFilterValue;
                 this.elements.projectFilter.value = projectFilterValue;
-                this.switchView('dashboard');
                 this.filterAndRenderProjects();
                 this.elements.notificationModal.classList.remove('is-open');
             };
@@ -1608,12 +1579,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        this.state.filters.project = n.projectName;
-                        this.elements.projectFilter.value = n.projectName;
                         this.switchView('dashboard');
+                        this.elements.projectFilter.value = n.projectName;
+                        this.state.filters.project = n.projectName;
                         this.filterAndRenderProjects();
                         list.style.display = 'none';
-                        // Mark as read
                         if (n.read === 'FALSE') {
                             n.read = 'TRUE';
                             await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
@@ -1625,7 +1595,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             list.style.display = 'block';
         }
+
     };
+
+    // Make the app object globally accessible so the inline onclicks can find it.
     window.ProjectTrackerApp = ProjectTrackerApp;
+    
     ProjectTrackerApp.init();
 });
