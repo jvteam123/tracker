@@ -1318,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="settings-card" style="margin-top: 20px;">
                         <h3><i class="fas fa-archive icon"></i> Archiving</h3>
-                        <p>Move all completed projects to an 'Archive' sheet to improve performance.</p>
+                        <p>Archive completed projects from the 21st of last month to the 20th of this month.</p>
                         <div class="btn-group">
                             <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Completed Projects</button>
                         </div>
@@ -1356,34 +1356,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("Incorrect code. Operation cancelled."); 
                 return; 
             }
-            if (!confirm("Are you sure you want to archive all completed projects? This cannot be undone.")) return;
-
+        
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth(); // 0-11
+        
+            // End date is the 21st of the current month at 00:00:00
+            // This means anything BEFORE this date (i.e., up to the 20th at 23:59:59) is included.
+            const endDate = new Date(year, month, 21);
+        
+            // Start date is the 21st of the PREVIOUS month
+            const startDate = new Date(year, month - 1, 21);
+        
+            const dateRangeStr = `from ${startDate.toLocaleDateString()} to ${new Date(endDate - 1).toLocaleDateString()}`;
+        
+            if (!confirm(`Are you sure you want to archive all completed projects ${dateRangeStr}? This cannot be undone.`)) return;
+        
             this.showLoading("Archiving completed projects...");
             try {
-                const projectsToArchive = this.state.projects.filter(p => p.status === 'Completed');
+                const projectsToArchive = this.state.projects.filter(p => {
+                    if (p.status === 'Completed' && p.lastModifiedTimestamp) {
+                        const modifiedDate = new Date(p.lastModifiedTimestamp);
+                        return modifiedDate >= startDate && modifiedDate < endDate;
+                    }
+                    return false;
+                });
+        
                 if (projectsToArchive.length === 0) {
-                    alert("No completed projects to archive.");
+                    alert(`No completed projects found within the date range: ${dateRangeStr}.`);
                     return;
                 }
-
+        
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-
+        
                 const rowsToAppend = projectsToArchive.map(project => {
                     return headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
                 });
-
+        
                 await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
                 
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
-
+        
                 await this.loadDataFromSheets();
                 alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
-
+        
             } catch (error) {
                 alert("Error archiving projects: " + error.message);
                 console.error("Archive Error:", error);
@@ -1644,13 +1665,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const unreadCount = this.state.notifications.filter(n => n.read === 'FALSE').length;
             if (unreadCount > 0) {
                 this.elements.notificationBadge.textContent = unreadCount;
-                // This is the fix: change 'block' to 'flex' to match the CSS
                 this.elements.notificationBadge.style.display = 'flex';
             } else {
                 this.elements.notificationBadge.style.display = 'none';
             }
         },
-      toggleNotificationList() {
+        toggleNotificationList() {
             const list = this.elements.notificationList;
             if (list.style.display === 'block') {
                 list.style.display = 'none';
@@ -1681,13 +1701,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
 
-                        // If already viewing the correct project, just mark as read and do nothing else.
                         if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
                             await markAsRead();
-                            return; // This exits the function, preventing any alerts.
+                            return; 
                         }
 
-                        // If not on the right project/view, then proceed to switch and filter.
                         this.switchView('dashboard');
                         
                         setTimeout(async () => {
@@ -1695,8 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                // Silently handle the case where the project doesn't exist, just in case.
-                                console.warn(`Notification clicked for a non-existent project: ${n.projectName}`);
+                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
                                 return;
                             }
     
