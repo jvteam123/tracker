@@ -243,6 +243,87 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
 
+        async updateRowInSheet(sheetName, rowIndex, dataObject) {
+            const submitBtn = document.querySelector('button:disabled');
+            if(submitBtn) submitBtn.disabled = false;
+            
+            this.showLoading("Saving...");
+            try {
+                const headersResult = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${sheetName}!1:1`,
+                });
+                const headers = headersResult.result.values[0];
+                let headerMap;
+                if(sheetName === this.config.sheetNames.USERS) {
+                    headerMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
+                } else if (sheetName === this.config.sheetNames.DISPUTES) {
+                    headerMap = this.config.DISPUTE_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.EXTRAS) {
+                    headerMap = this.config.EXTRAS_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.NOTIFICATIONS) {
+                    headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
+                } else {
+                    headerMap = this.config.HEADER_MAP;
+                }
+                
+                const values = [headers.map(header => {
+                    const propName = headerMap[header.trim()] || headerMap[header.trim().toLowerCase()];
+                    return dataObject[propName] !== undefined ? dataObject[propName] : "";
+                })];
+
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${sheetName}!A${rowIndex}`,
+                    valueInputOption: 'USER_ENTERED',
+                    resource: { values: values }
+                });
+            } catch (err) {
+                console.error(`Data Error: Failed to update row ${rowIndex} in ${sheetName}.`, err);
+                alert("Failed to save changes. The data will be refreshed to prevent inconsistencies.");
+                await this.loadDataFromSheets();
+            } finally {
+                this.hideLoading();
+            }
+        },
+        async appendRowsToSheet(sheetName, rows) {
+            try {
+                await gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A1`,
+                    valueInputOption: 'USER_ENTERED', resource: { values: rows }
+                });
+            } catch (err) {
+                console.error("Data Error: Failed to append rows to sheet.", err);
+                throw new Error("Failed to add data to Google Sheet.");
+            }
+        },
+        async deleteSheetRows(sheetName, rowsToDelete) {
+            this.showLoading("Deleting rows...");
+            try {
+                if (rowsToDelete.length === 0) return;
+
+                const spreadsheet = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: this.config.google.SPREADSHEET_ID });
+                const sheet = spreadsheet.result.sheets.find(s => s.properties.title === sheetName);
+                if (!sheet) throw new Error(`Sheet "${sheetName}" not found.`);
+                const sheetId = sheet.properties.sheetId;
+
+                const sortedRows = rowsToDelete.sort((a, b) => b - a);
+                const requests = sortedRows.map(rowIndex => ({
+                    deleteDimension: {
+                        range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex, },
+                    },
+                }));
+                await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID, resource: { requests },
+                });
+            } catch (err) {
+                console.error("API Error: Failed to delete rows.", err);
+                throw new Error("Could not delete rows from the sheet.");
+            } finally {
+                this.hideLoading();
+            }
+        },
+
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
@@ -1625,6 +1706,9 @@ document.addEventListener('DOMContentLoaded', () => {
             list.style.display = 'block';
         }
     };
+
+    // Make the app object globally accessible so the inline onclicks can find it.
     window.ProjectTrackerApp = ProjectTrackerApp;
+    
     ProjectTrackerApp.init();
 });
