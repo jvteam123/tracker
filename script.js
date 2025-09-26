@@ -1644,7 +1644,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const unreadCount = this.state.notifications.filter(n => n.read === 'FALSE').length;
             if (unreadCount > 0) {
                 this.elements.notificationBadge.textContent = unreadCount;
-                this.elements.notificationBadge.style.display = 'block';
+                // This is the fix: change 'block' to 'flex' to match the CSS
+                this.elements.notificationBadge.style.display = 'flex';
             } else {
                 this.elements.notificationBadge.style.display = 'none';
             }
