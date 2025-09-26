@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             disputes: [],
             extras: [],
             notifications: [],
+            archive: [], // New state for archive data
             isAppInitialized: false,
             filters: {
                 project: 'All',
@@ -130,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS, this.config.sheetNames.NOTIFICATIONS],
+                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS, this.config.sheetNames.NOTIFICATIONS, this.config.sheetNames.ARCHIVE],
                 });
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
@@ -138,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const disputesData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.DISPUTES));
                 const extrasData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.EXTRAS));
                 const notificationsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.NOTIFICATIONS));
+                const archiveData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.ARCHIVE));
+
 
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
@@ -146,8 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
                 
                 let loadedNotifications = (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP) : [];
-                // Filter out any blank or malformed rows from the sheet
                 this.state.notifications = loadedNotifications.filter(n => n.message && n.timestamp);
+
+                this.state.archive = (archiveData && archiveData.values) ? this.sheetValuesToObjects(archiveData.values, this.config.HEADER_MAP) : [];
+
 
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
@@ -304,6 +309,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 extraName: document.getElementById('extraName'),
                 extraUrl: document.getElementById('extraUrl'),
                 extraIcon: document.getElementById('extraIcon'),
+                archiveModal: document.getElementById('archiveModal'),
+                closeArchiveModalBtn: document.getElementById('closeArchiveModalBtn'),
+                copyArchiveBtn: document.getElementById('copyArchiveBtn'),
+                archiveTable: document.getElementById('archiveTable'),
             };
         },
         attachEventListeners() {
@@ -334,6 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.elements.closeExtraFormBtn.onclick = () => this.elements.extraFormModal.classList.remove('is-open');
             this.elements.extraForm.addEventListener('submit', (e) => this.handleExtraFormSubmit(e));
+
+            this.elements.closeArchiveModalBtn.onclick = () => this.elements.archiveModal.classList.remove('is-open');
+            this.elements.copyArchiveBtn.onclick = () => this.handleCopyArchive();
 
             this.elements.openDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
@@ -1321,6 +1333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p>Archive completed projects from the 21st of last month to the 20th of this month.</p>
                         <div class="btn-group">
                             <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Completed Projects</button>
+                            <button class="btn btn-secondary" onclick="ProjectTrackerApp.renderArchiveModal()">View Archive</button>
                         </div>
                     </div>
                      <div class="settings-card" style="margin-top: 20px;">
@@ -1728,6 +1741,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             list.style.display = 'block';
+        },
+        // =================================================================================
+        // == ARCHIVE MODAL ================================================================
+        // =================================================================================
+        renderArchiveModal() {
+            const tableHead = this.elements.archiveTable.querySelector('thead');
+            const tableBody = this.elements.archiveTable.querySelector('tbody');
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+        
+            if (this.state.archive.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="100%" style="text-align:center; padding:20px;">No archived projects found.</td></tr>`;
+                this.elements.archiveModal.classList.add('is-open');
+                return;
+            }
+        
+            // Create headers from the first archived project
+            const headers = Object.keys(this.config.HEADER_MAP);
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+        
+            // Create rows
+            this.state.archive.forEach(project => {
+                const row = document.createElement('tr');
+                headers.forEach(header => {
+                    const key = this.config.HEADER_MAP[header];
+                    const cell = document.createElement('td');
+                    cell.textContent = project[key] || '';
+                    row.appendChild(cell);
+                });
+                tableBody.appendChild(row);
+            });
+        
+            this.elements.archiveModal.classList.add('is-open');
+        },
+        handleCopyArchive() {
+            const table = this.elements.archiveTable;
+            let data = '';
+        
+            // Headers
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            data += headers.join('\t') + '\n';
+        
+            // Body
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent);
+                data += cells.join('\t') + '\n';
+            });
+        
+            navigator.clipboard.writeText(data).then(() => {
+                alert('Archived data copied to clipboard!');
+            }, (err) => {
+                alert('Failed to copy data.');
+                console.error('Could not copy text: ', err);
+            });
         }
     };
 
