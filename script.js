@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
-            hours = hours ? hours : 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
             const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
             const hoursStr = hours < 10 ? '0' + hours : String(hours);
             return `${hoursStr}:${minutesStr} ${ampm}`;
@@ -950,7 +950,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const startBtn = document.createElement('button');
                                 startBtn.textContent = `Start D${i}`;
                                 startBtn.className = 'btn btn-primary btn-small';
-                                startBtn.disabled = !(project.status === 'Available' && i === 1) && !(project.status === 'Started Available' && i > lastActiveDay);
+                                // For Day 1, disable if not Available or if no one is assigned.
+                                let isStartDisabled = (project.status !== 'Available' || !project.assignedTo);
+                                if (i > 1) {
+                                    // For subsequent days, disable unless status is 'Started Available' and it's the next day.
+                                    isStartDisabled = !(project.status === 'Started Available' && i > lastActiveDay);
+                                }
+                                startBtn.disabled = isStartDisabled;
                                 startBtn.onclick = () => this.updateProjectState(project.id, `startDay${i}`);
                                 btnGroup.appendChild(startBtn);
 
@@ -1383,6 +1389,11 @@ document.addEventListener('DOMContentLoaded', () => {
         openTimeEditModal(projectId, day) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return;
+            
+            if (project.status !== 'Completed') {
+                alert("Please mark the project as 'Done' before editing the time.");
+                return;
+            }
         
             this.elements.timeEditProjectId.value = projectId;
             this.elements.timeEditDay.value = day;
@@ -1409,7 +1420,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const startTimeValue = this.elements.editStartTime.value.trim();
             const finishTimeValue = this.elements.editFinishTime.value.trim();
         
-            // Only format time if input is not empty
             const startTime = startTimeValue ? `${startTimeValue} ${this.elements.editStartTimeAmPm.value}` : '';
             const finishTime = finishTimeValue ? `${finishTimeValue} ${this.elements.editFinishTimeAmPm.value}` : '';
         
@@ -1425,7 +1435,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.notificationMessage.textContent = message;
             this.elements.notificationModal.classList.add('is-open');
         
-            // Clone and replace the button to remove old event listeners
             const oldBtn = this.elements.notificationViewBtn;
             const newBtn = oldBtn.cloneNode(true);
             oldBtn.parentNode.replaceChild(newBtn, oldBtn);
@@ -1433,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             newBtn.onclick = () => {
                 this.switchView('dashboard');
-                this.populateFilterDropdowns(); // Refresh dropdown before setting value
+                this.populateFilterDropdowns();
                 this.state.filters.project = projectFilterValue;
                 this.elements.projectFilter.value = projectFilterValue;
                 this.filterAndRenderProjects();
@@ -1578,17 +1587,15 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async cleanupOldNotifications() {
             try {
-                // We use the local state which is freshest
                 const allNotifications = [...this.state.notifications];
         
-                if (allNotifications.length > 2) {
+                if (allNotifications.length > 1) {
                     const sorted = allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    const toDelete = sorted.slice(2);
+                    const toDelete = sorted.slice(1);
                     const rowsToDelete = toDelete.map(n => n._row);
                     
                     if (rowsToDelete.length > 0) {
                         await this.deleteSheetRows(this.config.sheetNames.NOTIFICATIONS, rowsToDelete);
-                        // Remove from local state as well for immediate UI consistency
                         toDelete.forEach(n => {
                             const index = this.state.notifications.findIndex(notif => notif.id === n.id);
                             if (index > -1) {
@@ -1617,8 +1624,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newRow = [headers.map(h => notification[this.config.NOTIFICATIONS_HEADER_MAP[h.toLowerCase()]] || "")];
                 await this.appendRowsToSheet(this.config.sheetNames.NOTIFICATIONS, newRow);
                 
-                // Add new notification to local state before cleanup
-                // We fake the "_row" property for now, it will be corrected on the next full load
                 notification._row = (this.state.notifications.length > 0 ? Math.max(...this.state.notifications.map(n => n._row)) : 1) + 1;
                 this.state.notifications.push(notification);
 
@@ -1656,7 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
+                        const projectExists = this.state.projects.some(p => p.baseProjectName === n.projectName);
                         if (!projectExists) {
                             alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
                             list.style.display = 'none';
@@ -1670,13 +1675,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         list.style.display = 'none';
                         
                         if (n.read === 'FALSE') {
-                            n.read = 'TRUE';
-                            await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, n._row, n);
                             const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
-                            if (notificationInState) {
+                            if (notificationInState && notificationInState._row) {
                                 notificationInState.read = 'TRUE';
+                                await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
+                                this.renderNotificationBell();
                             }
-                            this.renderNotificationBell();
                         }
                     };
                     list.appendChild(item);
