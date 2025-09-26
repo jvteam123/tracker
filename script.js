@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             this.showLoading("Adding project(s)...");
-
+        
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
             
@@ -514,33 +514,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = false;
                 return;
             }
-
-            const gsd = document.getElementById('gsd').value; const batchId = `batch_${Date.now()}`;
+        
+            const gsd = document.getElementById('gsd').value; 
+            const batchId = `batch_${Date.now()}`;
             
             try {
-                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
-                const headers = getHeaders.result.values[0]; const newRows = [];
+                // Create new project objects and add them to the local state
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
-                        id: `proj_${Date.now()}_${i}`, batchId, baseProjectName,
-                        areaTask: `Area${String(i).padStart(2, '0')}`, gsd, fixCategory: "Fix1", status: "Available",
+                        id: `proj_${Date.now()}_${i}`, 
+                        batchId, 
+                        baseProjectName,
+                        areaTask: `Area${String(i).padStart(2, '0')}`, 
+                        gsd, 
+                        fixCategory: "Fix1", 
+                        status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
+                    this.state.projects.push(newRowObj); // Add to local state
                 }
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows);
+        
+                // Reorganize the entire sheet with the new data included
+                await this.handleReorganizeSheet(true); 
+        
+                // UI updates
                 this.elements.projectFormModal.classList.remove('is-open');
                 this.elements.newProjectForm.reset();
                 
                 const message = `Project "${this.formatProjectName(baseProjectName)}" was created successfully!`;
                 await this.logNotification(message, baseProjectName);
-                await this.loadDataFromSheets();
-                await this.handleReorganizeSheet(true); // Auto-reorganize
+                
+                // No need to call loadDataFromSheets() as handleReorganizeSheet will do it
                 this.showReleaseNotification(message, baseProjectName);
-
+        
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-                await this.loadDataFromSheets(); // Reload on error
+                await this.loadDataFromSheets(); // Reload on error to ensure consistency
             } finally { 
                 this.hideLoading();
                 submitBtn.disabled = false;
@@ -664,32 +673,48 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async handleAddExtraArea(baseProjectName) {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
-            if (isNaN(numToAdd) || numToAdd < 1) return; this.showLoading(`Adding ${numToAdd} area(s)...`);
+            if (isNaN(numToAdd) || numToAdd < 1) return; 
+            this.showLoading(`Adding ${numToAdd} area(s)...`);
             try {
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === 'Fix1');
                 if (projectTasks.length === 0) throw new Error(`Could not find project: ${baseProjectName}`);
+                
                 const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
-                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
-                const headers = getHeaders.result.values[0]; const newRows = []; const batchId = `batch_extra_${Date.now()}`;
+                const batchId = `batch_extra_${Date.now()}`;
+        
+                // Add new areas to local state
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
-                    const newRowObj = { ...latestTask, id: `proj_${Date.now()}_${i}`, batchId, areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, status: "Available",
-                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
-                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
-                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", totalMinutes: "", lastModifiedTimestamp: new Date().toISOString()
+                    const newRowObj = { 
+                        ...latestTask, 
+                        id: `proj_${Date.now()}_${i}`, 
+                        batchId, 
+                        areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, 
+                        status: "Available",
+                        startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", 
+                        startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
+                        startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", 
+                        startTimeDay4: "", finishTimeDay4: "", breakDurationMinutesDay4: "",
+                        startTimeDay5: "", finishTimeDay5: "", breakDurationMinutesDay5: "", 
+                        totalMinutes: "", 
+                        lastModifiedTimestamp: new Date().toISOString()
                     };
-                     delete newRowObj._row;
-                    const row = headers.map(header => newRowObj[this.config.HEADER_MAP[header.trim()]] || ""); newRows.push(row);
+                    delete newRowObj._row;
+                    this.state.projects.push(newRowObj);
                 }
-                await this.appendRowsToSheet(this.config.sheetNames.PROJECTS, newRows); 
-                await this.loadDataFromSheets();
+        
+                // Reorganize the sheet with the newly added areas
                 await this.handleReorganizeSheet(true);
+                
                 alert(`${numToAdd} area(s) added successfully!`);
+        
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
-                await this.loadDataFromSheets();
-            } finally { this.hideLoading(); }
+                await this.loadDataFromSheets(); // Reload on error
+            } finally { 
+                this.hideLoading(); 
+            }
         },
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
