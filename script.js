@@ -1664,29 +1664,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        this.populateFilterDropdowns(); // Refresh dropdown before checking
-                        const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
-                        
-                        if (!projectExists) {
-                            alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
-                            list.style.display = 'none';
-                            return;
-                        }
-
+                        // Always switch to dashboard first
                         this.switchView('dashboard');
-                        this.elements.projectFilter.value = n.projectName;
-                        this.state.filters.project = n.projectName;
-                        this.filterAndRenderProjects();
-                        list.style.display = 'none';
                         
-                        if (n.read === 'FALSE') {
-                            const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
-                            if (notificationInState && notificationInState._row) {
-                                notificationInState.read = 'TRUE';
-                                await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
-                                this.renderNotificationBell();
+                        // Use a short delay to ensure the view switch has processed before filtering
+                        setTimeout(async () => {
+                            this.populateFilterDropdowns(); // Refresh dropdown before checking
+                            const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
+                            
+                            if (!projectExists) {
+                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
+                                list.style.display = 'none';
+                                return;
                             }
-                        }
+    
+                            this.elements.projectFilter.value = n.projectName;
+                            this.state.filters.project = n.projectName;
+                            this.filterAndRenderProjects();
+                            list.style.display = 'none';
+                            
+                            if (n.read === 'FALSE') {
+                                const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
+                                if (notificationInState && notificationInState._row) {
+                                    notificationInState.read = 'TRUE';
+                                    await this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
+                                    this.renderNotificationBell();
+                                }
+                            }
+                        }, 100); // 100ms delay
                     };
                     list.appendChild(item);
                 });
