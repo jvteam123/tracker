@@ -1650,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.notificationBadge.style.display = 'none';
             }
         },
-       toggleNotificationList() {
+      toggleNotificationList() {
             const list = this.elements.notificationList;
             if (list.style.display === 'block') {
                 list.style.display = 'none';
@@ -1681,10 +1681,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         };
 
-                        // If we are already viewing the correct project on the dashboard, just mark as read and exit.
+                        // **THE FIX IS HERE:** If already viewing the correct project, just mark as read and do nothing else.
                         if (this.elements.openDashboardBtn.classList.contains('active') && this.state.filters.project === n.projectName) {
                             await markAsRead();
-                            return; 
+                            return; // This exits the function, preventing any alerts.
                         }
 
                         // If not on the right project/view, then proceed to switch and filter.
@@ -1695,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const projectExists = Array.from(this.elements.projectFilter.options).some(opt => opt.value === n.projectName);
                             
                             if (!projectExists) {
-                                alert(`Project "${this.formatProjectName(n.projectName)}"You are already on the current project.`);
+                                alert(`Project "${this.formatProjectName(n.projectName)}" could not be found. It may have been deleted.`);
                                 return;
                             }
     
