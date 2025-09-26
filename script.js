@@ -144,7 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
                 this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
                 this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
-                this.state.notifications = (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP) : [];
+                
+                let loadedNotifications = (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP) : [];
+                // Filter out any blank or malformed rows from the sheet
+                this.state.notifications = loadedNotifications.filter(n => n.message && n.timestamp);
 
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
@@ -1664,7 +1667,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
                     item.onclick = async () => {
-                        // Always switch to dashboard first
                         this.switchView('dashboard');
                         
                         // Use a short delay to ensure the view switch has processed before filtering
