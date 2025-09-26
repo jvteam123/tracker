@@ -701,54 +701,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         renderProjectSettings() {
-            const container = this.elements.projectSettingsView; container.innerHTML = "";
+            const container = this.elements.projectSettingsView;
+            container.innerHTML = "";
+        
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
+            
+            let tableHTML = `<div class="project-settings-card"><h2>Project Management</h2><table class="project-table">
+                <thead><tr><th>Project Name</th><th>Current Stage</th><th>Next Stage</th><th>Actions</th></tr></thead>
+                <tbody>`;
+        
             if (uniqueProjects.length === 0) {
-                container.insertAdjacentHTML('beforeend', `<p>No projects found to configure.</p>`);
-                return;
+                tableHTML += `<tr><td colspan="4" style="text-align:center;">No projects found to configure.</td></tr>`;
+            } else {
+                uniqueProjects.forEach(projectName => {
+                    if (!projectName) return;
+        
+                    const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
+                    const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                    const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
+                    const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
+                    const nextFix = `Fix${currentFixNum + 1}`;
+                    const canRollback = fixCategories.length > 1;
+        
+                    tableHTML += `
+                        <tr>
+                            <td>${this.formatProjectName(projectName)}</td>
+                            <td>${currentFix}</td>
+                            <td><input type="text" id="releaseToFix_${projectName}" value="${nextFix}" style="padding: 5px; border: 1px solid #ccc; border-radius: 5px; width: 80px;"></td>
+                            <td class="actions-btn-group">
+                                <button class="btn btn-primary btn-small" title="Release to Next Stage" data-action="release" data-project="${projectName}" data-from="${currentFix}"><i class="fas fa-rocket"></i></button>
+                                <button class="btn btn-success btn-small" title="Add Extra Area" data-action="add-area" data-project="${projectName}"><i class="fas fa-plus"></i></button>
+                                <button class="btn btn-warning btn-small" title="Delete ${currentFix} Tasks" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}><i class="fas fa-history"></i></button>
+                                <button class="btn btn-danger btn-small" title="DELETE ENTIRE PROJECT" data-action="delete-project" data-project="${projectName}"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>`;
+                });
             }
-            uniqueProjects.forEach(projectName => {
-                if (!projectName) return;
-                const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
-                const fixCategories = [...new Set(projectTasks.map(p => p.fixCategory))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-                const currentFix = fixCategories.length > 0 ? fixCategories[fixCategories.length - 1] : 'Fix1';
-                const currentFixNum = parseInt(currentFix.replace('Fix', ''), 10);
-                const nextFix = `Fix${currentFixNum + 1}`; const canRollback = fixCategories.length > 1;
-                const cardHTML = `
-                    <div class="project-settings-card">
-                        <h2>${this.formatProjectName(projectName)}</h2>
-                        <div class="settings-grid">
-                            <div class="settings-card">
-                                <h3><i class="fas fa-rocket icon"></i> Release Tasks</h3>
-                                <p>Releasing from: <strong>${currentFix}</strong></p>
-                                <div class="filter-group">
-                                    <label for="releaseToFix_${projectName}">To Fix:</label>
-                                    <input type="text" id="releaseToFix_${projectName}" value="${nextFix}" style="padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100px;">
-                                </div>
-                                <div class="btn-group" style="margin-top: 10px;">
-                                    <button class="btn btn-primary" data-action="release" data-project="${projectName}" data-from="${currentFix}">Release</button>
-                                    <button class="btn btn-success" data-action="add-area" data-project="${projectName}">Add Extra Area</button>
-                                </div>
-                            </div>
-                            <div class="settings-card">
-                                <h3><i class="fas fa-history icon"></i> Rollback Project</h3>
-                                <div class="btn-group">
-                                    <button class="btn btn-warning" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}>Delete ${currentFix} Tasks</button>
-                                </div>
-                            </div>
-                             <div class="settings-card">
-                                <h3><i class="fas fa-trash-alt icon"></i> Delete Project</h3>
-                                <div class="btn-group">
-                                    <button class="btn btn-danger" data-action="delete-project" data-project="${projectName}">DELETE ENTIRE PROJECT</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                container.insertAdjacentHTML('beforeend', cardHTML);
-            });
+        
+            tableHTML += `</tbody></table></div>`;
+            container.innerHTML = tableHTML;
+        
             container.querySelectorAll('button[data-action]').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    const { action, project, from, to, fix } = e.target.dataset;
+                    const targetButton = e.target.closest('button');
+                    const { action, project, from, fix } = targetButton.dataset;
                     if (action === 'release') {
                         const toFixValue = document.getElementById(`releaseToFix_${project}`).value;
                         this.handleReleaseFix(project, from, toFixValue);
