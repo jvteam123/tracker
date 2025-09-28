@@ -172,12 +172,7 @@
             background-color: #f0f2f5;
         }
 
-        /* SCROLL FIX FOR USER MANAGEMENT VIEW */
-        #userManagementView.table-container {
-            display: block;
-            overflow-y: auto;
-        }
-        
+
         #auth-wrapper { max-width: 420px; width: 100%; text-align: center; background-color: white; padding: 40px 50px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-light); }
         .modal { 
             display: none; 
@@ -284,7 +279,13 @@
             transition: width 0.3s ease;
         }
         /* Dispute Form */
-        #disputeView { display: none; }
+        #disputeView, #userManagementView {
+            display: none;
+            overflow-y: auto;
+        }
+        #userManagementView.table-container, #disputeView.table-container {
+            display: block;
+        }
         .dispute-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .dispute-form-group { display: flex; flex-direction: column; }
         .dispute-form-group label { margin-bottom: 5px; font-weight: 500; }
@@ -298,11 +299,6 @@
         .dispute-form-group textarea { resize: vertical; min-height: 80px; }
         .disputes-list-container { margin-top: 30px; }
         
-        /* SCROLL FIX FOR DISPUTE VIEW */
-        #disputeView.table-container {
-            display: block;
-            overflow-y: auto;
-        }
 
         /* Dispute Details Modal */
         #disputeDetailsContent .detail-row {
@@ -522,7 +518,7 @@
                 </div>
             </div>
 
-            <div id="userManagementView" class="table-container" style="display: none;">
+            <div id="userManagementView" class="table-container">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2>User Management</h2>
                     <button id="addUserBtn" class="btn btn-success"><i class="fas fa-plus"></i> Add User</button>
@@ -542,7 +538,7 @@
                 </div>
             </div>
             
-            <div id="disputeView" class="table-container" style="display: none;">
+            <div id="disputeView" class="table-container">
                 <h2>File a Dispute</h2>
                 <form id="disputeForm">
                     <div class="dispute-form-grid">
