@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             this.setupDOMReferences();
             this.attachEventListeners();
+            // Ensure only dashboard is visible on initial load
+            this.switchView('dashboard');
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
         async initializeGapiClient() {
@@ -374,26 +376,37 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.userManagementView.style.display = 'none';
             this.elements.disputeView.style.display = 'none';
             this.elements.adminSettingsView.style.display = 'none';
-
+        
             this.elements.openDashboardBtn.classList.remove('active');
             this.elements.openProjectSettingsBtn.classList.remove('active');
             this.elements.openTlSummaryBtn.classList.remove('active');
             this.elements.openUserManagementBtn.classList.remove('active');
             this.elements.openDisputeBtn.classList.remove('active');
             this.elements.openAdminSettingsBtn.classList.remove('active');
-
+        
             if (viewName === 'dashboard') {
-                this.elements.techDashboardContainer.style.display = 'flex'; this.elements.openDashboardBtn.classList.add('active');
+                this.elements.techDashboardContainer.style.display = 'flex';
+                this.elements.openDashboardBtn.classList.add('active');
             } else if (viewName === 'settings') {
-                this.renderProjectSettings(); this.elements.projectSettingsView.style.display = 'block'; this.elements.openProjectSettingsBtn.classList.add('active');
+                this.renderProjectSettings();
+                this.elements.projectSettingsView.style.display = 'block';
+                this.elements.openProjectSettingsBtn.classList.add('active');
             } else if (viewName === 'summary') {
-                this.renderTlSummary(); this.elements.tlSummaryView.style.display = 'block'; this.elements.openTlSummaryBtn.classList.add('active');
+                this.renderTlSummary();
+                this.elements.tlSummaryView.style.display = 'block';
+                this.elements.openTlSummaryBtn.classList.add('active');
             } else if (viewName === 'users') {
-                this.renderUserManagement(); this.elements.userManagementView.style.display = 'block'; this.elements.openUserManagementBtn.classList.add('active');
+                this.renderUserManagement();
+                this.elements.userManagementView.style.display = 'block';
+                this.elements.openUserManagementBtn.classList.add('active');
             } else if (viewName === 'disputes') {
-                this.renderDisputes(); this.elements.disputeView.style.display = 'block'; this.elements.openDisputeBtn.classList.add('active');
+                this.renderDisputes();
+                this.elements.disputeView.style.display = 'block';
+                this.elements.openDisputeBtn.classList.add('active');
             } else if (viewName === 'admin') {
-                this.renderAdminSettings(); this.elements.adminSettingsView.style.display = 'block'; this.elements.openAdminSettingsBtn.classList.add('active');
+                this.renderAdminSettings();
+                this.elements.adminSettingsView.style.display = 'block';
+                this.elements.openAdminSettingsBtn.classList.add('active');
             }
         },
         populateFilterDropdowns() {
