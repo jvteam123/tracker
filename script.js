@@ -124,14 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!values || values.length < 2) return [];
             const headers = values[0];
             const lowerCaseHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => {
-                acc[key.toLowerCase()] = value;
+                acc[key.toLowerCase().replace(/\s/g, '')] = value;
                 return acc;
             }, {});
 
             return values.slice(1).map((row, index) => {
                 let obj = { _row: index + 2 };
                 headers.forEach((header, i) => {
-                    const propName = lowerCaseHeaderMap[header.trim().toLowerCase()];
+                    const propName = lowerCaseHeaderMap[header.trim().toLowerCase().replace(/\s/g, '')];
                     if (propName) {
                         obj[propName] = row[i] || "";
                     }
@@ -203,14 +203,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (sheetName === this.config.sheetNames.NOTIFICATIONS) headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
                 else headerMap = this.config.HEADER_MAP;
                 
-                const reverseHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => {
-                    acc[value] = key;
-                    return acc;
-                }, {});
-
                 const values = [headers.map(header => {
-                    const propName = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
-                    return propName ? (dataObject[headerMap[propName]] !== undefined ? dataObject[headerMap[propName]] : "") : "";
+                    const normalizedHeader = header.trim().toLowerCase().replace(/\s/g, '');
+                    const mapKey = Object.keys(headerMap).find(k => k.toLowerCase().replace(/\s/g, '') === normalizedHeader);
+                    if (mapKey) {
+                        const propName = headerMap[mapKey];
+                        return dataObject[propName] !== undefined ? dataObject[propName] : "";
+                    }
+                    return ""; // Return empty string if no corresponding key is found
                 })];
         
                 await gapi.client.sheets.spreadsheets.values.update({
