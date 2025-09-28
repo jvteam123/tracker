@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const propName = headerMap[mapKey];
                         return dataObject[propName] !== undefined ? dataObject[propName] : "";
                     }
-                    return ""; // Return empty string if no corresponding key is found
+                    return "";
                 })];
         
                 await gapi.client.sheets.spreadsheets.values.update({
@@ -265,6 +265,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
 
+        // ... (The rest of the script.js file remains the same as the previous version)
+        // The changes are only in the data handling functions above.
+        // I will include the full script for completeness.
+        
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
