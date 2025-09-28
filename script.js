@@ -265,10 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
 
-        // ... (The rest of the script.js file remains the same as the previous version)
-        // The changes are only in the data handling functions above.
-        // I will include the full script for completeness.
-        
+        // ... All other functions from the previous script.js file remain unchanged.
+        // I am including the full script here for completeness.
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
@@ -1103,7 +1101,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDisputes() {
             this.elements.disputeStatusFilter.value = this.state.filters.disputeStatus;
             
-            // Populate dropdowns that depend on dynamic data
             const techIdSelect = document.getElementById('disputeTechId');
             techIdSelect.innerHTML = '<option value="">Select Tech ID</option>' + this.state.users.map(u => `<option value="${u.techId}">${u.techId}</option>`).join('');
             techIdSelect.onchange = (e) => {
@@ -1115,13 +1112,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             projectNameSelect.innerHTML = '<option value="">Select Project</option>' + uniqueProjects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             
-            // Filter disputes
             let disputesToRender = [...this.state.disputes];
             if (this.state.filters.disputeStatus !== 'All') {
                 disputesToRender = disputesToRender.filter(d => (d.status || 'Open') === this.state.filters.disputeStatus);
             }
 
-            // Render table
             const tableBody = this.elements.disputesTableBody;
             tableBody.innerHTML = "";
 
@@ -1169,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 team: document.getElementById('disputeTeam').value,
                 type: document.getElementById('disputeType').value,
                 category: document.getElementById('disputeCategory').value,
-                status: 'Open', // Default status is now Open
+                status: 'Open',
             };
 
             try {
@@ -1177,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.DISPUTES}!1:1`,
                 });
                 if (!getHeaders.result.values) {
-                    throw new Error(`Could not find headers in the "${this.config.sheetNames.DISPUTES}" sheet. Make sure the sheet exists and has a header row.`);
+                    throw new Error(`Could not find headers in the "${this.config.sheetNames.DISPUTES}" sheet.`);
                 }
                 const headers = getHeaders.result.values[0];
                 const newRow = [headers.map(header => disputeData[this.config.DISPUTE_HEADER_MAP[header.trim()]] || "")];
@@ -1307,7 +1302,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dispute.status = newStatus;
             await this.updateRowInSheet(this.config.sheetNames.DISPUTES, dispute._row, dispute);
             
-            // Refresh the view
             this.renderDisputes();
         },
         async handleDeleteDispute(disputeId) {
