@@ -795,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="btn btn-success btn-small" title="${isNotFix1 ? 'Only available for Fix1' : 'Add Extra Area'}" data-action="add-area" data-project="${projectName}" ${isNotFix1 ? 'disabled' : ''}><i class="fas fa-plus"></i></button>
                                 <button class="btn btn-warning btn-small" title="Delete ${currentFix} Tasks" data-action="rollback" data-project="${projectName}" data-fix="${currentFix}" ${!canRollback ? 'disabled' : ''}><i class="fas fa-history"></i></button>
                                 <button class="btn btn-danger btn-small" title="DELETE ENTIRE PROJECT" data-action="delete-project" data-project="${projectName}"><i class="fas fa-trash-alt"></i></button>
+                                <button class="btn btn-secondary btn-small" title="Export Project" data-action="export-project" data-project="${projectName}"><i class="fas fa-download"></i></button>
                             </td>
                         </tr>`;
                 });
@@ -814,6 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (action === 'add-area') this.handleAddExtraArea(project);
                     else if (action === 'rollback') this.handleRollback(project, fix);
                     else if (action === 'delete-project') this.handleDeleteProject(project);
+                    else if (action === 'export-project') this.handleExportProject(project);
                 });
             });
         },
@@ -1343,6 +1345,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn" style="background-color: #34495e; color: white;" onclick="ProjectTrackerApp.handleReorganizeSheet()">Reorganize Project Sheet</button>
                         </div>
                     </div>
+                    <div class="settings-card" style="margin-top: 20px;">
+                        <h3><i class="fas fa-upload icon"></i> Import Project</h3>
+                        <p>Import a project from a .json file.</p>
+                        <input type="file" id="importFile" accept=".json" style="display: none;">
+                        <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">Select JSON File</button>
+                    </div>
                 </div>
             `;
 
@@ -1350,6 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.renderHeaderFormats();
             document.getElementById('addExtraBtn').onclick = () => this.openExtraModal();
             container.querySelector('#headerFormatsContainer').addEventListener('click', (e) => this.handleCopyToClipboard(e));
+            document.getElementById('importFile').addEventListener('change', (e) => this.handleImportProject(e));
         },
         async handleFixDb() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
@@ -1554,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hideFilterSpinner() { },
         
         // =================================================================================
-        // == EXTRAS & NOTIFICATIONS =======================================================
+        // == EXTRAS, NOTIFICATIONS, IMPORT/EXPORT =========================================
         // =================================================================================
         renderExtrasMenu() {
             const container = this.elements.extrasMenu;
@@ -1792,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', () => {
             list.style.display = 'block';
         },
         // =================================================================================
-        // == ARCHIVE MODAL ================================================================
+        // == ARCHIVE MODAL, IMPORT/EXPORT =================================================
         // =================================================================================
         renderArchiveModal() {
             const tableHead = this.elements.archiveTable.querySelector('thead');
@@ -1806,7 +1815,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         
-            // Create headers from the first archived project
             const headers = Object.keys(this.config.HEADER_MAP);
             const headerRow = document.createElement('tr');
             headers.forEach(header => {
@@ -1816,7 +1824,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             tableHead.appendChild(headerRow);
         
-            // Create rows
             this.state.archive.forEach(project => {
                 const row = document.createElement('tr');
                 headers.forEach(header => {
@@ -1834,11 +1841,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const table = this.elements.archiveTable;
             let data = '';
         
-            // Headers
             const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
             data += headers.join('\t') + '\n';
         
-            // Body
             const rows = table.querySelectorAll('tbody tr');
             rows.forEach(row => {
                 const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent);
@@ -1851,6 +1856,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Failed to copy data.');
                 console.error('Could not copy text: ', err);
             });
+        },
+        handleExportProject(baseProjectName) {
+            const projectTasks = this.state.projects.filter(p => p.baseProjectName === baseProjectName);
+            if (projectTasks.length === 0) {
+                alert("Could not find project to export.");
+                return;
+            }
+        
+            const dataStr = JSON.stringify(projectTasks, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+            const exportFileDefaultName = `${baseProjectName}.json`;
+        
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        },
+        handleImportProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+        
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedProjects = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedProjects) || importedProjects.length === 0) {
+                        throw new Error("Invalid or empty project file.");
+                    }
+
+                    const newProjectName = importedProjects[0].baseProjectName;
+                    if (this.state.projects.some(p => p.baseProjectName === newProjectName)) {
+                        if (!confirm(`A project named "${this.formatProjectName(newProjectName)}" already exists. Do you want to overwrite it?`)) {
+                            return;
+                        }
+                        // Remove existing project tasks before importing
+                        this.state.projects = this.state.projects.filter(p => p.baseProjectName !== newProjectName);
+                    }
+        
+                    // Add new projects to state
+                    importedProjects.forEach(p => {
+                        delete p._row; // Ensure no old row numbers are carried over
+                        this.state.projects.push(p);
+                    });
+        
+                    this.showLoading("Importing and reorganizing...");
+                    await this.handleReorganizeSheet(true); // Re-sort and re-write the entire sheet
+        
+                    alert(`Project "${this.formatProjectName(newProjectName)}" imported successfully!`);
+                    this.renderProjectSettings();
+                    this.populateFilterDropdowns();
+
+                } catch (error) {
+                    alert("Error importing project: " + error.message);
+                } finally {
+                    this.hideLoading();
+                    event.target.value = ''; // Reset file input
+                }
+            };
+            reader.readAsText(file);
         }
     };
 
