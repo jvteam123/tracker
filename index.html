@@ -201,11 +201,30 @@
         .modal-content.modal-lg {
             max-width: 95%;
         }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .modal-header h2 {
+            margin: 0;
+        }
+        .modal-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px; /* This creates the space between the buttons */
+        }
         .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
         .time-edit-group { display: flex; gap: 10px; align-items: center; }
         .time-edit-group input { flex-grow: 1; }
         .time-edit-group select { width: 80px; }
-        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn { 
+            color: #aaa; 
+            font-size: 28px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
         
         /* Loading Spinner */
         #loadingOverlay {
@@ -685,10 +704,12 @@
     
     <div id="archiveModal" class="modal">
         <div class="modal-content modal-lg">
-            <span class="close-btn" id="closeArchiveModalBtn">&times;</span>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div class="modal-header">
                 <h2>Archived Projects</h2>
-                <button id="copyArchiveBtn" class="btn btn-primary"><i class="fas fa-copy"></i> Copy Table</button>
+                <div class="modal-actions">
+                    <button id="copyArchiveBtn" class="btn btn-primary"><i class="fas fa-copy"></i> Copy Table</button>
+                    <span class="close-btn" id="closeArchiveModalBtn">&times;</span>
+                </div>
             </div>
             <div class="table-scroll-wrapper" style="max-height: 60vh;">
                 <table id="archiveTable" class="project-table">
