@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             disputes: [],
             extras: [],
             notifications: [],
-            archive: [],
+            archive: [], // New state for archive data
             isAppInitialized: false,
             filters: {
                 project: 'All',
@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             this.setupDOMReferences();
             this.attachEventListeners();
+            // Ensure only dashboard is visible on initial load
             this.switchView('dashboard');
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
@@ -114,28 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == DATA HANDLING ================================================================
         // =================================================================================
-        generateUUID() {
-            return 'xxxx-xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        },
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
             const headers = values[0];
-            const lowerCaseHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => {
-                acc[key.toLowerCase().replace(/\s/g, '')] = value;
-                return acc;
-            }, {});
-
             return values.slice(1).map((row, index) => {
                 let obj = { _row: index + 2 };
-                headers.forEach((header, i) => {
-                    const propName = lowerCaseHeaderMap[header.trim().toLowerCase().replace(/\s/g, '')];
-                    if (propName) {
-                        obj[propName] = row[i] || "";
-                    }
-                });
+                headers.forEach((header, i) => { const propName = headerMap[header.trim()]; if (propName) obj[propName] = row[i] || ""; });
                 return obj;
             });
         },
@@ -189,6 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         async updateRowInSheet(sheetName, rowIndex, dataObject) {
+            const submitBtn = document.querySelector('button:disabled');
+            if(submitBtn) submitBtn.disabled = false;
+            
             this.showLoading("Saving...");
             try {
                 const headersResult = await gapi.client.sheets.spreadsheets.values.get({
@@ -197,20 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = headersResult.result.values[0];
                 let headerMap;
-                if (sheetName === this.config.sheetNames.USERS) headerMap = this.config.USER_HEADER_MAP;
-                else if (sheetName === this.config.sheetNames.DISPUTES) headerMap = this.config.DISPUTE_HEADER_MAP;
-                else if (sheetName === this.config.sheetNames.EXTRAS) headerMap = this.config.EXTRAS_HEADER_MAP;
-                else if (sheetName === this.config.sheetNames.NOTIFICATIONS) headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
-                else headerMap = this.config.HEADER_MAP;
+                if(sheetName === this.config.sheetNames.USERS) {
+                    headerMap = this.config.USER_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.DISPUTES) {
+                    headerMap = this.config.DISPUTE_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.EXTRAS) {
+                    headerMap = this.config.EXTRAS_HEADER_MAP;
+                } else if (sheetName === this.config.sheetNames.NOTIFICATIONS) {
+                    headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
+                } else {
+                    headerMap = this.config.HEADER_MAP;
+                }
                 
                 const values = [headers.map(header => {
-                    const normalizedHeader = header.trim().toLowerCase().replace(/\s/g, '');
-                    const mapKey = Object.keys(headerMap).find(k => k.toLowerCase().replace(/\s/g, '') === normalizedHeader);
-                    if (mapKey) {
-                        const propName = headerMap[mapKey];
-                        return dataObject[propName] !== undefined ? dataObject[propName] : "";
-                    }
-                    return "";
+                    const propName = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
+                    return propName ? (dataObject[headerMap[propName]] !== undefined ? dataObject[headerMap[propName]] : "") : "";
                 })];
         
                 await gapi.client.sheets.spreadsheets.values.update({
@@ -265,8 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
 
-        // ... All other functions from the previous script.js file remain unchanged.
-        // I am including the full script here for completeness.
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
@@ -448,12 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         
             const gsd = document.getElementById('gsd').value; 
-            const batchId = `batch_${this.generateUUID()}`;
+            const batchId = `batch_${Date.now()}`;
             
             try {
+                // Create new project objects and add them to the local state
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
-                        id: `proj_${this.generateUUID()}`, 
+                        id: `proj_${Date.now()}_${i}`, 
                         batchId, 
                         baseProjectName,
                         areaTask: `Area${String(i).padStart(2, '0')}`, 
@@ -462,12 +450,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    this.state.projects.push(newRowObj);
+                    this.state.projects.push(newRowObj); // Add to local state
                 }
         
+                // Reorganize the entire sheet with the new data included
                 await this.handleReorganizeSheet(true); 
-                this.renderProjectSettings();
+                this.renderProjectSettings(); // Refresh the project management view
         
+                // UI updates
                 this.elements.projectFormModal.classList.remove('is-open');
                 this.elements.newProjectForm.reset();
                 
@@ -478,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(); // Reload on error to ensure consistency
             } finally { 
                 this.hideLoading();
                 submitBtn.disabled = false;
@@ -494,12 +484,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     let startMinutes = this.parseTimeToMinutes(startTime);
                     let finishMinutes = this.parseTimeToMinutes(finishTime);
         
+                    // Handle overnight shifts
                     if (finishMinutes < startMinutes) {
-                        finishMinutes += 24 * 60;
+                        finishMinutes += 24 * 60; // Add 24 hours in minutes
                     }
         
                     const workMinutes = finishMinutes - startMinutes;
-                    if (workMinutes >= 0) {
+                    if (workMinutes >= 0) { // Allow for zero minute tasks
                         totalWorkMinutes += (workMinutes - breakMins);
                     }
                 }
@@ -523,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
-            hours = hours ? hours : 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
             const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
             const hoursStr = hours < 10 ? '0' + hours : String(hours);
             return `${hoursStr}:${minutesStr} ${ampm}`;
@@ -572,10 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
                 if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
                 
-                const batchId = `batch_release_${this.generateUUID()}`;
+                const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
                     const newRowObj = { ...task,
-                        id: `proj_${this.generateUUID()}`,
+                        id: `proj_${Date.now()}_${index}`,
                         batchId,
                         fixCategory: toFix,
                         status: "Available",
@@ -615,19 +606,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
-                const batchId = `batch_extra_${this.generateUUID()}`;
+                const batchId = `batch_extra_${Date.now()}`;
         
+                // Add new areas to local state
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
                     const newRowObj = { 
-                        baseProjectName: latestTask.baseProjectName,
-                        gsd: latestTask.gsd,
-                        fixCategory: 'Fix1',
-                        id: `proj_${this.generateUUID()}`, 
+                        ...latestTask, 
+                        id: `proj_${Date.now()}_${i}`, 
                         batchId, 
                         areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, 
                         status: "Available",
-                        assignedTo: "",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", 
                         startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", 
@@ -636,16 +625,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalMinutes: "", 
                         lastModifiedTimestamp: new Date().toISOString()
                     };
+                    delete newRowObj._row;
                     this.state.projects.push(newRowObj);
                 }
         
+                // Reorganize the sheet with the newly added areas
                 await this.handleReorganizeSheet(true);
                 
                 alert(`${numToAdd} area(s) added successfully!`);
         
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(); // Reload on error
             } finally { 
                 this.hideLoading(); 
             }
@@ -662,14 +653,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
+                // Instead of a full reload, just remove from local state and re-render
                 this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
                 this.renderProjectSettings();
-                this.filterAndRenderProjects();
-                this.populateFilterDropdowns();
+                this.filterAndRenderProjects(); // Also update main dashboard view if visible
+                this.populateFilterDropdowns(); // Update dropdowns in case a project was removed
         
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
+                // On error, a full reload is safer to ensure consistency
                 await this.loadDataFromSheets();
                 this.renderProjectSettings();
             } finally {
@@ -744,10 +737,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastFix = project.fixCategory;
                 });
 
+                // Clear both values and formatting
                 await gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2:Z`, });
                 const clearFormattingRequest = {
                     repeatCell: {
-                        range: { sheetId: this.state.projectSheetId, startRowIndex: 1 },
+                        range: { sheetId: this.state.projectSheetId, startRowIndex: 1 }, // From row 2 to end
                         cell: { userEnteredFormat: {} },
                         fields: "userEnteredFormat"
                     }
@@ -1058,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.userTechId.value = user.techId;
             } else {
                 this.elements.userFormTitle.textContent = "Add User";
-                this.elements.userId.value = `user_${this.generateUUID()}`;
+                this.elements.userId.value = `user_${Date.now()}`;
                 this.elements.userRow.value = "";
             }
             this.elements.userFormModal.classList.add('is-open');
@@ -1101,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDisputes() {
             this.elements.disputeStatusFilter.value = this.state.filters.disputeStatus;
             
+            // Populate dropdowns that depend on dynamic data
             const techIdSelect = document.getElementById('disputeTechId');
             techIdSelect.innerHTML = '<option value="">Select Tech ID</option>' + this.state.users.map(u => `<option value="${u.techId}">${u.techId}</option>`).join('');
             techIdSelect.onchange = (e) => {
@@ -1112,11 +1107,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const uniqueProjects = [...new Set(this.state.projects.map(p => p.baseProjectName))].sort();
             projectNameSelect.innerHTML = '<option value="">Select Project</option>' + uniqueProjects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
             
+            // Filter disputes
             let disputesToRender = [...this.state.disputes];
             if (this.state.filters.disputeStatus !== 'All') {
                 disputesToRender = disputesToRender.filter(d => (d.status || 'Open') === this.state.filters.disputeStatus);
             }
 
+            // Render table
             const tableBody = this.elements.disputesTableBody;
             tableBody.innerHTML = "";
 
@@ -1150,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading("Saving dispute...");
 
             const disputeData = {
-                id: `dispute_${this.generateUUID()}`,
+                id: `dispute_${Date.now()}`,
                 blockId: document.getElementById('disputeBlockId').value,
                 projectName: document.getElementById('disputeProjectName').value,
                 partial: document.getElementById('disputePartial').value,
@@ -1164,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 team: document.getElementById('disputeTeam').value,
                 type: document.getElementById('disputeType').value,
                 category: document.getElementById('disputeCategory').value,
-                status: 'Open',
+                status: 'Open', // Default status is now Open
             };
 
             try {
@@ -1172,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.DISPUTES}!1:1`,
                 });
                 if (!getHeaders.result.values) {
-                    throw new Error(`Could not find headers in the "${this.config.sheetNames.DISPUTES}" sheet.`);
+                    throw new Error(`Could not find headers in the "${this.config.sheetNames.DISPUTES}" sheet. Make sure the sheet exists and has a header row.`);
                 }
                 const headers = getHeaders.result.values[0];
                 const newRow = [headers.map(header => disputeData[this.config.DISPUTE_HEADER_MAP[header.trim()]] || "")];
@@ -1302,6 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dispute.status = newStatus;
             await this.updateRowInSheet(this.config.sheetNames.DISPUTES, dispute._row, dispute);
             
+            // Refresh the view
             this.renderDisputes();
         },
         async handleDeleteDispute(disputeId) {
@@ -1405,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         currentHeaders = response.result.values ? response.result.values[0] : [];
                     } catch (e) {
+                        // Sheet might not exist, which is okay, we can ignore it.
                         console.warn(`Sheet "${config.name}" not found or could not be read. Skipping header check.`);
                         continue;
                     }
@@ -1446,7 +1445,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const year = today.getFullYear();
             const month = today.getMonth(); // 0-11
         
+            // End date is the 21st of the current month at 00:00:00
+            // This means anything BEFORE this date (i.e., up to the 20th at 23:59:59) is included.
             const endDate = new Date(year, month, 21);
+        
+            // Start date is the 21st of the PREVIOUS month
             const startDate = new Date(year, month - 1, 21);
         
             const dateRangeStr = `from ${startDate.toLocaleDateString()} to ${new Date(endDate - 1).toLocaleDateString()}`;
@@ -1627,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.extraIcon.value = extra.icon;
             } else {
                 this.elements.extraFormTitle.textContent = "Add Extra Link";
-                this.elements.extraId.value = `extra_${this.generateUUID()}`;
+                this.elements.extraId.value = `extra_${Date.now()}`;
                 this.elements.extraRow.value = "";
             }
             this.elements.extraFormModal.classList.add('is-open');
@@ -1700,7 +1703,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (allNotifications.length > 1) {
                     const sorted = allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     const toDelete = sorted.slice(1);
-                    const rowsToDelete = toDelete.map(n => n._row).filter(Boolean);
+                    const rowsToDelete = toDelete.map(n => n._row).filter(Boolean); // Ensure _row exists
                     
                     if (rowsToDelete.length > 0) {
                         await this.deleteSheetRows(this.config.sheetNames.NOTIFICATIONS, rowsToDelete);
@@ -1719,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async logNotification(message, projectName) {
             try {
                 const notification = {
-                    id: `notif_${this.generateUUID()}`,
+                    id: `notif_${Date.now()}`,
                     message: message,
                     projectName: projectName,
                     timestamp: new Date().toISOString(),
@@ -1901,16 +1904,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!confirm(`A project named "${this.formatProjectName(newProjectName)}" already exists. Do you want to overwrite it?`)) {
                             return;
                         }
+                        // Remove existing project tasks before importing
                         this.state.projects = this.state.projects.filter(p => p.baseProjectName !== newProjectName);
                     }
         
+                    // Add new projects to state
                     importedProjects.forEach(p => {
-                        delete p._row;
+                        delete p._row; // Ensure no old row numbers are carried over
                         this.state.projects.push(p);
                     });
         
                     this.showLoading("Importing and reorganizing...");
-                    await this.handleReorganizeSheet(true);
+                    await this.handleReorganizeSheet(true); // Re-sort and re-write the entire sheet
         
                     alert(`Project "${this.formatProjectName(newProjectName)}" imported successfully!`);
                     this.renderProjectSettings();
@@ -1920,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Error importing project: " + error.message);
                 } finally {
                     this.hideLoading();
-                    event.target.value = '';
+                    event.target.value = ''; // Reset file input
                 }
             };
             reader.readAsText(file);
