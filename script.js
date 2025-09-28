@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
         init() {
             this.setupDOMReferences();
             this.attachEventListeners();
-            // Ensure only dashboard is visible on initial load
             this.switchView('dashboard');
             gapi.load('client', this.initializeGapiClient.bind(this));
         },
@@ -115,6 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == DATA HANDLING ================================================================
         // =================================================================================
+        generateUUID() { // New function for generating unique IDs
+            return 'xxxx-xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        },
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
             const headers = values[0];
@@ -435,13 +440,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         
             const gsd = document.getElementById('gsd').value; 
-            const batchId = `batch_${Date.now()}`;
+            const batchId = `batch_${this.generateUUID()}`;
             
             try {
-                // Create new project objects and add them to the local state
                 for (let i = 1; i <= numRows; i++) {
                     const newRowObj = {
-                        id: `proj_${Date.now()}_${i}`, 
+                        id: `proj_${this.generateUUID()}`, 
                         batchId, 
                         baseProjectName,
                         areaTask: `Area${String(i).padStart(2, '0')}`, 
@@ -450,14 +454,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    this.state.projects.push(newRowObj); // Add to local state
+                    this.state.projects.push(newRowObj);
                 }
         
-                // Reorganize the entire sheet with the new data included
                 await this.handleReorganizeSheet(true); 
-                this.renderProjectSettings(); // Refresh the project management view
+                this.renderProjectSettings();
         
-                // UI updates
                 this.elements.projectFormModal.classList.remove('is-open');
                 this.elements.newProjectForm.reset();
                 
@@ -468,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-                await this.loadDataFromSheets(); // Reload on error to ensure consistency
+                await this.loadDataFromSheets();
             } finally { 
                 this.hideLoading();
                 submitBtn.disabled = false;
@@ -484,13 +486,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     let startMinutes = this.parseTimeToMinutes(startTime);
                     let finishMinutes = this.parseTimeToMinutes(finishTime);
         
-                    // Handle overnight shifts
                     if (finishMinutes < startMinutes) {
-                        finishMinutes += 24 * 60; // Add 24 hours in minutes
+                        finishMinutes += 24 * 60;
                     }
         
                     const workMinutes = finishMinutes - startMinutes;
-                    if (workMinutes >= 0) { // Allow for zero minute tasks
+                    if (workMinutes >= 0) {
                         totalWorkMinutes += (workMinutes - breakMins);
                     }
                 }
@@ -514,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
+            hours = hours ? hours : 12;
             const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
             const hoursStr = hours < 10 ? '0' + hours : String(hours);
             return `${hoursStr}:${minutesStr} ${ampm}`;
@@ -563,10 +564,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
                 if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
                 
-                const batchId = `batch_release_${Date.now()}`;
+                const batchId = `batch_release_${this.generateUUID()}`;
                 tasksToClone.forEach((task, index) => {
                     const newRowObj = { ...task,
-                        id: `proj_${Date.now()}_${index}`,
+                        id: `proj_${this.generateUUID()}`,
                         batchId,
                         fixCategory: toFix,
                         status: "Available",
@@ -606,17 +607,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const latestTask = projectTasks.sort((a, b) => a.areaTask.localeCompare(b.areaTask)).pop();
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
-                const batchId = `batch_extra_${Date.now()}`;
+                const batchId = `batch_extra_${this.generateUUID()}`;
         
-                // Add new areas to local state
                 for (let i = 1; i <= numToAdd; i++) {
                     const newAreaNumber = lastAreaNumber + i;
                     const newRowObj = { 
-                        ...latestTask, 
-                        id: `proj_${Date.now()}_${i}`, 
+                        baseProjectName: latestTask.baseProjectName,
+                        gsd: latestTask.gsd,
+                        fixCategory: 'Fix1',
+                        id: `proj_${this.generateUUID()}`, 
                         batchId, 
                         areaTask: `Area${String(newAreaNumber).padStart(2, '0')}`, 
                         status: "Available",
+                        assignedTo: "",
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "", 
                         startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "", 
@@ -625,18 +628,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalMinutes: "", 
                         lastModifiedTimestamp: new Date().toISOString()
                     };
-                    delete newRowObj._row;
                     this.state.projects.push(newRowObj);
                 }
         
-                // Reorganize the sheet with the newly added areas
                 await this.handleReorganizeSheet(true);
                 
                 alert(`${numToAdd} area(s) added successfully!`);
         
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
-                await this.loadDataFromSheets(); // Reload on error
+                await this.loadDataFromSheets();
             } finally { 
                 this.hideLoading(); 
             }
@@ -653,16 +654,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
-                // Instead of a full reload, just remove from local state and re-render
                 this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
                 this.renderProjectSettings();
-                this.filterAndRenderProjects(); // Also update main dashboard view if visible
-                this.populateFilterDropdowns(); // Update dropdowns in case a project was removed
+                this.filterAndRenderProjects();
+                this.populateFilterDropdowns();
         
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
-                // On error, a full reload is safer to ensure consistency
                 await this.loadDataFromSheets();
                 this.renderProjectSettings();
             } finally {
@@ -737,11 +736,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastFix = project.fixCategory;
                 });
 
-                // Clear both values and formatting
                 await gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2:Z`, });
                 const clearFormattingRequest = {
                     repeatCell: {
-                        range: { sheetId: this.state.projectSheetId, startRowIndex: 1 }, // From row 2 to end
+                        range: { sheetId: this.state.projectSheetId, startRowIndex: 1 },
                         cell: { userEnteredFormat: {} },
                         fields: "userEnteredFormat"
                     }
@@ -1052,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.userTechId.value = user.techId;
             } else {
                 this.elements.userFormTitle.textContent = "Add User";
-                this.elements.userId.value = `user_${Date.now()}`;
+                this.elements.userId.value = `user_${this.generateUUID()}`;
                 this.elements.userRow.value = "";
             }
             this.elements.userFormModal.classList.add('is-open');
@@ -1445,11 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const year = today.getFullYear();
             const month = today.getMonth(); // 0-11
         
-            // End date is the 21st of the current month at 00:00:00
-            // This means anything BEFORE this date (i.e., up to the 20th at 23:59:59) is included.
             const endDate = new Date(year, month, 21);
-        
-            // Start date is the 21st of the PREVIOUS month
             const startDate = new Date(year, month - 1, 21);
         
             const dateRangeStr = `from ${startDate.toLocaleDateString()} to ${new Date(endDate - 1).toLocaleDateString()}`;
@@ -1630,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.elements.extraIcon.value = extra.icon;
             } else {
                 this.elements.extraFormTitle.textContent = "Add Extra Link";
-                this.elements.extraId.value = `extra_${Date.now()}`;
+                this.elements.extraId.value = `extra_${this.generateUUID()}`;
                 this.elements.extraRow.value = "";
             }
             this.elements.extraFormModal.classList.add('is-open');
@@ -1722,7 +1716,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async logNotification(message, projectName) {
             try {
                 const notification = {
-                    id: `notif_${Date.now()}`,
+                    id: `notif_${this.generateUUID()}`,
                     message: message,
                     projectName: projectName,
                     timestamp: new Date().toISOString(),
@@ -1904,18 +1898,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!confirm(`A project named "${this.formatProjectName(newProjectName)}" already exists. Do you want to overwrite it?`)) {
                             return;
                         }
-                        // Remove existing project tasks before importing
                         this.state.projects = this.state.projects.filter(p => p.baseProjectName !== newProjectName);
                     }
         
-                    // Add new projects to state
                     importedProjects.forEach(p => {
-                        delete p._row; // Ensure no old row numbers are carried over
+                        delete p._row;
                         this.state.projects.push(p);
                     });
         
                     this.showLoading("Importing and reorganizing...");
-                    await this.handleReorganizeSheet(true); // Re-sort and re-write the entire sheet
+                    await this.handleReorganizeSheet(true);
         
                     alert(`Project "${this.formatProjectName(newProjectName)}" imported successfully!`);
                     this.renderProjectSettings();
@@ -1925,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Error importing project: " + error.message);
                 } finally {
                     this.hideLoading();
-                    event.target.value = ''; // Reset file input
+                    event.target.value = '';
                 }
             };
             reader.readAsText(file);
