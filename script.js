@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             disputes: [],
             extras: [],
             notifications: [],
-            archive: [], // New state for archive data
+            archive: [],
             isAppInitialized: false,
             filters: {
                 project: 'All',
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == DATA HANDLING ================================================================
         // =================================================================================
-        generateUUID() { // New function for generating unique IDs
+        generateUUID() {
             return 'xxxx-xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
@@ -123,9 +123,19 @@ document.addEventListener('DOMContentLoaded', () => {
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
             const headers = values[0];
+            const lowerCaseHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => {
+                acc[key.toLowerCase()] = value;
+                return acc;
+            }, {});
+
             return values.slice(1).map((row, index) => {
                 let obj = { _row: index + 2 };
-                headers.forEach((header, i) => { const propName = headerMap[header.trim()]; if (propName) obj[propName] = row[i] || ""; });
+                headers.forEach((header, i) => {
+                    const propName = lowerCaseHeaderMap[header.trim().toLowerCase()];
+                    if (propName) {
+                        obj[propName] = row[i] || "";
+                    }
+                });
                 return obj;
             });
         },
@@ -179,9 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         async updateRowInSheet(sheetName, rowIndex, dataObject) {
-            const submitBtn = document.querySelector('button:disabled');
-            if(submitBtn) submitBtn.disabled = false;
-            
             this.showLoading("Saving...");
             try {
                 const headersResult = await gapi.client.sheets.spreadsheets.values.get({
@@ -190,18 +197,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = headersResult.result.values[0];
                 let headerMap;
-                if(sheetName === this.config.sheetNames.USERS) {
-                    headerMap = this.config.USER_HEADER_MAP;
-                } else if (sheetName === this.config.sheetNames.DISPUTES) {
-                    headerMap = this.config.DISPUTE_HEADER_MAP;
-                } else if (sheetName === this.config.sheetNames.EXTRAS) {
-                    headerMap = this.config.EXTRAS_HEADER_MAP;
-                } else if (sheetName === this.config.sheetNames.NOTIFICATIONS) {
-                    headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
-                } else {
-                    headerMap = this.config.HEADER_MAP;
-                }
+                if (sheetName === this.config.sheetNames.USERS) headerMap = this.config.USER_HEADER_MAP;
+                else if (sheetName === this.config.sheetNames.DISPUTES) headerMap = this.config.DISPUTE_HEADER_MAP;
+                else if (sheetName === this.config.sheetNames.EXTRAS) headerMap = this.config.EXTRAS_HEADER_MAP;
+                else if (sheetName === this.config.sheetNames.NOTIFICATIONS) headerMap = this.config.NOTIFICATIONS_HEADER_MAP;
+                else headerMap = this.config.HEADER_MAP;
                 
+                const reverseHeaderMap = Object.entries(headerMap).reduce((acc, [key, value]) => {
+                    acc[value] = key;
+                    return acc;
+                }, {});
+
                 const values = [headers.map(header => {
                     const propName = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
                     return propName ? (dataObject[headerMap[propName]] !== undefined ? dataObject[headerMap[propName]] : "") : "";
@@ -1145,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading("Saving dispute...");
 
             const disputeData = {
-                id: `dispute_${Date.now()}`,
+                id: `dispute_${this.generateUUID()}`,
                 blockId: document.getElementById('disputeBlockId').value,
                 projectName: document.getElementById('disputeProjectName').value,
                 partial: document.getElementById('disputePartial').value,
@@ -1401,7 +1407,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         currentHeaders = response.result.values ? response.result.values[0] : [];
                     } catch (e) {
-                        // Sheet might not exist, which is okay, we can ignore it.
                         console.warn(`Sheet "${config.name}" not found or could not be read. Skipping header check.`);
                         continue;
                     }
@@ -1697,7 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (allNotifications.length > 1) {
                     const sorted = allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     const toDelete = sorted.slice(1);
-                    const rowsToDelete = toDelete.map(n => n._row).filter(Boolean); // Ensure _row exists
+                    const rowsToDelete = toDelete.map(n => n._row).filter(Boolean);
                     
                     if (rowsToDelete.length > 0) {
                         await this.deleteSheetRows(this.config.sheetNames.NOTIFICATIONS, rowsToDelete);
