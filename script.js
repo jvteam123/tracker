@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
+            USER_HEADER_MAP: { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
             EXTRAS_HEADER_MAP: { 'id': 'id', 'name': 'name', 'url': 'url', 'icon': 'icon' },
             NOTIFICATIONS_HEADER_MAP: { 'id': 'id', 'message': 'message', 'projectName': 'projectName', 'timestamp': 'timestamp', 'read': 'read' },
@@ -144,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
                 this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
-                this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' }) : [];
+                this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, this.config.USER_HEADER_MAP) : [];
                 this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
                 this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
                 
@@ -183,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headers = headersResult.result.values[0];
                 let headerMap;
                 if(sheetName === this.config.sheetNames.USERS) {
-                    headerMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
+                    headerMap = this.config.USER_HEADER_MAP;
                 } else if (sheetName === this.config.sheetNames.DISPUTES) {
                     headerMap = this.config.DISPUTE_HEADER_MAP;
                 } else if (sheetName === this.config.sheetNames.EXTRAS) {
@@ -195,10 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 const values = [headers.map(header => {
-                    const propName = headerMap[header.trim()] || headerMap[header.trim().toLowerCase()];
-                    return dataObject[propName] !== undefined ? dataObject[propName] : "";
+                    const propName = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
+                    return propName ? (dataObject[headerMap[propName]] !== undefined ? dataObject[headerMap[propName]] : "") : "";
                 })];
-
+        
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${sheetName}!A${rowIndex}`,
@@ -1059,9 +1060,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.USERS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-                const userHeaderMap = { 'id': 'id', 'name': 'name', 'email': 'email', 'techid': 'techId' };
                 const newRow = [headers.map(h => {
-                    const propName = userHeaderMap[h.toLowerCase()];
+                    const propName = this.config.USER_HEADER_MAP[Object.keys(this.config.USER_HEADER_MAP).find(k => k.toLowerCase() === h.toLowerCase())];
                     return user[propName] || "";
                 })];
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
@@ -1353,9 +1353,58 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async handleFixDb() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
-            if (code !== "248617") { alert("Incorrect code. Operation cancelled."); return; }
-            if (!confirm("Are you sure you want to check and fix the database headers?")) return;
-            alert("Placeholder: DB Fix logic would run here.");
+            if (code !== "248617") {
+                alert("Incorrect code. Operation cancelled.");
+                return;
+            }
+            if (!confirm("This will check and correct the headers for all sheets. This won't affect your data, but it's recommended to have a backup. Continue?")) return;
+            
+            this.showLoading("Verifying and Fixing DB Headers...");
+            try {
+                const sheetConfigs = [
+                    { name: this.config.sheetNames.PROJECTS, map: this.config.HEADER_MAP },
+                    { name: this.config.sheetNames.USERS, map: this.config.USER_HEADER_MAP },
+                    { name: this.config.sheetNames.DISPUTES, map: this.config.DISPUTE_HEADER_MAP },
+                    { name: this.config.sheetNames.EXTRAS, map: this.config.EXTRAS_HEADER_MAP },
+                    { name: this.config.sheetNames.NOTIFICATIONS, map: this.config.NOTIFICATIONS_HEADER_MAP },
+                    { name: this.config.sheetNames.ARCHIVE, map: this.config.HEADER_MAP }
+                ];
+
+                for (const config of sheetConfigs) {
+                    const expectedHeaders = Object.keys(config.map);
+                    const range = `${config.name}!1:1`;
+                    let currentHeaders = [];
+                    try {
+                        const response = await gapi.client.sheets.spreadsheets.values.get({
+                            spreadsheetId: this.config.google.SPREADSHEET_ID,
+                            range: range,
+                        });
+                        currentHeaders = response.result.values ? response.result.values[0] : [];
+                    } catch (e) {
+                        // Sheet might not exist, which is okay, we can ignore it.
+                        console.warn(`Sheet "${config.name}" not found or could not be read. Skipping header check.`);
+                        continue;
+                    }
+                    
+                    const headersAreCorrect = expectedHeaders.length === currentHeaders.length && expectedHeaders.every((value, index) => value === currentHeaders[index]);
+
+                    if (!headersAreCorrect) {
+                        console.log(`Fixing headers for sheet: ${config.name}`);
+                        await gapi.client.sheets.spreadsheets.values.update({
+                            spreadsheetId: this.config.google.SPREADSHEET_ID,
+                            range: range,
+                            valueInputOption: 'USER_ENTERED',
+                            resource: { values: [expectedHeaders] }
+                        });
+                    }
+                }
+                alert("Database headers verified and fixed successfully!");
+            } catch (error) {
+                alert("An error occurred while fixing DB headers: " + error.message);
+                console.error("DB Fix Error:", error);
+            } finally {
+                this.hideLoading();
+            }
         },
         handleCleanDb() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
@@ -1604,21 +1653,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('headerFormatsContainer');
             if (!container) return;
             const headers = {
-                "Projects": Object.keys(this.config.HEADER_MAP).join(', '),
-                "Users": "id, name, email, techId",
-                "Disputes": Object.keys(this.config.DISPUTE_HEADER_MAP).join(', '),
-                "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP).join(', '),
-                "Archive": Object.keys(this.config.HEADER_MAP).join(', '),
-                "Notifications": Object.keys(this.config.NOTIFICATIONS_HEADER_MAP).join(', '),
+                "Projects": Object.keys(this.config.HEADER_MAP),
+                "Users": Object.keys(this.config.USER_HEADER_MAP),
+                "Disputes": Object.keys(this.config.DISPUTE_HEADER_MAP),
+                "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP),
+                "Archive": Object.keys(this.config.HEADER_MAP),
+                "Notifications": Object.keys(this.config.NOTIFICATIONS_HEADER_MAP),
             };
 
             let content = '';
-            for (const [sheet, headerString] of Object.entries(headers)) {
+            for (const [sheet, headerArray] of Object.entries(headers)) {
                 content += `
                     <div class="header-format-card">
                         <h4>${sheet} Sheet</h4>
                         <div class="header-format-value" id="header-${sheet}">
-                            <span>${headerString}</span>
+                            <span>${headerArray.join(', ')}</span>
                             <i class="fas fa-copy copy-icon" data-clipboard-target="#header-${sheet}"></i>
                         </div>
                     </div>`;
@@ -1700,18 +1749,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const item = document.createElement('div');
                     item.className = 'notification-item';
                     item.innerHTML = `<p>${n.message}</p><small>${new Date(n.timestamp).toLocaleString()}</small>`;
-                    item.onclick = () => { // No longer needs to be async
-                        list.style.display = 'none'; // Close the list immediately
+                    item.onclick = () => {
+                        list.style.display = 'none'; 
 
                         const markAsRead = () => {
                             if (n.read === 'FALSE') {
                                 const notificationInState = this.state.notifications.find(notif => notif.id === n.id);
                                 if (notificationInState && notificationInState._row) {
-                                    // 1. Update the state locally first
                                     notificationInState.read = 'TRUE';
-                                    // 2. Re-render the UI immediately based on the local change
                                     this.renderNotificationBell();
-                                    // 3. Send the update to the sheet in the background
                                     this.updateRowInSheet(this.config.sheetNames.NOTIFICATIONS, notificationInState._row, notificationInState);
                                 }
                             }
