@@ -1005,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          const doneBtn = document.createElement('button');
                         doneBtn.textContent = 'Done';
                         doneBtn.className = 'btn btn-success btn-small';
-                        doneBtn.disabled = project.status === 'Completed';
+                        doneBtn.disabled = project.status.includes('InProgress') || project.status === 'Completed';
                         doneBtn.onclick = () => {
                             if (confirm('Are you sure you want to mark this project as "Completed"?')) {
                                 this.handleProjectUpdate(project.id, { 'status': 'Completed' });
