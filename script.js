@@ -564,6 +564,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!name) return '';
             return name.replace(/__/g, '  ').replace(/_/g, ' ');
         },
+        formatTo12Hour(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string' || timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) {
+                return timeStr; // Return original if it's empty, not a string, or already 12-hour
+            }
+            const timeParts = timeStr.split(':');
+            if (timeParts.length !== 2) {
+                return timeStr; // Return original if format is unexpected
+            }
+            let [hours, minutes] = timeParts.map(part => parseInt(part, 10));
+            if (isNaN(hours) || isNaN(minutes)) {
+                return timeStr; // Return original if parsing fails
+            }
+
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // The hour '0' should be '12'
+            const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
+            
+            return `${hours}:${minutesStr} ${ampm}`;
+        },
         async handleReleaseFix(baseProjectName, fromFix, toFix) {
              if (!toFix || !toFix.match(/^Fix\d+$/)) {
                 alert("Invalid format for 'To Fix'. Please use 'Fix' followed by a number (e.g., 'Fix4').");
@@ -961,12 +981,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (i === 1 || this.state.filters.showDays[i]) {
                                 const startCell = row.insertCell();
                                 startCell.className = 'time-cell';
-                                startCell.innerHTML = `${project[`startTimeDay${i}`] || ''} <i class="fas fa-pencil-alt edit-icon" onclick="ProjectTrackerApp.openTimeEditModal('${project.id}', ${i})"></i>`;
+                                startCell.innerHTML = `${this.formatTo12Hour(project[`startTimeDay${i}`]) || ''} <i class="fas fa-pencil-alt edit-icon" onclick="ProjectTrackerApp.openTimeEditModal('${project.id}', ${i})"></i>`;
 
                                 const finishCell = row.insertCell();
                                 finishCell.className = 'time-cell';
-                                finishCell.innerHTML = `${project[`finishTimeDay${i}`] || ''} <i class="fas fa-pencil-alt edit-icon" onclick="ProjectTrackerApp.openTimeEditModal('${project.id}', ${i})"></i>`;
-
+                                finishCell.innerHTML = `${this.formatTo12Hour(project[`finishTimeDay${i}`]) || ''} <i class="fas fa-pencil-alt edit-icon" onclick="ProjectTrackerApp.openTimeEditModal('${project.id}', ${i})"></i>`;
                                 const breakCell = row.insertCell();
                                 const breakSelect = document.createElement('select');
                                 const breakOptions = { "0": "None", "15": "15m", "60": "1hr", "75": "1hr 15m", "90": "1hr 30m" };
