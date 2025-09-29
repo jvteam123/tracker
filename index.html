@@ -53,16 +53,31 @@
         .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
         .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
         
-        /* START: MODIFICATION */
         .sidebar-nav {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow-y: auto; /* Allows scrolling on small screens */
-            margin-bottom: 15px; /* Space for the sign out button */
+            overflow-y: auto; 
+            margin-bottom: 15px;
         }
         #signOutBtn {
-            margin-top: auto; /* Pushes the sign out button to the bottom */
+            margin-top: auto; 
+        }
+        
+        /* START: MODIFICATION */
+        .sidebar-nav::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: var(--text-color);
+        }
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background-color: #475569;
+            border-radius: 10px;
+            border: 2px solid var(--text-color);
+        }
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background-color: #6c757d;
         }
         /* END: MODIFICATION */
         
@@ -498,7 +513,8 @@
                 <div id="notificationList"></div>
             </div>
             <div class="sidebar-nav">
-                <div> <button id="openDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Dashboard</button>
+                <div> 
+                    <button id="openDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Dashboard</button>
                     <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
                     <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
                     <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
