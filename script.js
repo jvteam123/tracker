@@ -410,27 +410,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         populateFilterDropdowns() {
-            const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
-            this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
+    const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+    this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
 
-            // Check if the currently selected filter is still a valid project
-            const currentFilterValue = this.state.filters.project;
-            const filterExists = projects.includes(currentFilterValue);
+    // Check if the currently selected filter is still a valid project
+    const currentFilterValue = this.state.filters.project;
+    const filterExists = projects.includes(currentFilterValue);
 
-            // If the filter is 'All' or if the project still exists, apply it.
-            // Otherwise, reset the filter to 'All' to prevent a blank dropdown.
-            if (currentFilterValue === 'All' || filterExists) {
-                this.elements.projectFilter.value = currentFilterValue;
-            } else {
-                this.state.filters.project = 'All';
-                this.elements.projectFilter.value = 'All';
-            }
+    // If the filter is 'All' or if the project still exists, apply it.
+    // Otherwise, reset the filter to 'All' to prevent a blank dropdown.
+    if (currentFilterValue === 'All' || filterExists) {
+        this.elements.projectFilter.value = currentFilterValue;
+    } else {
+        this.state.filters.project = 'All';
+        this.elements.projectFilter.value = 'All';
+    }
 
-            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
-            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
-            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
-        },
-        // START: MODIFICATION
+    const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
+    this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+    this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
+},
         async handleAddProjectSubmit(event) {
             event.preventDefault(); 
             const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
@@ -488,7 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = false;
             }
         },
-        // END: MODIFICATION
         calculateTotalMinutes(project) {
             let totalWorkMinutes = 0;
             for (let i = 1; i <= 5; i++) {
@@ -676,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading(); 
             }
         },
+        // START: MODIFICATION
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
             this.showLoading(`Rolling back ${fixToDelete}...`);
@@ -688,11 +687,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
-                // Instead of a full reload, just remove from local state and re-render
+                // Only update local state after successful deletion
                 this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
+                
                 this.renderProjectSettings();
-                this.filterAndRenderProjects(); // Also update main dashboard view if visible
-                this.populateFilterDropdowns(); // Update dropdowns in case a project was removed
+                this.filterAndRenderProjects(); 
+                this.populateFilterDropdowns(); 
         
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
@@ -713,9 +713,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tasksToDelete.length > 0) {
                     const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                     await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+                    // Only update local state after successful deletion
+                    this.state.projects = this.state.projects.filter(p => p.baseProjectName !== baseProjectName);
                 }
         
-                await this.loadDataFromSheets();
                 this.renderProjectSettings();
                 this.populateFilterDropdowns();
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
@@ -726,6 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
+        // END: MODIFICATION
         async handleReorganizeSheet(isSilent = false) {
             if (!isSilent) {
                 if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows and applying colors. This action cannot be undone. Are you sure?")) return;
@@ -1558,6 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.timeEditTitle.textContent = `Edit Day ${day} Time for ${project.areaTask}`;
             this.elements.timeEditModal.classList.add('is-open');
         },
+        // START: MODIFICATION
         async handleTimeEditSubmit(event) {
             event.preventDefault();
             const projectId = this.elements.timeEditProjectId.value;
@@ -1571,11 +1574,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const updates = {
                 [`startTimeDay${day}`]: startTime,
                 [`finishTimeDay${day}`]: finishTime,
+                lastModifiedTimestamp: new Date().toISOString() // Add timestamp update
             };
             
             await this.handleProjectUpdate(projectId, updates);
             this.elements.timeEditModal.classList.remove('is-open');
         },
+        // END: MODIFICATION
         showReleaseNotification(message, projectFilterValue) {
             this.elements.notificationMessage.textContent = message;
             this.elements.notificationModal.classList.add('is-open');
