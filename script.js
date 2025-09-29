@@ -410,14 +410,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         populateFilterDropdowns() {
-            const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
-            this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
-            this.elements.projectFilter.value = this.state.filters.project;
+    const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+    this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
 
-            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
-            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
-            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
-        },
+    // Check if the currently selected filter is still a valid project
+    const currentFilterValue = this.state.filters.project;
+    const filterExists = projects.includes(currentFilterValue);
+
+    // If the filter is 'All' or if the project still exists, apply it.
+    // Otherwise, reset the filter to 'All' to prevent a blank dropdown.
+    if (currentFilterValue === 'All' || filterExists) {
+        this.elements.projectFilter.value = currentFilterValue;
+    } else {
+        this.state.filters.project = 'All';
+        this.elements.projectFilter.value = 'All';
+    }
+
+    const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
+    this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+    this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
+},
         async handleAddProjectSubmit(event) {
             event.preventDefault(); 
             const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
