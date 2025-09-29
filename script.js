@@ -278,12 +278,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
+        // START: MODIFICATION
         setupDOMReferences() {
             this.elements = {
                 body: document.body, authWrapper: document.getElementById('auth-wrapper'),
                 dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
                 loggedInUser: document.getElementById('loggedInUser'), signOutBtn: document.getElementById('signOutBtn'),
-                refreshDataBtn: document.getElementById('refreshDataBtn'),
+                refreshDataBtn: document.getElementById('refreshDataBtn'), // Button is now in the TL Summary
                 projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
@@ -340,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 archiveTable: document.getElementById('archiveTable'),
             };
         },
+        // END: MODIFICATION
         attachEventListeners() {
             this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
@@ -392,7 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         },
-        // START: MODIFICATION - Refresh Button Cooldown
         handleRefreshData() {
             const refreshBtn = this.elements.refreshDataBtn;
             refreshBtn.disabled = true;
@@ -405,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 refreshBtn.innerHTML = `<i class="fas fa-sync-alt icon"></i> Refresh Data`;
             }, this.config.cacheDuration);
         },
-        // END: MODIFICATION
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
