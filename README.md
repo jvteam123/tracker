@@ -1,157 +1,110 @@
-Team123 - Project Tracker V3
-A web-based project management tool designed to track multi-stage projects, manage users, and handle disputes. This application uses Google Sheets as a lightweight database, making it easy to view and manage data directly.
+# Team123 - Project Tracker V3
 
-✨ Features
-Project Dashboard: A central view to see all ongoing projects, their status, assigned technicians, and logged time.
+A web-based project management and time-tracking tool that uses Google Sheets as a database. It is designed for teams to manage tasks, track progress, and handle disputes in a collaborative environment.
 
-Multi-Day Time Tracking: Log start times, end times, and break durations for up to 5 separate workdays per task.
+## Features
 
-Project Management:
+* **Dashboard:** A central view to see all projects, their current status, and manage tasks.
+* **Time Tracking:** Start and end timers for daily tasks, with support for break times.
+* **Project Management:** Easily add new projects, release new fix stages, and manage project areas.
+* **User Management:** Add, edit, and delete users who can be assigned to tasks.
+* **Dispute System:** A built-in form to file and track disputes related to specific tasks.
+* **Admin Panel:** Tools for database maintenance, project archiving, and managing custom sidebar links.
+* **Google Sheets Backend:** Uses the power and simplicity of a Google Sheet as a live database.
+* **Google Authentication:** Secure sign-in using Google accounts (OAuth 2.0).
 
-Create new projects with a specified number of areas and a starting "Fix Stage."
+## How It Works
 
-Release projects to the next fix stage.
+This project is a single-page application built with **HTML, CSS, and vanilla JavaScript**. It does not require a traditional server or database. Instead, it leverages the **Google Sheets API** to read and write data directly to a Google Sheet that you own.
 
-Add extra areas to existing projects.
+1.  The `index.html` file provides the structure and all the different views of the application (Dashboard, Settings, etc.).
+2.  The `script.js` file contains all the application logic, including authentication, data handling, and UI rendering.
+3.  When a user signs in, the application uses their Google credentials to get a secure token.
+4.  This token is used to make authorized calls to the Google Sheets API, allowing the app to fetch, update, and delete rows in your designated spreadsheet.
 
-Roll back (delete) specific fix stages or entire projects.
+---
 
-User Management: Add, edit, and delete users (technicians).
+## Setup Guide
 
-Dispute System: A dedicated form to file, view, and manage project disputes.
+To get this project running, you need to configure it with your own Google Cloud and Google Sheets credentials.
 
-Admin Panel: A settings area with powerful tools for database maintenance, project archiving, and managing sidebar links.
+### Step 1: Set Up Google Cloud Platform
 
-Google Sheets Backend: All data is stored and managed in a Google Sheet for easy access and editing.
+You need to create a project in the Google Cloud Platform to get the necessary API keys.
 
-Authentication: Securely sign in with Google to access the application.
+1.  **Create a New Project:**
+    * Go to the [Google Cloud Console](https://console.cloud.google.com/).
+    * Click the project dropdown in the top bar and click **"New Project"**.
+    * Give your project a name (e.g., "My Project Tracker") and click **"Create"**.
 
-⚙️ Core Technology
-Frontend: HTML, CSS, Vanilla JavaScript
+2.  **Enable the Google Sheets API:**
+    * With your new project selected, navigate to the **"APIs & Services"** > **"Library"** page.
+    * Search for "Google Sheets API" and click on it.
+    * Click the **"Enable"** button.
 
-Backend/Database: Google Sheets
+3.  **Create an API Key:**
+    * Go to **"APIs & Services"** > **"Credentials"**.
+    * Click **"+ Create Credentials"** and select **"API key"**.
+    * Copy the generated API key. You will need this for your `script.js` file.
+    * It is highly recommended to restrict this key. Click on the key name, and under "Application restrictions," select "HTTP referrers (web sites)." Add the URL where you will host your tracker (e.g., `your-username.github.io/*` or `localhost` for testing).
 
-APIs: Google Sheets API, Google Identity Services (for authentication)
+4.  **Create an OAuth 2.0 Client ID:**
+    * On the same "Credentials" page, click **"+ Create Credentials"** and select **"OAuth client ID"**.
+    * If prompted, configure the "OAuth consent screen." Choose **"External"** and fill in the required fields (App name, User support email, Developer contact information). Click "Save and Continue" through the scopes and test users sections.
+    * Back on the "Credentials" page, select **"Web application"** for the Application type.
+    * Under **"Authorized JavaScript origins,"** add the URL where you will host your application (e.g., `http://localhost`, `http://127.0.0.1:5500`, or `https://your-username.github.io`).
+    * Click **"Create"**.
+    * Copy the **Client ID**. You will need this for your `script.js` file.
 
-🚀 Setup Guide
-To get the project tracker up and running, you need to configure a Google Sheet and a Google Cloud Platform project.
+### Step 2: Set Up Your Google Sheet
 
-Part 1: Setting up the Google Sheet
-This sheet will act as your database.
+This will be your database.
 
-Create a new Google Sheet. You can do this at sheets.new.
+1.  **Create a New Google Sheet:**
+    * Go to [sheets.google.com](https://sheets.google.com/) and create a new blank spreadsheet.
+    * Give it a memorable name (e.g., "ProjectTrackerDB").
 
-Get the Spreadsheet ID: The ID is in the URL. For example, in https://docs.google.com/spreadsheets/d/15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY/edit, the ID is 15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY. Copy this ID; you'll need it later.
+2.  **Get the Spreadsheet ID:**
+    * The ID is in the URL of your spreadsheet. For example, if the URL is `https://docs.google.com/spreadsheets/d/15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY/edit`, the ID is `15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY`.
+    * Copy this ID.
 
-Create the Required Tabs: At the bottom of the sheet, create the following six tabs. The names must be exact.
+3.  **Create the Necessary Sheets (Tabs):**
+    * Create the following tabs at the bottom of your spreadsheet: `Projects`, `Users`, `Disputes`, `Extras`, `Archive`, and `Notifications`.
+    * **Important:** Go to the **Admin Settings** page in the live application and use the "Fix DB Headers" tool (or copy the headers from the "Sheet Header Formats" section) to ensure each sheet has the correct column headers in the first row.
 
-Projects
+4.  **Share the Sheet:**
+    * Click the **"Share"** button in the top right.
+    * Share the sheet with the email address of the service account you will be using or make it editable by anyone with the link if you are just testing. For most use cases with user logins, ensuring the logged-in users have edit access is sufficient.
 
-Users
+### Step 3: Configure the Project
 
-Disputes
+1.  **Open `script.js`:**
+2.  Find the `config` object at the top of the file.
+3.  Replace the placeholder values with the credentials you copied in the previous steps:
+    ```javascript
+    config: {
+        google: {
+            API_KEY: "YOUR_API_KEY_HERE",
+            CLIENT_ID: "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com",
+            SPREADSHEET_ID: "YOUR_SPREADSHEET_ID_HERE",
+            SCOPES: "[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)",
+        },
+        //...
+    }
+    ```
 
-Extras
+### Step 4: Running the Application
 
-Archive
+Since this is a client-side application, you can run it by simply opening the `index.html` file in your web browser. For the best results and to avoid issues with Google Authentication, it's recommended to serve the files from a local web server.
 
-Notifications
+A simple way to do this is with the "Live Server" extension in Visual Studio Code.
 
-Set Up the Headers: Copy and paste the following headers into the first row of each corresponding tab. This step is critical for the application to work.
+---
 
-Projects & Archive Tabs:
+## Contributing
 
-id, Fix Cat, Project Name, Area/Task, GSD, Assigned To, Status, Day 1 Start, Day 1 Finish, Day 1 Break, Day 2 Start, Day 2 Finish, Day 2 Break, Day 3 Start, Day 3 Finish, Day 3 Break, Day 4 Start, Day 4 Finish, Day 4 Break, Day 5 Start, Day 5 Finish, Day 5 Break, Total (min), Last Modified, Batch ID
+Contributions are welcome! If you find a bug or have a feature request, please open an issue on GitHub. If you would like to contribute code, please fork the repository and submit a pull request.
 
-Users Tab:
+## License
 
-id, name, email, techId
-
-Disputes Tab:
-
-id, Block ID, Project Name, Partial, Phase, UID, RQA TechID, Reason for Dispute, Tech ID, Tech Name, Team, Type, Category, Status
-
-Extras Tab:
-
-id, name, url, icon
-
-Notifications Tab:
-
-id, message, projectName, timestamp, read
-
-Share the Sheet: Share the sheet with the Google accounts that will be using the tracker, giving them "Editor" permissions.
-
-Part 2: Setting up the Google Cloud Project
-This will provide the API keys and credentials needed to access your sheet.
-
-Create a Google Cloud Project: Go to the Google Cloud Console and create a new project.
-
-Enable the Google Sheets API:
-
-In the navigation menu, go to APIs & Services > Library.
-
-Search for "Google Sheets API" and enable it for your project.
-
-Create Credentials:
-
-In the navigation menu, go to APIs & Services > Credentials.
-
-Click + CREATE CREDENTIALS and select API key. Copy the generated key immediately and save it somewhere safe. You will need it soon.
-
-Click + CREATE CREDENTIALS again and select OAuth client ID.
-
-For Application type, select Web application.
-
-Under Authorized JavaScript origins, add the URLs where you will host the app. For local testing, add:
-
-http://localhost
-
-http://127.0.0.1
-
-(Add the final deployed URL here when you have it)
-
-Under Authorized redirect URIs, add the same URLs.
-
-Click Create. Copy the Client ID and save it.
-
-Part 3: Configuring the Application
-Open the script.js file.
-
-Find the config object at the top.
-
-Paste your credentials:
-
-Replace "YOUR_API_KEY_HERE" with the API key you generated.
-
-Replace "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com" with the OAuth Client ID you generated.
-
-Replace "YOUR_SPREADSHEET_ID_HERE" with the Spreadsheet ID from your Google Sheet.
-
-// Example of the config object in script.js
-config: {
-    google: {
-        API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8", // <-- PASTE YOUR API KEY
-        CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com", // <-- PASTE YOUR CLIENT ID
-        SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY", // <-- PASTE YOUR SPREADSHEET ID
-        SCOPES: "[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)",
-    },
-    // ... rest of the config
-},
-
-ධ Running the Project
-Place the index.html, script.js, and icon.png files in the same folder.
-
-For local development, it's best to use a simple web server (like the "Live Server" extension in VS Code) to avoid potential CORS issues with the Google APIs.
-
-Open the index.html file in your web browser. You should be prompted to sign in with your Google account.
-
-🛠️ Admin Features
-The "Admin Settings" panel contains powerful tools. Note that some of these actions are sensitive and are protected by a hardcoded admin code.
-
-Admin Code: 248617
-
-Fix DB Headers: Ensures the headers in your Google Sheet match what the application expects.
-
-Archiving: Moves completed projects to the "Archive" tab to keep the main "Projects" sheet clean.
-
-Reorganize Sheet: Sorts and formats the "Projects" sheet for better readability.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
