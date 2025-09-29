@@ -585,6 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             return `${hours}:${minutesStr} ${ampm}`;
         },
+        // START: MODIFICATION
         async handleReleaseFix(baseProjectName, fromFix, toFix) {
              if (!toFix || !toFix.match(/^Fix\d+$/)) {
                 alert("Invalid format for 'To Fix'. Please use 'Fix' followed by a number (e.g., 'Fix4').");
@@ -603,6 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         batchId,
                         fixCategory: toFix,
                         status: "Available",
+                        assignedTo: task.assignedTo, // Carry over the assigned tech
                         startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
                         startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                         startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
@@ -629,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
+        // END: MODIFICATION
         async handleAddExtraArea(baseProjectName) {
             const numToAdd = parseInt(prompt("How many extra areas do you want to add?", "1"), 10);
             if (isNaN(numToAdd) || numToAdd < 1) return; 
@@ -674,7 +677,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading(); 
             }
         },
-        // START: MODIFICATION
         async handleRollback(baseProjectName, fixToDelete) {
             if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
             this.showLoading(`Rolling back ${fixToDelete}...`);
@@ -727,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideLoading();
             }
         },
-        // END: MODIFICATION
         async handleReorganizeSheet(isSilent = false) {
             if (!isSilent) {
                 if (!confirm("This will reorganize the entire 'Projects' sheet by Project Name and Fix Stage, inserting blank rows and applying colors. This action cannot be undone. Are you sure?")) return;
@@ -925,6 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.hideFilterSpinner();
             }, 100);
         },
+        // START: MODIFICATION
         renderProjects(projectsToRender = this.state.projects) {
             const tableBody = this.elements.projectTableBody; const tableHead = this.elements.projectTableHead; tableBody.innerHTML = "";
             const headers = ['Fix Cat', 'Project Name', 'Area/Task', 'GSD', 'Assigned To', 'Status'];
@@ -938,10 +940,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = tableBody.insertRow();
                 row.innerHTML = `<td colspan="${headers.length}" style="text-align:center;padding:20px;">No projects found.</td>`; return;
             }
+
             const groupedByProject = projectsToRender.reduce((acc, project) => {
                 const key = project.baseProjectName || 'Uncategorized';
                 if (!acc[key]) acc[key] = []; acc[key].push(project); return acc;
             }, {});
+
+            // Determine the highest fix stage for each project
+            const highestFixStages = {};
+            for (const projectName in groupedByProject) {
+                const projectTasks = groupedByProject[projectName];
+                highestFixStages[projectName] = projectTasks.reduce((maxFix, task) => {
+                    const currentFixNum = parseInt((task.fixCategory || 'Fix0').replace('Fix', ''), 10);
+                    return Math.max(maxFix, currentFixNum);
+                }, 0);
+            }
+
             const sortedProjectKeys = Object.keys(groupedByProject).sort();
             sortedProjectKeys.forEach((projectName, projectIndex) => {
                 if (projectIndex > 0 && this.state.filters.project === 'All') {
@@ -977,6 +991,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const assignedToSelect = document.createElement('select');
                         assignedToSelect.innerHTML = '<option value="">Available</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
                         assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
+                        
+                        // Smart locking logic
+                        const highestFixForProject = highestFixStages[projectName];
+                        if (fixNum < highestFixForProject) {
+                            assignedToSelect.disabled = true;
+                        }
+                        
                         assignedToCell.appendChild(assignedToSelect);
                         
                         const statusCell = row.insertCell();
@@ -1041,18 +1062,34 @@ document.addEventListener('DOMContentLoaded', () => {
                          const doneBtn = document.createElement('button');
                         doneBtn.textContent = 'Done';
                         doneBtn.className = 'btn btn-success btn-small';
-                        doneBtn.disabled = project.status.includes('InProgress') || project.status === 'Completed' || project.status === 'Available';
+                        doneBtn.disabled = project.status.includes('InProgress') || project.status === 'Completed' || project.status === 'Available' || project.status === 'No Refix';
                         doneBtn.onclick = () => {
                             if (confirm('Are you sure you want to mark this project as "Completed"?')) {
                                 this.handleProjectUpdate(project.id, { 'status': 'Completed' });
                             }
                         };
                         btnGroup.appendChild(doneBtn);
+                        
+                        // "No Refix" button logic
+                        if (fixNum > 1) {
+                            const noRefixBtn = document.createElement('button');
+                            noRefixBtn.textContent = 'No Refix';
+                            noRefixBtn.className = 'btn btn-secondary btn-small';
+                            noRefixBtn.disabled = project.status === 'Completed' || project.status === 'No Refix';
+                            noRefixBtn.onclick = () => {
+                                if (confirm('Are you sure you want to mark this task as "No Refix"?')) {
+                                    this.handleProjectUpdate(project.id, { 'status': 'No Refix' });
+                                }
+                            };
+                            btnGroup.appendChild(noRefixBtn);
+                        }
+
                         actionsCell.appendChild(btnGroup);
                     });
                 });
             });
         },
+        // END: MODIFICATION
         renderUserManagement() {
             const tableBody = this.elements.userTableBody;
             tableBody.innerHTML = "";
@@ -1560,7 +1597,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.timeEditTitle.textContent = `Edit Day ${day} Time for ${project.areaTask}`;
             this.elements.timeEditModal.classList.add('is-open');
         },
-        // START: MODIFICATION
         async handleTimeEditSubmit(event) {
             event.preventDefault();
             const projectId = this.elements.timeEditProjectId.value;
@@ -1580,7 +1616,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await this.handleProjectUpdate(projectId, updates);
             this.elements.timeEditModal.classList.remove('is-open');
         },
-        // END: MODIFICATION
         showReleaseNotification(message, projectFilterValue) {
             this.elements.notificationMessage.textContent = message;
             this.elements.notificationModal.classList.add('is-open');
