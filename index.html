@@ -52,6 +52,20 @@
         .sidebar-header { text-align: center; margin-bottom: 20px; position: relative; }
         .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
         .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
+        
+        /* START: MODIFICATION */
+        .sidebar-nav {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Allows scrolling on small screens */
+            margin-bottom: 15px; /* Space for the sign out button */
+        }
+        #signOutBtn {
+            margin-top: auto; /* Pushes the sign out button to the bottom */
+        }
+        /* END: MODIFICATION */
+        
         .sidebar-nav button, .sidebar-nav a.btn-extra { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; text-decoration: none; }
         .sidebar-nav button:hover, .sidebar-nav button.active, .sidebar-nav a.btn-extra:hover { background-color: #475569; }
         .sidebar-nav button .icon, .sidebar-nav a.btn-extra .icon { font-size: 1.2em; }
@@ -130,11 +144,9 @@
         #techDashboardContainer { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; }
         .table-container { background-color: var(--card-bg-color); border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-light); padding: 20px; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .table-scroll-wrapper { width: 100%; flex-grow: 1; overflow: auto; }
-        /* START: MODIFICATION */
         #tlSummaryView .table-scroll-wrapper {
-            max-height: calc(100vh - 200px); /* Adjust this value as needed */
+            max-height: calc(100vh - 200px);
         }
-        /* END: MODIFICATION */
         .project-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
         .project-table th, .project-table td { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         .project-table th { background-color: #f8f9fa; font-weight: 600; text-align: left; position: sticky; top: 0; z-index: 10; }
@@ -486,18 +498,19 @@
                 <div id="notificationList"></div>
             </div>
             <div class="sidebar-nav">
-                <button id="openDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Dashboard</button>
-                <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
-                <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
-                <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
-                <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
-                <button id="openDisputeBtn"><i class="fas fa-exclamation-triangle icon"></i> Dispute</button>
-                <button id="openAdminSettingsBtn"><i class="fas fa-user-shield icon"></i> Admin Settings</button>
-                <hr>
-                <div id="extrasMenu"></div>
-                <hr>
-                <button id="signOutBtn" class="btn btn-danger" style="margin-top: auto;">Sign Out</button>
+                <div> <button id="openDashboardBtn" class="active"><i class="fas fa-tasks icon"></i> Dashboard</button>
+                    <button id="openNewProjectModalBtn"><i class="fas fa-plus icon"></i> Add Project</button>
+                    <button id="openTlSummaryBtn"><i class="fas fa-chart-line icon"></i> TL Summary</button>
+                    <button id="openProjectSettingsBtn"><i class="fas fa-cogs icon"></i> Project Settings</button>
+                    <button id="openUserManagementBtn"><i class="fas fa-users icon"></i> User Management</button>
+                    <button id="openDisputeBtn"><i class="fas fa-exclamation-triangle icon"></i> Dispute</button>
+                    <button id="openAdminSettingsBtn"><i class="fas fa-user-shield icon"></i> Admin Settings</button>
+                    <hr>
+                    <div id="extrasMenu"></div>
+                    <hr>
+                </div>
             </div>
+            <button id="signOutBtn" class="btn btn-danger">Sign Out</button>
         </aside>
 
         <main class="main-content">
