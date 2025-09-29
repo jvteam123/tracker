@@ -57,11 +57,11 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow-y: auto; 
+            overflow-y: auto;
             margin-bottom: 15px;
         }
         #signOutBtn {
-            margin-top: auto; 
+            margin-top: auto;
         }
         
         /* START: MODIFICATION */
@@ -78,6 +78,9 @@
         }
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
             background-color: #6c757d;
+        }
+        .sidebar-nav::-webkit-scrollbar-corner {
+            background: var(--text-color); /* Fixes the white corner bug */
         }
         /* END: MODIFICATION */
         
