@@ -65,7 +65,7 @@ This will be your database.
     * Give it a memorable name (e.g., "ProjectTrackerDB").
 
 2.  **Get the Spreadsheet ID:**
-    * The ID is in the URL of your spreadsheet. For example, if the URL is `https://docs.google.com/spreadsheets/d/15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY/edit`, the ID is `15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY`.
+    * The ID is in the URL of your spreadsheet. For example, if the URL is `https://docs.google.com/spreadsheets/d/1115bhPCYDLCheEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY/edit`, the ID is `15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY`.
     * Copy this ID.
 
 3.  **Create the Necessary Sheets (Tabs):**
