@@ -410,26 +410,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         populateFilterDropdowns() {
-    const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
-    this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
+            const projects = [...new Set(this.state.projects.map(p => p.baseProjectName).filter(Boolean))].sort();
+            this.elements.projectFilter.innerHTML = '<option value="All">All Projects</option>' + projects.map(p => `<option value="${p}">${this.formatProjectName(p)}</option>`).join('');
 
-    // Check if the currently selected filter is still a valid project
-    const currentFilterValue = this.state.filters.project;
-    const filterExists = projects.includes(currentFilterValue);
+            // Check if the currently selected filter is still a valid project
+            const currentFilterValue = this.state.filters.project;
+            const filterExists = projects.includes(currentFilterValue);
 
-    // If the filter is 'All' or if the project still exists, apply it.
-    // Otherwise, reset the filter to 'All' to prevent a blank dropdown.
-    if (currentFilterValue === 'All' || filterExists) {
-        this.elements.projectFilter.value = currentFilterValue;
-    } else {
-        this.state.filters.project = 'All';
-        this.elements.projectFilter.value = 'All';
-    }
+            // If the filter is 'All' or if the project still exists, apply it.
+            // Otherwise, reset the filter to 'All' to prevent a blank dropdown.
+            if (currentFilterValue === 'All' || filterExists) {
+                this.elements.projectFilter.value = currentFilterValue;
+            } else {
+                this.state.filters.project = 'All';
+                this.elements.projectFilter.value = 'All';
+            }
 
-    const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
-    this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
-    this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
-},
+            const fixCategories = [...new Set(this.state.projects.map(p => p.fixCategory).filter(Boolean))].sort();
+            this.elements.fixCategoryFilter.innerHTML = '<option value="All">All</option>' + fixCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            this.elements.fixCategoryFilter.value = this.state.filters.fixCategory;
+        },
+        // START: MODIFICATION
         async handleAddProjectSubmit(event) {
             event.preventDefault(); 
             const submitBtn = this.elements.newProjectForm.querySelector('button[type="submit"]');
@@ -438,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             const numRows = parseInt(document.getElementById('numRows').value, 10);
             const baseProjectName = document.getElementById('baseProjectName').value.trim();
+            const fixCategory = document.getElementById('fixCategory').value; // Read the selected fix stage
             
             if (!baseProjectName) {
                 alert("Project Name is required.");
@@ -458,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         baseProjectName,
                         areaTask: `Area${String(i).padStart(2, '0')}`, 
                         gsd, 
-                        fixCategory: "Fix1", 
+                        fixCategory: fixCategory, // Use the selected fix stage
                         status: "Available",
                         lastModifiedTimestamp: new Date().toISOString()
                     };
@@ -486,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = false;
             }
         },
+        // END: MODIFICATION
         calculateTotalMinutes(project) {
             let totalWorkMinutes = 0;
             for (let i = 1; i <= 5; i++) {
