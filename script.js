@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
+            cacheDuration: 5 * 60 * 1000, // 5 minutes in milliseconds
             sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications" },
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             USER_HEADER_MAP: { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' },
@@ -81,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         handleSignoutClick() {
             const token = gapi.client.getToken();
+            localStorage.removeItem('projectTrackerCache');
             if (token) {
                 google.accounts.oauth2.revoke(token.access_token, () => {
                     this.handleSignedOutUser();
@@ -114,17 +116,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == DATA HANDLING ================================================================
         // =================================================================================
-        // START: MODIFICATION - Robust Error Handler
         handleApiError(err) {
             console.error("API Error:", err);
             if (err.status === 401 || err.status === 403) {
                  alert("Your session has expired or you do not have permission. Please sign in again.");
                  this.handleSignoutClick();
-                 return true; // Indicates the error was handled (it was an auth error)
+                 return true;
             }
-            return false; // Indicates the error was NOT handled
+            return false;
         },
-        // END: MODIFICATION
         sheetValuesToObjects(values, headerMap) {
             if (!values || values.length < 2) return [];
             const headers = values[0];
@@ -134,7 +134,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 return obj;
             });
         },
-        async loadDataFromSheets() {
+        async loadDataFromSheets(forceRefresh = false) {
+            const cacheKey = 'projectTrackerCache';
+            
+            if (!forceRefresh) {
+                const cachedData = localStorage.getItem(cacheKey);
+                if (cachedData) {
+                    const { timestamp, data } = JSON.parse(cachedData);
+                    if (Date.now() - timestamp < this.config.cacheDuration) {
+                        console.log("Loading data from cache.");
+                        this.state = { ...this.state, ...data };
+                        this.populateFilterDropdowns();
+                        this.filterAndRenderProjects();
+                        this.renderExtrasMenu();
+                        this.renderNotificationBell();
+                        return;
+                    }
+                }
+            }
+            
             this.showLoading("Loading data from Google Sheets...");
             try {
                 const spreadsheet = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: this.config.google.SPREADSHEET_ID });
@@ -146,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS, this.config.sheetNames.NOTIFICATIONS, this.config.sheetNames.ARCHIVE],
                 });
+                
                 const valueRanges = response.result.valueRanges;
                 const projectsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.PROJECTS));
                 const usersData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.USERS));
@@ -154,18 +173,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const notificationsData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.NOTIFICATIONS));
                 const archiveData = valueRanges.find(range => range.range.startsWith(this.config.sheetNames.ARCHIVE));
 
-
-                let loadedProjects = (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP) : [];
-                this.state.projects = loadedProjects.filter(p => p.baseProjectName && p.baseProjectName.trim() !== "");
-                this.state.users = (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, this.config.USER_HEADER_MAP) : [];
-                this.state.disputes = (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [];
-                this.state.extras = (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [];
+                const dataToCache = {
+                    projects: (projectsData && projectsData.values) ? this.sheetValuesToObjects(projectsData.values, this.config.HEADER_MAP).filter(p => p.baseProjectName && p.baseProjectName.trim() !== "") : [],
+                    users: (usersData && usersData.values) ? this.sheetValuesToObjects(usersData.values, this.config.USER_HEADER_MAP) : [],
+                    disputes: (disputesData && disputesData.values) ? this.sheetValuesToObjects(disputesData.values, this.config.DISPUTE_HEADER_MAP) : [],
+                    extras: (extrasData && extrasData.values) ? this.sheetValuesToObjects(extrasData.values, this.config.EXTRAS_HEADER_MAP) : [],
+                    notifications: (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP).filter(n => n.message && n.timestamp) : [],
+                    archive: (archiveData && archiveData.values) ? this.sheetValuesToObjects(archiveData.values, this.config.HEADER_MAP) : [],
+                };
                 
-                let loadedNotifications = (notificationsData && notificationsData.values) ? this.sheetValuesToObjects(notificationsData.values, this.config.NOTIFICATIONS_HEADER_MAP) : [];
-                this.state.notifications = loadedNotifications.filter(n => n.message && n.timestamp);
-
-                this.state.archive = (archiveData && archiveData.values) ? this.sheetValuesToObjects(archiveData.values, this.config.HEADER_MAP) : [];
-
+                this.state = { ...this.state, ...dataToCache };
+                localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data: dataToCache }));
 
                 this.populateFilterDropdowns();
                 this.filterAndRenderProjects();
@@ -205,10 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     valueInputOption: 'USER_ENTERED',
                     resource: { values: values }
                 });
+                localStorage.removeItem('projectTrackerCache');
             } catch (err) {
                 if (!this.handleApiError(err)) {
                     alert("Failed to save changes. The data will be refreshed to prevent inconsistencies.");
-                    await this.loadDataFromSheets();
+                    await this.loadDataFromSheets(true);
                 }
             } finally {
                 this.hideLoading();
@@ -220,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${sheetName}!A1`,
                     valueInputOption: 'USER_ENTERED', resource: { values: rows }
                 });
+                localStorage.removeItem('projectTrackerCache');
             } catch (err) {
                 if (!this.handleApiError(err)) {
                     throw new Error("Failed to add data to Google Sheet.");
@@ -245,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await gapi.client.sheets.spreadsheets.batchUpdate({
                     spreadsheetId: this.config.google.SPREADSHEET_ID, resource: { requests },
                 });
+                localStorage.removeItem('projectTrackerCache');
             } catch (err) {
                 if (!this.handleApiError(err)) {
                     throw new Error("Could not delete rows from the sheet.");
@@ -262,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: document.body, authWrapper: document.getElementById('auth-wrapper'),
                 dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
                 loggedInUser: document.getElementById('loggedInUser'), signOutBtn: document.getElementById('signOutBtn'),
+                refreshDataBtn: document.getElementById('refreshDataBtn'),
                 projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
@@ -321,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         attachEventListeners() {
             this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
+            this.elements.refreshDataBtn.onclick = () => this.handleRefreshData();
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.classList.add('is-open');
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.classList.remove('is-open');
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
@@ -369,6 +392,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         },
+        // START: MODIFICATION - Refresh Button Cooldown
+        handleRefreshData() {
+            const refreshBtn = this.elements.refreshDataBtn;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = `<i class="fas fa-sync-alt icon"></i> Refreshing...`;
+
+            this.loadDataFromSheets(true);
+
+            setTimeout(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = `<i class="fas fa-sync-alt icon"></i> Refresh Data`;
+            }, this.config.cacheDuration);
+        },
+        // END: MODIFICATION
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
@@ -475,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             } catch (error) {
                 alert("Error adding projects: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally { 
                 this.hideLoading();
                 submitBtn.disabled = false;
@@ -618,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 alert("Error releasing fix: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
             }
@@ -661,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             } catch (error) {
                 alert("Error adding extra areas: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally { 
                 this.hideLoading(); 
             }
@@ -687,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`${fixToDelete} tasks have been deleted successfully.`);
             } catch(error) {
                 alert("Error rolling back project: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
                 this.renderProjectSettings();
             } finally {
                 this.hideLoading();
@@ -710,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Project '${this.formatProjectName(baseProjectName)}' has been deleted successfully.`);
             } catch(error) {
                 alert("Error deleting project: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
             }
@@ -721,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             this.showLoading("Reorganizing sheet...");
             try {
+                localStorage.removeItem('projectTrackerCache');
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!1:1`, });
                 const headers = getHeaders.result.values[0];
                 const sortedProjects = [...this.state.projects].sort((a, b) => {
@@ -784,15 +822,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (!isSilent) {
-                    await this.loadDataFromSheets();
+                    await this.loadDataFromSheets(true);
                     alert("Sheet reorganized and colored successfully!");
                 } else {
-                    await this.loadDataFromSheets();
+                    await this.loadDataFromSheets(true);
                 }
             } catch(error) {
                 if (!this.handleApiError(error)) {
                     alert("Error reorganizing sheet: " + error.message);
-                    await this.loadDataFromSheets();
+                    await this.loadDataFromSheets(true);
                 }
             } finally {
                 this.hideLoading();
@@ -1144,13 +1182,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
             }
             this.elements.userFormModal.classList.remove('is-open');
-            await this.loadDataFromSheets();
+            await this.loadDataFromSheets(true);
             this.renderUserManagement();
         },
         async handleDeleteUser(user) {
             if (confirm(`Are you sure you want to delete user: ${user.name}?`)) {
                 await this.deleteSheetRows(this.config.sheetNames.USERS, [user._row]);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
                 this.renderUserManagement();
             }
         },
@@ -1236,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.appendRowsToSheet(this.config.sheetNames.DISPUTES, newRow);
                 
                 this.elements.disputeForm.reset();
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
                 this.renderDisputes();
                 alert("Dispute saved successfully!");
 
@@ -1331,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm(`Are you sure you want to delete the dispute for project "${this.formatProjectName(dispute.projectName)}"?`)) {
                 try {
                     await this.deleteSheetRows(this.config.sheetNames.DISPUTES, [dispute._row]);
-                    await this.loadDataFromSheets();
+                    await this.loadDataFromSheets(true);
                     this.renderDisputes();
                     alert('Dispute deleted successfully.');
                 } catch (error) {
@@ -1504,12 +1542,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
         
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
                 alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
         
             } catch (error) {
                 alert("Error archiving projects: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
             }
@@ -1675,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await this.appendRowsToSheet(this.config.sheetNames.EXTRAS, newRow);
             }
             this.elements.extraFormModal.classList.remove('is-open');
-            await this.loadDataFromSheets();
+            await this.loadDataFromSheets(true);
             this.renderExtrasManagement();
         },
         async handleDeleteExtra(extraId) {
@@ -1684,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (confirm(`Are you sure you want to delete the link: ${extra.name}?`)) {
                 await this.deleteSheetRows(this.config.sheetNames.EXTRAS, [extra._row]);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
                 this.renderExtrasManagement();
             }
         },
@@ -1874,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 alert("Error creating follow-up task: " + error.message);
-                await this.loadDataFromSheets();
+                await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
             }
