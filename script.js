@@ -285,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
                 loggedInUser: document.getElementById('loggedInUser'), signOutBtn: document.getElementById('signOutBtn'),
                 refreshDataBtn: document.getElementById('refreshDataBtn'),
+                refreshDataBtnTlSummary: document.getElementById('refreshDataBtnTlSummary'), // New button reference
                 projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
@@ -341,11 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 archiveTable: document.getElementById('archiveTable'),
             };
         },
-        // END: MODIFICATION
         attachEventListeners() {
             this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
             this.elements.refreshDataBtn.onclick = () => this.handleRefreshData();
+            this.elements.refreshDataBtnTlSummary.onclick = () => this.handleRefreshData(); // New event listener
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.classList.add('is-open');
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.classList.remove('is-open');
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
@@ -394,36 +395,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         },
-        // START: MODIFICATION
         async handleRefreshData() {
-            const refreshBtn = this.elements.refreshDataBtn;
-            if (refreshBtn.disabled) return; // Do nothing if already on cooldown
+            const mainBtn = this.elements.refreshDataBtn;
+            const summaryBtn = this.elements.refreshDataBtnTlSummary;
+            if (mainBtn.disabled || summaryBtn.disabled) return;
 
-            refreshBtn.disabled = true;
-            const originalIconHTML = '<i class="fas fa-sync-alt"></i>';
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>'; // Spinning icon for feedback
-            refreshBtn.title = 'Refreshing...';
+            // Disable both buttons
+            mainBtn.disabled = true;
+            summaryBtn.disabled = true;
+
+            // Update main button visuals
+            mainBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
+            mainBtn.title = 'Refreshing...';
+
+            // Update summary button visuals
+            summaryBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin icon"></i> Refreshing...';
 
             try {
-                // Await the data load to ensure it finishes before starting the cooldown
                 await this.loadDataFromSheets(true);
             } catch (error) {
                 console.error("Failed to refresh data:", error);
-                // If there's an error, re-enable the button immediately
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = originalIconHTML;
-                refreshBtn.title = 'Refresh Data';
+                // On error, re-enable both and restore text
+                mainBtn.disabled = false;
+                mainBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                mainBtn.title = 'Refresh Data';
+                
+                summaryBtn.disabled = false;
+                summaryBtn.innerHTML = '<i class="fas fa-sync-alt icon"></i> Refresh Data';
                 return;
             }
 
-            // On success, start the cooldown period
-            refreshBtn.innerHTML = originalIconHTML; // Restore original icon
-            refreshBtn.title = `On cooldown for 5 minutes.`;
-
+            // On success, start cooldown and update visuals
+            mainBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+            mainBtn.title = `On cooldown for 5 minutes.`;
+            
+            summaryBtn.innerHTML = '<i class="fas fa-sync-alt icon"></i> On Cooldown';
+            
             setTimeout(() => {
-                refreshBtn.disabled = false;
-                refreshBtn.title = 'Refresh Data';
-            }, this.config.cacheDuration); // Cooldown for the duration specified in the config (5 minutes)
+                mainBtn.disabled = false;
+                mainBtn.title = 'Refresh Data';
+
+                summaryBtn.disabled = false;
+                summaryBtn.innerHTML = '<i class="fas fa-sync-alt icon"></i> Refresh Data';
+            }, this.config.cacheDuration);
         },
         // END: MODIFICATION
         switchView(viewName) {
