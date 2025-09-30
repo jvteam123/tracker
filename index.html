@@ -64,7 +64,6 @@
             margin-top: auto;
         }
         
-        /* START: MODIFICATION */
         .sidebar-nav::-webkit-scrollbar {
             width: 8px;
         }
@@ -82,7 +81,6 @@
         .sidebar-nav::-webkit-scrollbar-corner {
             background: var(--text-color); /* Fixes the white corner bug */
         }
-        /* END: MODIFICATION */
         
         .sidebar-nav button, .sidebar-nav a.btn-extra { display: flex; align-items: center; width: 100%; padding: 12px 15px; margin-bottom: 10px; background-color: transparent; border: none; color: #ecf0f1; font-size: 1.1em; cursor: pointer; border-radius: var(--border-radius-md); transition: background-color: 0.3s ease; text-align: left; gap: 12px; text-decoration: none; }
         .sidebar-nav button:hover, .sidebar-nav button.active, .sidebar-nav a.btn-extra:hover { background-color: #475569; }
@@ -553,7 +551,10 @@
                         <input type="checkbox" id="showDay4"><label for="showDay4">Show Day 4</label>
                         <input type="checkbox" id="showDay5"><label for="showDay5">Show Day 5</label>
                     </div>
-                </div>
+                    <div class="filter-group" style="margin-left: auto;">
+                        <button id="refreshDataBtn" class="btn btn-secondary" title="Refresh Data"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    </div>
                  <div id="techDashboard" class="table-container">
                     <div class="table-scroll-wrapper">
                         <table id="projectTable" class="project-table">
@@ -569,7 +570,6 @@
             <div id="tlSummaryView" class="table-container" style="display: none;">
                 <div class="view-header">
                     <h2>Project Summary</h2>
-                    <button id="refreshDataBtn" class="btn btn-primary"><i class="fas fa-sync-alt icon"></i> Refresh Data</button>
                 </div>
                 <div class="table-scroll-wrapper">
                     <table id="summaryTable" class="project-table">
