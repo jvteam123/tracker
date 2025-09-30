@@ -347,53 +347,43 @@
                     if (projectNames.length === 0) {
                         this.elements.projectGrid.innerHTML = '<p>No active project data found.</p>';
                     } else {
+                        let projectsAwaiting = 0;
                         projectNames.forEach(projectName => {
-                            const card = document.createElement('div');
-                            card.className = 'project-card';
-                            
                             const project = projectData[projectName];
                             const stages = project.stages;
-                            const sortedStages = Object.keys(stages).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-                            let stagesHTML = '';
-                            sortedStages.forEach(stageName => {
-                                const stage = stages[stageName];
-                                const progress = stage.total > 0 ? (stage.completed / stage.total) * 100 : 0;
-                                stagesHTML += `
-                                    <div class="stage-item">
-                                        <div class="stage-header">
-                                            <span class="stage-name">${stageName}</span>
-                                            <span class="stage-progress-text">${stage.completed} / ${stage.total}</span>
-                                        </div>
-                                        <div class="progress-bar">
-                                            <div class="progress-bar-fill ${progress === 100 ? 'complete' : ''}" style="width: ${progress.toFixed(2)}%;"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            });
-                            
-                            let awaitingStatusHTML = '';
                             if (project.latestStageNum > 0) {
-                                awaitingStatusHTML = `
-                                    <div class="stage-item">
-                                        <div class="stage-header">
-                                            <span class="stage-name" style="color: var(--warning-color);">${project.nextStage}</span>
-                                            <span class="stage-progress-text">Awaiting Release</span>
+                                const latestStageName = `Fix${project.latestStageNum}`;
+                                const latestStage = stages[latestStageName];
+                                if (latestStage && latestStage.total > 0 && latestStage.completed === latestStage.total) {
+                                    projectsAwaiting++;
+                                    const card = document.createElement('div');
+                                    card.className = 'project-card';
+                                    
+                                    const awaitingStatusHTML = `
+                                        <div class="stage-item">
+                                            <div class="stage-header">
+                                                <span class="stage-name" style="color: var(--warning-color);">${project.nextStage}</span>
+                                                <span class="stage-progress-text">Awaiting Release</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-bar-fill waiting" style="width: 100%;"></div>
+                                            </div>
                                         </div>
-                                        <div class="progress-bar">
-                                            <div class="progress-bar-fill waiting" style="width: 100%;"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            }
+                                    `;
 
-                            card.innerHTML = `
-                                <h2>${projectName.replace(/_/g, ' ')}</h2>
-                                ${stagesHTML}
-                                ${awaitingStatusHTML}
-                            `;
-                            this.elements.projectGrid.appendChild(card);
+                                    card.innerHTML = `
+                                        <h2>${projectName.replace(/_/g, ' ')}</h2>
+                                        ${awaitingStatusHTML}
+                                    `;
+                                    this.elements.projectGrid.appendChild(card);
+                                }
+                            }
                         });
+
+                        if(projectsAwaiting === 0) {
+                             this.elements.projectGrid.innerHTML = '<p>No projects are currently awaiting for the next stage.</p>';
+                        }
                     }
                     this.updateTimestamp();
                 },
@@ -418,4 +408,3 @@
     </script>
 </body>
 </html>
-
