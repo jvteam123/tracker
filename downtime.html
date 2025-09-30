@@ -9,13 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --card-bg-color: rgba(255, 255, 255, 0.75);
+            --card-bg-color: rgba(255, 255, 255, 0.8);
             --text-color: #2c3e50;
             --secondary-text-color: #5a6d7f;
             --accent-color: #3498db;
             --success-color: #27ae60;
             --warning-color: #f39c12;
-            --border-color: rgba(255, 255, 255, 0.5);
+            --border-color: rgba(255, 255, 255, 0.6);
             --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             --border-radius-lg: 16px;
         }
@@ -33,7 +33,7 @@
             line-height: 1.6;
             display: flex;
             justify-content: center;
-            align-items: center; /* Center vertically for the initial load */
+            align-items: center;
             padding: 40px 20px;
             box-sizing: border-box;
             overflow-y: auto;
@@ -53,16 +53,9 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
+            transition: all 0.3s ease;
         }
         
-        /* Loading State */
-        #loading-container {
-            display: flex; /* Initially visible */
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 300px;
-        }
         .animated-icon {
             width: 80px;
             height: 80px;
@@ -109,11 +102,17 @@
         }
 
         .project-card {
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: #ffffff;
             border-radius: var(--border-radius-lg);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
             padding: 25px;
             text-align: left;
+            border: 1px solid #e7eaf3;
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.1);
         }
 
         .project-card h2 {
@@ -144,7 +143,7 @@
             background-color: #e9ecef;
             border-radius: 25px;
             overflow: hidden;
-            height: 8px;
+            height: 10px;
         }
         .progress-bar-fill {
             height: 100%;
@@ -155,32 +154,26 @@
         .progress-bar-fill.complete {
              background: linear-gradient(90deg, var(--success-color), #58d68d);
         }
-        .awaiting-status {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px dashed #d0d0d0;
-            text-align: center;
-            font-weight: 500;
-            color: var(--warning-color);
-            font-size: 1.05em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
 
-        .awaiting-status .waiting-dot {
-            width: 10px;
-            height: 10px;
+        /* Animated Waiting Bar */
+        .progress-bar-fill.waiting {
             background-color: var(--warning-color);
-            border-radius: 50%;
-            animation: waiting-pulse 1.5s ease-in-out infinite;
+            background-image: linear-gradient(
+                -45deg, 
+                rgba(255,255,255, .2) 25%, 
+                transparent 25%, 
+                transparent 50%, 
+                rgba(255,255,255, .2) 50%, 
+                rgba(255,255,255, .2) 75%, 
+                transparent 75%, 
+                transparent
+            );
+            background-size: 40px 40px;
+            animation: animate-stripes 2s linear infinite;
         }
-
-        @keyframes waiting-pulse {
-            0% { transform: scale(0.8); opacity: 0.7; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.8); opacity: 0.7; }
+        @keyframes animate-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 80px 0; }
         }
 
         .footer-info {
@@ -199,21 +192,25 @@
 <body>
 
     <main class="main-card">
-        <div id="loading-container">
-            <svg class="animated-icon" viewBox="0 0 40 40">
+        <div id="loading-container" style="display: none;">
+             <svg class="animated-icon" viewBox="0 0 40 40">
                 <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
             </svg>
             <h1>Loading Project Status</h1>
             <p>Please wait while we fetch the latest data.</p>
         </div>
 
-        <div id="content-container" style="display: none;">
+        <div id="content-container">
+            <svg class="animated-icon" viewBox="0 0 40 40">
+                <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
+            </svg>
             <h2 class="downtime-title">D O W N T I M E</h2>
             <h1>Awaiting New Projects</h1>
             <p class="subtitle">There are no projects available for assignment. Please stand by. Below is the live status of all current projects.</p>
             
             <div id="project-grid">
-                <!-- Project cards will be injected here -->
+                <!-- Fallback content while loading -->
+                <p>Fetching project data...</p>
             </div>
 
             <div class="footer-info">
@@ -323,6 +320,7 @@
 
                         if (latestStageNum > 0) {
                             const latestStageName = `Fix${latestStageNum}`;
+                            project.latestStageName = latestStageName; // Store the latest stage name
                             const latestStageData = project.stages[latestStageName];
                             if (latestStageData && latestStageData.total > 0 && latestStageData.completed === latestStageData.total) {
                                 project.isAwaitingRelease = true;
@@ -334,8 +332,6 @@
                 },
 
                 render(projectData) {
-                    // Switch from loading view to content view
-                    document.body.style.alignItems = 'flex-start'; // Align to top for scrolling
                     this.elements.loadingContainer.style.display = 'none';
                     this.elements.contentContainer.style.display = 'block';
                     this.elements.projectGrid.innerHTML = '';
@@ -343,9 +339,7 @@
                     const projectNames = Object.keys(projectData).sort();
 
                     if (projectNames.length === 0) {
-                        const noProjectsEl = document.createElement('p');
-                        noProjectsEl.textContent = 'No active project data found.';
-                        this.elements.projectGrid.appendChild(noProjectsEl);
+                        this.elements.projectGrid.innerHTML = '<p>No active project data found.</p>';
                     } else {
                         projectNames.forEach(projectName => {
                             const card = document.createElement('div');
@@ -370,17 +364,22 @@
                                         </div>
                                     </div>
                                 `;
-                            });
 
-                            let awaitingStatusHTML = '';
-                            if (project.isAwaitingRelease) {
-                                awaitingStatusHTML = `
-                                    <div class="awaiting-status">
-                                        <div class="waiting-dot"></div>
-                                        <span>Waiting for ${project.nextStage}</span>
-                                    </div>
-                                `;
-                            }
+                                // If this is the latest stage and it's complete, add the waiting bar
+                                if (project.isAwaitingRelease && stageName === project.latestStageName) {
+                                    stagesHTML += `
+                                        <div class="stage-item">
+                                            <div class="stage-header">
+                                                <span class="stage-name" style="color: var(--warning-color);">${project.nextStage}</span>
+                                                <span class="stage-progress-text">Awaiting Release</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-bar-fill waiting" style="width: 100%;"></div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                            });
                             
                             const overallProgress = project.totalTasks > 0 ? (project.totalCompleted / project.totalTasks) * 100 : 0;
 
@@ -396,7 +395,6 @@
                                     </div>
                                 </div>
                                 ${stagesHTML}
-                                ${awaitingStatusHTML}
                             `;
                             this.elements.projectGrid.appendChild(card);
                         });
@@ -420,3 +418,4 @@
     </script>
 </body>
 </html>
+
