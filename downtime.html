@@ -117,9 +117,13 @@
         }
 
         .project-card h2 {
-            margin: 0 0 20px 0;
+            margin: 0 0 10px 0;
             font-size: 1.4em;
             font-weight: 600;
+        }
+
+        .project-overall-progress {
+            margin-bottom: 20px;
             border-bottom: 1px solid #e0e0e0;
             padding-bottom: 15px;
         }
@@ -159,6 +163,24 @@
             font-weight: 500;
             color: var(--warning-color);
             font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .awaiting-status .waiting-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--warning-color);
+            border-radius: 50%;
+            animation: waiting-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes waiting-pulse {
+            0% { transform: scale(0.8); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.7; }
         }
 
         .footer-info {
@@ -275,15 +297,17 @@
                     
                     const groupedByProject = projects.reduce((acc, task) => {
                         const projectName = task.baseProjectName;
-                        if (!acc[projectName]) acc[projectName] = { stages: {} };
+                        if (!acc[projectName]) acc[projectName] = { stages: {}, totalTasks: 0, totalCompleted: 0 };
                         
                         const stage = task.fixCategory || 'Uncategorized';
                         if (!acc[projectName].stages[stage]) {
                             acc[projectName].stages[stage] = { total: 0, completed: 0 };
                         }
                         acc[projectName].stages[stage].total++;
+                        acc[projectName].totalTasks++;
                         if (task.status === 'Completed') {
                             acc[projectName].stages[stage].completed++;
+                            acc[projectName].totalCompleted++;
                         }
                         return acc;
                     }, {});
@@ -327,11 +351,11 @@
                             const card = document.createElement('div');
                             card.className = 'project-card';
                             
-                            let stagesHTML = '';
                             const project = projectData[projectName];
                             const stages = project.stages;
                             const sortedStages = Object.keys(stages).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
+                            let stagesHTML = '';
                             sortedStages.forEach(stageName => {
                                 const stage = stages[stageName];
                                 const progress = stage.total > 0 ? (stage.completed / stage.total) * 100 : 0;
@@ -350,11 +374,27 @@
 
                             let awaitingStatusHTML = '';
                             if (project.isAwaitingRelease) {
-                                awaitingStatusHTML = `<div class="awaiting-status">Waiting for ${project.nextStage}</div>`;
+                                awaitingStatusHTML = `
+                                    <div class="awaiting-status">
+                                        <div class="waiting-dot"></div>
+                                        <span>Waiting for ${project.nextStage}</span>
+                                    </div>
+                                `;
                             }
                             
+                            const overallProgress = project.totalTasks > 0 ? (project.totalCompleted / project.totalTasks) * 100 : 0;
+
                             card.innerHTML = `
                                 <h2>${projectName.replace(/_/g, ' ')}</h2>
+                                <div class="project-overall-progress">
+                                    <div class="stage-header">
+                                        <span class="stage-name">Overall Progress</span>
+                                        <span class="stage-progress-text">${project.totalCompleted} / ${project.totalTasks} Total Tasks</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-bar-fill ${overallProgress === 100 ? 'complete' : ''}" style="width: ${overallProgress.toFixed(2)}%;"></div>
+                                    </div>
+                                </div>
                                 ${stagesHTML}
                                 ${awaitingStatusHTML}
                             `;
@@ -380,4 +420,3 @@
     </script>
 </body>
 </html>
-
