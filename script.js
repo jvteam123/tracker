@@ -278,14 +278,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // =================================================================================
         // == UI AND EVENT LOGIC ===========================================================
         // =================================================================================
-        // START: MODIFICATION
         setupDOMReferences() {
             this.elements = {
                 body: document.body, authWrapper: document.getElementById('auth-wrapper'),
                 dashboardWrapper: document.querySelector('.dashboard-wrapper'), signInBtn: document.getElementById('signInBtn'),
                 loggedInUser: document.getElementById('loggedInUser'), signOutBtn: document.getElementById('signOutBtn'),
                 refreshDataBtn: document.getElementById('refreshDataBtn'),
-                refreshDataBtnTlSummary: document.getElementById('refreshDataBtnTlSummary'), // New button reference
+                refreshDataBtnTlSummary: document.getElementById('refreshDataBtnTlSummary'),
                 projectTable: document.getElementById('projectTable'),
                 projectTableHead: document.getElementById('projectTable').querySelector('thead tr'), projectTableBody: document.getElementById('projectTableBody'),
                 loadingOverlay: document.getElementById('loadingOverlay'), openNewProjectModalBtn: document.getElementById('openNewProjectModalBtn'),
@@ -299,6 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fixCategoryFilter: document.getElementById('fixCategoryFilter'),
                 dayCheckboxes: { 2: document.getElementById('showDay2'), 3: document.getElementById('showDay3'), 4: document.getElementById('showDay4'), 5: document.getElementById('showDay5'),},
                 openDashboardBtn: document.getElementById('openDashboardBtn'),
+                openDowntimePageBtn: document.getElementById('openDowntimePageBtn'),
                 openProjectSettingsBtn: document.getElementById('openProjectSettingsBtn'), techDashboardContainer: document.getElementById('techDashboardContainer'),
                 projectSettingsView: document.getElementById('projectSettingsView'),
                 openTlSummaryBtn: document.getElementById('openTlSummaryBtn'), tlSummaryView: document.getElementById('tlSummaryView'),
@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.signInBtn.onclick = () => this.handleAuthClick();
             this.elements.signOutBtn.onclick = () => this.handleSignoutClick();
             this.elements.refreshDataBtn.onclick = () => this.handleRefreshData();
-            this.elements.refreshDataBtnTlSummary.onclick = () => this.handleRefreshData(); // New event listener
+            this.elements.refreshDataBtnTlSummary.onclick = () => this.handleRefreshData();
             this.elements.openNewProjectModalBtn.onclick = () => this.elements.projectFormModal.classList.add('is-open');
             this.elements.closeProjectFormBtn.onclick = () => this.elements.projectFormModal.classList.remove('is-open');
             this.elements.newProjectForm.addEventListener('submit', (e) => this.handleAddProjectSubmit(e));
@@ -377,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.copyArchiveBtn.onclick = () => this.handleCopyArchive();
 
             this.elements.openDashboardBtn.onclick = () => this.switchView('dashboard');
+            this.elements.openDowntimePageBtn.onclick = () => { window.location.href = 'downtime.html'; };
             this.elements.openProjectSettingsBtn.onclick = () => this.switchView('settings');
             this.elements.openTlSummaryBtn.onclick = () => this.switchView('summary');
             this.elements.openUserManagementBtn.onclick = () => this.switchView('users');
@@ -439,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 summaryBtn.innerHTML = '<i class="fas fa-sync-alt icon"></i> Refresh Data';
             }, this.config.cacheDuration);
         },
-        // END: MODIFICATION
         switchView(viewName) {
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
