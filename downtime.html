@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --card-bg-color: rgba(255, 255, 255, 0.8);
+            --card-bg-color: rgba(255, 255, 255, 0.85);
             --text-color: #2c3e50;
             --secondary-text-color: #5a6d7f;
             --accent-color: #3498db;
@@ -47,7 +47,7 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--border-color);
             padding: 40px;
-            max-width: 800px;
+            max-width: 850px;
             width: 100%;
             display: flex;
             flex-direction: column;
@@ -57,9 +57,9 @@
         }
         
         .animated-icon {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 25px;
+            width: 70px;
+            height: 70px;
+            margin-bottom: 20px;
         }
         .animated-icon .circle {
             stroke: var(--accent-color);
@@ -72,13 +72,28 @@
             50% { transform: scale(1); opacity: 1; }
         }
         
-        /* Content State */
         .downtime-title {
-            font-size: 1.8em;
+            font-size: 2.2em;
             font-weight: 700;
-            letter-spacing: 0.3em;
-            color: var(--secondary-text-color);
-            margin: 0 0 15px 0;
+            letter-spacing: 0.4em;
+            margin: 0 0 25px 0;
+            padding-bottom: 15px;
+            position: relative;
+            color: #485563;
+            background: linear-gradient(135deg, #29323c 0%, #485563 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .downtime-title::after {
+            content: '';
+            position: absolute;
+            display: block;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #bdc3c7, transparent);
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
         }
         
         #content-container h1 {
@@ -116,15 +131,11 @@
         }
 
         .project-card h2 {
-            margin: 0 0 10px 0;
+            margin: 0 0 20px 0;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
             font-size: 1.4em;
             font-weight: 600;
-        }
-
-        .project-overall-progress {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 15px;
         }
 
         .stage-item { margin-bottom: 15px; }
@@ -155,7 +166,6 @@
              background: linear-gradient(90deg, var(--success-color), #58d68d);
         }
 
-        /* Animated Waiting Bar */
         .progress-bar-fill.waiting {
             background-color: var(--warning-color);
             background-image: linear-gradient(
@@ -206,15 +216,14 @@
             </svg>
             <h2 class="downtime-title">D O W N T I M E</h2>
             <h1>Awaiting New Projects</h1>
-            <p class="subtitle">There are no projects available for assignment. Please stand by. Below is the live status of all current projects.</p>
+            <p class="subtitle">There are no projects available for assignment. Tech are on stand by. Below is the live status of all current projects.</p>
             
             <div id="project-grid">
-                <!-- Fallback content while loading -->
                 <p>Fetching project data...</p>
             </div>
 
             <div class="footer-info">
-                Last checked: <span id="last-checked-time">--:--</span>. This page does not refresh automatically.
+                <span id="current-date"></span> &bull; <span id="current-time"></span>
             </div>
         </div>
         
@@ -230,7 +239,8 @@
                     contentContainer: document.getElementById('content-container'),
                     projectGrid: document.getElementById('project-grid'),
                     errorMessage: document.getElementById('error-message'),
-                    lastCheckedTime: document.getElementById('last-checked-time'),
+                    currentDate: document.getElementById('current-date'),
+                    currentTime: document.getElementById('current-time'),
                 },
                 config: {
                     google: {
@@ -242,7 +252,6 @@
                 },
 
                 init() {
-                    // Start in a loading state, even if brief
                     this.elements.contentContainer.style.display = 'none';
                     this.elements.loadingContainer.style.display = 'flex';
                     document.body.style.alignItems = 'center';
@@ -299,17 +308,15 @@
                     
                     const groupedByProject = projects.reduce((acc, task) => {
                         const projectName = task.baseProjectName;
-                        if (!acc[projectName]) acc[projectName] = { stages: {}, totalTasks: 0, totalCompleted: 0 };
+                        if (!acc[projectName]) acc[projectName] = { stages: {} };
                         
                         const stage = task.fixCategory || 'Uncategorized';
                         if (!acc[projectName].stages[stage]) {
                             acc[projectName].stages[stage] = { total: 0, completed: 0 };
                         }
                         acc[projectName].stages[stage].total++;
-                        acc[projectName].totalTasks++;
                         if (task.status === 'Completed') {
                             acc[projectName].stages[stage].completed++;
-                            acc[projectName].totalCompleted++;
                         }
                         return acc;
                     }, {});
@@ -365,9 +372,6 @@
                                 `;
                             });
                             
-                            const overallProgress = project.totalTasks > 0 ? (project.totalCompleted / project.totalTasks) * 100 : 0;
-                            
-                            // Add the awaiting bar if any stage exists
                             let awaitingStatusHTML = '';
                             if (project.latestStageNum > 0) {
                                 awaitingStatusHTML = `
@@ -383,18 +387,8 @@
                                 `;
                             }
 
-
                             card.innerHTML = `
                                 <h2>${projectName.replace(/_/g, ' ')}</h2>
-                                <div class="project-overall-progress">
-                                    <div class="stage-header">
-                                        <span class="stage-name">Overall Progress</span>
-                                        <span class="stage-progress-text">${project.totalCompleted} / ${project.totalTasks} Total Tasks</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-bar-fill ${overallProgress === 100 ? 'complete' : ''}" style="width: ${overallProgress.toFixed(2)}%;"></div>
-                                    </div>
-                                </div>
                                 ${stagesHTML}
                                 ${awaitingStatusHTML}
                             `;
@@ -406,7 +400,11 @@
 
                 updateTimestamp() {
                     const now = new Date();
-                    this.elements.lastCheckedTime.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+
+                    this.elements.currentDate.textContent = now.toLocaleDateString(undefined, dateOptions);
+                    this.elements.currentTime.textContent = now.toLocaleTimeString([], timeOptions);
                 },
 
                 showError(message) {
