@@ -192,15 +192,15 @@
 <body>
 
     <main class="main-card">
-        <div id="loading-container" style="display: none;">
-             <svg class="animated-icon" viewBox="0 0 40 40">
+        <div id="loading-container">
+            <svg class="animated-icon" viewBox="0 0 40 40">
                 <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
             </svg>
             <h1>Loading Project Status</h1>
             <p>Please wait while we fetch the latest data.</p>
         </div>
 
-        <div id="content-container">
+        <div id="content-container" style="display: none;">
             <svg class="animated-icon" viewBox="0 0 40 40">
                 <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
             </svg>
@@ -242,6 +242,11 @@
                 },
 
                 init() {
+                    // Start in a loading state, even if brief
+                    this.elements.contentContainer.style.display = 'none';
+                    this.elements.loadingContainer.style.display = 'flex';
+                    document.body.style.alignItems = 'center';
+
                     gapi.load('client', this.initializeGapiClient.bind(this));
                 },
 
@@ -317,21 +322,15 @@
                             const num = parseInt((stageName || 'Fix0').replace('Fix', ''), 10);
                             return Math.max(max, num);
                         }, 0);
-
-                        if (latestStageNum > 0) {
-                            const latestStageName = `Fix${latestStageNum}`;
-                            project.latestStageName = latestStageName; // Store the latest stage name
-                            const latestStageData = project.stages[latestStageName];
-                            if (latestStageData && latestStageData.total > 0 && latestStageData.completed === latestStageData.total) {
-                                project.isAwaitingRelease = true;
-                                project.nextStage = `Fix${latestStageNum + 1}`;
-                            }
-                        }
+                        
+                        project.latestStageNum = latestStageNum;
+                        project.nextStage = `Fix${latestStageNum + 1}`;
                     }
                     return groupedByProject;
                 },
 
                 render(projectData) {
+                    document.body.style.alignItems = 'flex-start';
                     this.elements.loadingContainer.style.display = 'none';
                     this.elements.contentContainer.style.display = 'block';
                     this.elements.projectGrid.innerHTML = '';
@@ -364,24 +363,26 @@
                                         </div>
                                     </div>
                                 `;
-
-                                // If this is the latest stage and it's complete, add the waiting bar
-                                if (project.isAwaitingRelease && stageName === project.latestStageName) {
-                                    stagesHTML += `
-                                        <div class="stage-item">
-                                            <div class="stage-header">
-                                                <span class="stage-name" style="color: var(--warning-color);">${project.nextStage}</span>
-                                                <span class="stage-progress-text">Awaiting Release</span>
-                                            </div>
-                                            <div class="progress-bar">
-                                                <div class="progress-bar-fill waiting" style="width: 100%;"></div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }
                             });
                             
                             const overallProgress = project.totalTasks > 0 ? (project.totalCompleted / project.totalTasks) * 100 : 0;
+                            
+                            // Add the awaiting bar if any stage exists
+                            let awaitingStatusHTML = '';
+                            if (project.latestStageNum > 0) {
+                                awaitingStatusHTML = `
+                                    <div class="stage-item">
+                                        <div class="stage-header">
+                                            <span class="stage-name" style="color: var(--warning-color);">${project.nextStage}</span>
+                                            <span class="stage-progress-text">Awaiting Release</span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-bar-fill waiting" style="width: 100%;"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
 
                             card.innerHTML = `
                                 <h2>${projectName.replace(/_/g, ' ')}</h2>
@@ -395,6 +396,7 @@
                                     </div>
                                 </div>
                                 ${stagesHTML}
+                                ${awaitingStatusHTML}
                             `;
                             this.elements.projectGrid.appendChild(card);
                         });
