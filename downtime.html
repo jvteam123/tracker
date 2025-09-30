@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Correction Workflow - Awaiting Projects</title>
-    <meta http-equiv="refresh" content="300">
+    <title>Correction Workflow - Downtime Status</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --card-bg-color: rgba(255, 255, 255, 0.85);
+            --card-bg-color: rgba(255, 255, 255, 0.75);
             --text-color: #2c3e50;
             --secondary-text-color: #5a6d7f;
             --accent-color: #3498db;
-            --success-color: #2ecc71;
-            --border-color: rgba(255, 255, 255, 0.6);
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --border-color: rgba(255, 255, 255, 0.5);
             --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             --border-radius-lg: 16px;
         }
@@ -30,211 +30,196 @@
             font-family: 'Inter', Arial, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             color: var(--text-color);
-            line-height: 1.7;
+            line-height: 1.6;
             display: flex;
             justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
+            align-items: center; /* Center vertically for the initial load */
+            padding: 40px 20px;
             box-sizing: border-box;
+            overflow-y: auto;
         }
-
-        .downtime-container {
+        
+        .main-card {
             background-color: var(--card-bg-color);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: var(--border-radius-lg);
             box-shadow: var(--shadow);
             border: 1px solid var(--border-color);
             padding: 40px;
-            max-width: 700px;
+            max-width: 800px;
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
         }
-
-        /* Spinner Animation */
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(44, 62, 80, 0.2);
-            border-top-color: var(--accent-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+        
+        /* Loading State */
+        #loading-container {
+            display: flex; /* Initially visible */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .animated-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 25px;
         }
-
-        .downtime-container h1 {
+        .animated-icon .circle {
+            stroke: var(--accent-color);
+            stroke-width: 2;
+            fill: none;
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Content State */
+        .downtime-title {
             font-size: 1.8em;
             font-weight: 700;
-            margin-top: 0;
-            margin-bottom: 10px;
+            letter-spacing: 0.3em;
+            color: var(--secondary-text-color);
+            margin: 0 0 15px 0;
         }
-
-        .downtime-container .subtitle {
+        
+        #content-container h1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        
+        #content-container .subtitle {
             color: var(--secondary-text-color);
             margin-bottom: 30px;
             font-size: 1.1em;
-            max-width: 500px;
         }
 
-        .activity-header {
+        #project-grid {
             width: 100%;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+            margin-top: 20px;
         }
 
-        .activity-header h2 {
-            font-size: 1.2em;
-            margin: 0 0 10px 0;
+        .project-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 25px;
+            text-align: left;
+        }
+
+        .project-card h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.4em;
             font-weight: 600;
-        }
-        
-        #project-list-container {
-            width: 100%;
-            max-height: 250px;
-            overflow-y: auto;
-            padding-right: 10px; /* space for scrollbar */
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 15px;
         }
 
-        /* Custom Scrollbar */
-        #project-list-container::-webkit-scrollbar { width: 6px; }
-        #project-list-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
-        #project-list-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
-        #project-list-container::-webkit-scrollbar-thumb:hover { background: #aaa; }
-
-        .project-item {
-            display: flex;
-            flex-direction: column;
-            text-align: left;
-            background: rgba(245, 247, 250, 0.8);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .project-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .project-header {
+        .stage-item { margin-bottom: 15px; }
+        .stage-item:last-child { margin-bottom: 0; }
+        .stage-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
+            font-size: 0.95em;
         }
-
-        .project-header .project-name {
-            font-weight: 600;
-            font-size: 1.05em;
-        }
-
-        .project-header .project-progress-text {
-            font-size: 0.9em;
-            color: var(--secondary-text-color);
-        }
-        
+        .stage-header .stage-name { font-weight: 500; }
+        .stage-header .stage-progress-text { color: var(--secondary-text-color); }
         .progress-bar {
             width: 100%;
             background-color: #e9ecef;
             border-radius: 25px;
             overflow: hidden;
-            height: 10px;
+            height: 8px;
         }
-
         .progress-bar-fill {
             height: 100%;
-            background-color: var(--success-color);
+            background: linear-gradient(90deg, var(--accent-color), #85c1e9);
             border-radius: 25px;
             transition: width 0.5s ease-in-out;
         }
-
-        #no-activity-message {
-            color: var(--secondary-text-color);
-            padding: 40px 0;
+        .progress-bar-fill.complete {
+             background: linear-gradient(90deg, var(--success-color), #58d68d);
+        }
+        .awaiting-status {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px dashed #d0d0d0;
+            text-align: center;
+            font-weight: 500;
+            color: var(--warning-color);
+            font-size: 1.05em;
         }
 
-        .standby-message {
+        .footer-info {
             font-size: 0.9em;
             color: var(--secondary-text-color);
             border-top: 1px solid #e0e0e0;
             width: 100%;
             padding-top: 20px;
-            margin-top: 20px;
-            margin-bottom: 0;
+            margin-top: 25px;
         }
 
+        #error-message { color: #e74c3c; font-size: 1.1em; }
     </style>
     <link rel="icon" type="image/png" href="icon.png">
 </head>
 <body>
 
-    <div id="loading-container" class="downtime-container">
-        <div class="spinner"></div>
-        <h1>Connecting to Workflow...</h1>
-        <p class="subtitle">Checking for project updates. Please wait.</p>
-    </div>
-
-    <div id="content-container" class="downtime-container" style="display: none;">
-        <h1>Awaiting New Projects</h1>
-        <p class="subtitle">There are no projects available for assignment. The list below shows the most recently completed work.</p>
-        
-        <div class="activity-header">
-            <h2>Recent Activity</h2>
-        </div>
-        
-        <div id="project-list-container">
-            <!-- Project items will be dynamically injected here -->
+    <main class="main-card">
+        <div id="loading-container">
+            <svg class="animated-icon" viewBox="0 0 40 40">
+                <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
+            </svg>
+            <h1>Loading Project Status</h1>
+            <p>Please wait while we fetch the latest data.</p>
         </div>
 
-        <div id="no-activity-message" style="display: none;">
-            <p>No recently completed projects found.</p>
-        </div>
-
-        <p class="standby-message">
-            This page will automatically check for new projects every 5 minutes.
-        </p>
-    </div>
-
-    <!-- Template for a single project item -->
-    <template id="project-item-template">
-        <div class="project-item">
-            <div class="project-header">
-                <span class="project-name"></span>
-                <span class="project-progress-text"></span>
+        <div id="content-container" style="display: none;">
+            <h2 class="downtime-title">D O W N T I M E</h2>
+            <h1>Awaiting New Projects</h1>
+            <p class="subtitle">There are no projects available for assignment. Please stand by. Below is the live status of all current projects.</p>
+            
+            <div id="project-grid">
+                <!-- Project cards will be injected here -->
             </div>
-            <div class="progress-bar">
-                <div class="progress-bar-fill"></div>
+
+            <div class="footer-info">
+                Last checked: <span id="last-checked-time">--:--</span>. This page does not refresh automatically.
             </div>
         </div>
-    </template>
-
+        
+        <div id="error-message" style="display: none;"></div>
+    </main>
+    
     <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const DowntimeApp = {
+            const StatusDashboard = {
                 elements: {
                     loadingContainer: document.getElementById('loading-container'),
                     contentContainer: document.getElementById('content-container'),
-                    projectListContainer: document.getElementById('project-list-container'),
-                    noActivityMessage: document.getElementById('no-activity-message'),
-                    projectItemTemplate: document.getElementById('project-item-template'),
+                    projectGrid: document.getElementById('project-grid'),
+                    errorMessage: document.getElementById('error-message'),
+                    lastCheckedTime: document.getElementById('last-checked-time'),
                 },
                 config: {
                     google: {
                         API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
-                        CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
                         SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
-                        SCOPES: "https://www.googleapis.com/auth/spreadsheets.readonly",
                     },
                     sheetName: "Projects",
-                    HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
+                     HEADER_MAP: { 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Status': 'status' },
                 },
 
                 init() {
@@ -247,31 +232,14 @@
                             apiKey: this.config.google.API_KEY,
                             discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
                         });
-                        this.initializeGsi();
+                        await this.loadAndRenderProjects();
                     } catch (error) {
-                        this.showError("Could not initialize connection to Google.");
+                        this.showError("Could not initialize connection to Google API.");
+                        console.error(error);
                     }
                 },
 
-                initializeGsi() {
-                    const tokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: this.config.google.CLIENT_ID,
-                        scope: this.config.google.SCOPES,
-                        callback: this.handleTokenResponse.bind(this),
-                    });
-                    tokenClient.requestAccessToken({ prompt: 'none' });
-                },
-
-                async handleTokenResponse(resp) {
-                    if (resp && resp.access_token) {
-                        gapi.client.setToken(resp);
-                        await this.loadAndProcessProjects();
-                    } else {
-                        this.showError("Authentication failed. Please ensure you are signed in to your Google account and have granted permissions.");
-                    }
-                },
-
-                async loadAndProcessProjects() {
+                async loadAndRenderProjects() {
                     try {
                         const response = await gapi.client.sheets.spreadsheets.values.get({
                             spreadsheetId: this.config.google.SPREADSHEET_ID,
@@ -283,7 +251,8 @@
                         this.render(processedData);
 
                     } catch (err) {
-                        this.showError("Failed to load project data. Please check spreadsheet permissions.");
+                        this.showError("Failed to load project data. Please ensure the Google Sheet is public ('Anyone with the link can view').");
+                        console.error(err);
                     }
                 },
 
@@ -298,86 +267,115 @@
                             if (propName) obj[propName] = row[i] || "";
                         });
                         return obj;
-                    });
+                    }).filter(p => p.baseProjectName && p.fixCategory);
                 },
 
                 processProjectData(projects) {
-                    if (!projects || projects.length === 0) return [];
-
-                    // Group projects by baseProjectName
-                    const grouped = projects.reduce((acc, p) => {
-                        if (!p.baseProjectName) return acc;
-                        if (!acc[p.baseProjectName]) {
-                            acc[p.baseProjectName] = { tasks: [], mostRecentTimestamp: null };
-                        }
-                        acc[p.baseProjectName].tasks.push(p);
+                    if (!projects || projects.length === 0) return {};
+                    
+                    const groupedByProject = projects.reduce((acc, task) => {
+                        const projectName = task.baseProjectName;
+                        if (!acc[projectName]) acc[projectName] = { stages: {} };
                         
-                        // Track the most recent modification timestamp in the group
-                        const timestamp = p.lastModifiedTimestamp ? new Date(p.lastModifiedTimestamp) : new Date(0);
-                        if (!acc[p.baseProjectName].mostRecentTimestamp || timestamp > acc[p.baseProjectName].mostRecentTimestamp) {
-                            acc[p.baseProjectName].mostRecentTimestamp = timestamp;
+                        const stage = task.fixCategory || 'Uncategorized';
+                        if (!acc[projectName].stages[stage]) {
+                            acc[projectName].stages[stage] = { total: 0, completed: 0 };
+                        }
+                        acc[projectName].stages[stage].total++;
+                        if (task.status === 'Completed') {
+                            acc[projectName].stages[stage].completed++;
                         }
                         return acc;
                     }, {});
 
-                    // Map to an array, calculate progress, and sort
-                    return Object.entries(grouped)
-                        .map(([name, data]) => {
-                            const totalTasks = data.tasks.length;
-                            const completedTasks = data.tasks.filter(t => t.status === 'Completed').length;
-                            const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-                            return {
-                                name,
-                                totalTasks,
-                                completedTasks,
-                                progress,
-                                mostRecentTimestamp: data.mostRecentTimestamp,
-                            };
-                        })
-                        .filter(p => p.completedTasks > 0) // Only show projects with some completion
-                        .sort((a, b) => b.mostRecentTimestamp - a.mostRecentTimestamp) // Sort by most recently modified
-                        .slice(0, 5); // Take the top 5
+                    for (const projectName in groupedByProject) {
+                        const project = groupedByProject[projectName];
+                        const stageNames = Object.keys(project.stages);
+
+                        const latestStageNum = stageNames.reduce((max, stageName) => {
+                            const num = parseInt((stageName || 'Fix0').replace('Fix', ''), 10);
+                            return Math.max(max, num);
+                        }, 0);
+
+                        if (latestStageNum > 0) {
+                            const latestStageName = `Fix${latestStageNum}`;
+                            const latestStageData = project.stages[latestStageName];
+                            if (latestStageData && latestStageData.total > 0 && latestStageData.completed === latestStageData.total) {
+                                project.isAwaitingRelease = true;
+                                project.nextStage = `Fix${latestStageNum + 1}`;
+                            }
+                        }
+                    }
+                    return groupedByProject;
                 },
 
                 render(projectData) {
+                    // Switch from loading view to content view
+                    document.body.style.alignItems = 'flex-start'; // Align to top for scrolling
                     this.elements.loadingContainer.style.display = 'none';
-                    this.elements.contentContainer.style.display = 'flex';
-                    this.elements.projectListContainer.innerHTML = '';
+                    this.elements.contentContainer.style.display = 'block';
+                    this.elements.projectGrid.innerHTML = '';
+                    
+                    const projectNames = Object.keys(projectData).sort();
 
-                    if (!projectData || projectData.length === 0) {
-                        this.elements.noActivityMessage.style.display = 'block';
-                        return;
+                    if (projectNames.length === 0) {
+                        const noProjectsEl = document.createElement('p');
+                        noProjectsEl.textContent = 'No active project data found.';
+                        this.elements.projectGrid.appendChild(noProjectsEl);
+                    } else {
+                        projectNames.forEach(projectName => {
+                            const card = document.createElement('div');
+                            card.className = 'project-card';
+                            
+                            let stagesHTML = '';
+                            const project = projectData[projectName];
+                            const stages = project.stages;
+                            const sortedStages = Object.keys(stages).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+                            sortedStages.forEach(stageName => {
+                                const stage = stages[stageName];
+                                const progress = stage.total > 0 ? (stage.completed / stage.total) * 100 : 0;
+                                stagesHTML += `
+                                    <div class="stage-item">
+                                        <div class="stage-header">
+                                            <span class="stage-name">${stageName}</span>
+                                            <span class="stage-progress-text">${stage.completed} / ${stage.total}</span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-bar-fill ${progress === 100 ? 'complete' : ''}" style="width: ${progress.toFixed(2)}%;"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            let awaitingStatusHTML = '';
+                            if (project.isAwaitingRelease) {
+                                awaitingStatusHTML = `<div class="awaiting-status">Waiting for ${project.nextStage}</div>`;
+                            }
+                            
+                            card.innerHTML = `
+                                <h2>${projectName.replace(/_/g, ' ')}</h2>
+                                ${stagesHTML}
+                                ${awaitingStatusHTML}
+                            `;
+                            this.elements.projectGrid.appendChild(card);
+                        });
                     }
+                    this.updateTimestamp();
+                },
 
-                    this.elements.noActivityMessage.style.display = 'none';
-                    const fragment = document.createDocumentFragment();
-
-                    projectData.forEach(p => {
-                        const item = this.elements.projectItemTemplate.content.cloneNode(true);
-                        const nameEl = item.querySelector('.project-name');
-                        const progressTextEl = item.querySelector('.project-progress-text');
-                        const progressBarFillEl = item.querySelector('.progress-bar-fill');
-
-                        nameEl.textContent = p.name.replace(/_/g, ' ');
-                        progressTextEl.textContent = `${p.completedTasks} / ${p.totalTasks} Areas Completed`;
-                        progressBarFillEl.style.width = `${p.progress}%`;
-
-                        fragment.appendChild(item);
-                    });
-
-                    this.elements.projectListContainer.appendChild(fragment);
+                updateTimestamp() {
+                    const now = new Date();
+                    this.elements.lastCheckedTime.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 },
 
                 showError(message) {
-                    this.elements.loadingContainer.style.display = 'flex';
-                    this.elements.contentContainer.style.display = 'none';
-                    this.elements.loadingContainer.querySelector('.spinner').style.display = 'none';
-                    this.elements.loadingContainer.querySelector('h1').textContent = 'Error';
-                    this.elements.loadingContainer.querySelector('.subtitle').textContent = message;
+                    const mainCard = document.querySelector('.main-card');
+                    mainCard.innerHTML = `<div id="error-message">${message}</div>`;
                 },
             };
 
-            DowntimeApp.init();
+            StatusDashboard.init();
         });
     </script>
 </body>
