@@ -274,7 +274,7 @@
                         SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
                     },
                     sheetName: "Projects",
-                     HEADER_MAP: { 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Status': 'status' },
+                     HEADER_MAP: { 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Status': 'status', 'Last Modified': 'lastModifiedTimestamp' },
                 },
 
                 init() {
@@ -334,7 +334,12 @@
                     
                     const groupedByProject = projects.reduce((acc, task) => {
                         const projectName = task.baseProjectName;
-                        if (!acc[projectName]) acc[projectName] = { stages: {} };
+                        if (!acc[projectName]) {
+                            acc[projectName] = { 
+                                stages: {},
+                                lastModified: '1970-01-01T00:00:00.000Z'
+                            };
+                        }
                         
                         const stage = task.fixCategory || 'Uncategorized';
                         if (!acc[projectName].stages[stage]) {
@@ -344,6 +349,11 @@
                         if (task.status === 'Completed') {
                             acc[projectName].stages[stage].completed++;
                         }
+
+                        if (task.lastModifiedTimestamp && new Date(task.lastModifiedTimestamp) > new Date(acc[projectName].lastModified)) {
+                            acc[projectName].lastModified = task.lastModifiedTimestamp;
+                        }
+
                         return acc;
                     }, {});
 
@@ -368,7 +378,13 @@
                     this.elements.contentContainer.style.display = 'block';
                     this.elements.projectGrid.innerHTML = '';
                     
-                    const projectNames = Object.keys(projectData).sort();
+                    const projectNames = Object.keys(projectData)
+                        .sort((a, b) => {
+                            const dateB = projectData[b].lastModified ? new Date(projectData[b].lastModified) : new Date(0);
+                            const dateA = projectData[a].lastModified ? new Date(projectData[a].lastModified) : new Date(0);
+                            return dateB - dateA;
+                        })
+                        .slice(0, 3); // Display only the 3 most recent projects.
 
                     if (projectNames.length === 0) {
                         this.elements.projectGrid.innerHTML = '<p>No active project data found.</p>';
@@ -376,7 +392,6 @@
                         projectNames.forEach(projectName => {
                             const project = projectData[projectName];
                             
-                            // Always show the awaiting status for the next stage.
                             const contentHTML = `
                                 <div class="stage-item">
                                     <div class="stage-header">
@@ -425,3 +440,4 @@
     </script>
 </body>
 </html>
+
