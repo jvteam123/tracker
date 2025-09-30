@@ -56,6 +56,34 @@
             transition: all 0.3s ease;
         }
         
+        #loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-text-color);
+        }
+        .loader {
+            border: 5px solid #e0eafc; /* Lighter blue */
+            border-top: 5px solid var(--accent-color); /* Main accent blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1.2s linear infinite;
+            margin-bottom: 25px;
+        }
+        #loading-container h1 {
+             font-size: 1.6em;
+             margin-bottom: 8px;
+        }
+        #loading-container p {
+            font-size: 1.1em;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .animated-icon {
             width: 70px;
             height: 70px;
@@ -203,11 +231,9 @@
 
     <main class="main-card">
         <div id="loading-container">
-            <svg class="animated-icon" viewBox="0 0 40 40">
-                <circle class="circle" cx="20" cy="20" r="18" transform-origin="center"></circle>
-            </svg>
-            <h1>Loading...</h1>
-            <p></p>
+            <div class="loader"></div>
+            <h1>Loading Status</h1>
+            <p>Connecting to project database...</p>
         </div>
 
         <div id="content-container" style="display: none;">
@@ -399,4 +425,3 @@
     </script>
 </body>
 </html>
-
