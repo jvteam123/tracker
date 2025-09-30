@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correction Workflow - Awaiting Projects</title>
+    <meta http-equiv="refresh" content="300">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --card-bg-color: rgba(255, 255, 255, 0.85);
+            --text-color: #2c3e50;
+            --secondary-text-color: #5a6d7f;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --border-color: rgba(255, 255, 255, 0.6);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --border-radius-lg: 16px;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-color);
+            line-height: 1.7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .downtime-container {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Spinner Animation */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(44, 62, 80, 0.2);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .downtime-container h1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .downtime-container .subtitle {
+            color: var(--secondary-text-color);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            max-width: 500px;
+        }
+
+        .activity-header {
+            width: 100%;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .activity-header h2 {
+            font-size: 1.2em;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+        
+        #project-list-container {
+            width: 100%;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 10px; /* space for scrollbar */
+        }
+
+        /* Custom Scrollbar */
+        #project-list-container::-webkit-scrollbar { width: 6px; }
+        #project-list-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        #project-list-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        #project-list-container::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+        .project-item {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            background: rgba(245, 247, 250, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .project-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .project-header .project-name {
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .project-header .project-progress-text {
+            font-size: 0.9em;
+            color: var(--secondary-text-color);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 25px;
+            overflow: hidden;
+            height: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            border-radius: 25px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        #no-activity-message {
+            color: var(--secondary-text-color);
+            padding: 40px 0;
+        }
+
+        .standby-message {
+            font-size: 0.9em;
+            color: var(--secondary-text-color);
+            border-top: 1px solid #e0e0e0;
+            width: 100%;
+            padding-top: 20px;
+            margin-top: 20px;
+            margin-bottom: 0;
+        }
+
+    </style>
+    <link rel="icon" type="image/png" href="icon.png">
+</head>
+<body>
+
+    <div id="loading-container" class="downtime-container">
+        <div class="spinner"></div>
+        <h1>Connecting to Workflow...</h1>
+        <p class="subtitle">Checking for project updates. Please wait.</p>
+    </div>
+
+    <div id="content-container" class="downtime-container" style="display: none;">
+        <h1>Awaiting New Projects</h1>
+        <p class="subtitle">There are no projects available for assignment. The list below shows the most recently completed work.</p>
+        
+        <div class="activity-header">
+            <h2>Recent Activity</h2>
+        </div>
+        
+        <div id="project-list-container">
+            <!-- Project items will be dynamically injected here -->
+        </div>
+
+        <div id="no-activity-message" style="display: none;">
+            <p>No recently completed projects found.</p>
+        </div>
+
+        <p class="standby-message">
+            This page will automatically check for new projects every 5 minutes.
+        </p>
+    </div>
+
+    <!-- Template for a single project item -->
+    <template id="project-item-template">
+        <div class="project-item">
+            <div class="project-header">
+                <span class="project-name"></span>
+                <span class="project-progress-text"></span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const DowntimeApp = {
+                elements: {
+                    loadingContainer: document.getElementById('loading-container'),
+                    contentContainer: document.getElementById('content-container'),
+                    projectListContainer: document.getElementById('project-list-container'),
+                    noActivityMessage: document.getElementById('no-activity-message'),
+                    projectItemTemplate: document.getElementById('project-item-template'),
+                },
+                config: {
+                    google: {
+                        API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
+                        CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
+                        SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
+                        SCOPES: "https://www.googleapis.com/auth/spreadsheets.readonly",
+                    },
+                    sheetName: "Projects",
+                    HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
+                },
+
+                init() {
+                    gapi.load('client', this.initializeGapiClient.bind(this));
+                },
+
+                async initializeGapiClient() {
+                    try {
+                        await gapi.client.init({
+                            apiKey: this.config.google.API_KEY,
+                            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                        });
+                        this.initializeGsi();
+                    } catch (error) {
+                        this.showError("Could not initialize connection to Google.");
+                    }
+                },
+
+                initializeGsi() {
+                    const tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: this.config.google.CLIENT_ID,
+                        scope: this.config.google.SCOPES,
+                        callback: this.handleTokenResponse.bind(this),
+                    });
+                    tokenClient.requestAccessToken({ prompt: 'none' });
+                },
+
+                async handleTokenResponse(resp) {
+                    if (resp && resp.access_token) {
+                        gapi.client.setToken(resp);
+                        await this.loadAndProcessProjects();
+                    } else {
+                        this.showError("Authentication failed. Please ensure you are signed in to your Google account and have granted permissions.");
+                    }
+                },
+
+                async loadAndProcessProjects() {
+                    try {
+                        const response = await gapi.client.sheets.spreadsheets.values.get({
+                            spreadsheetId: this.config.google.SPREADSHEET_ID,
+                            range: this.config.sheetName,
+                        });
+
+                        const projects = this.sheetValuesToObjects(response.result.values);
+                        const processedData = this.processProjectData(projects);
+                        this.render(processedData);
+
+                    } catch (err) {
+                        this.showError("Failed to load project data. Please check spreadsheet permissions.");
+                    }
+                },
+
+                sheetValuesToObjects(values) {
+                    if (!values || values.length < 2) return [];
+                    const headers = values[0];
+                    const headerMap = this.config.HEADER_MAP;
+                    return values.slice(1).map((row) => {
+                        let obj = {};
+                        headers.forEach((header, i) => {
+                            const propName = headerMap[header.trim()];
+                            if (propName) obj[propName] = row[i] || "";
+                        });
+                        return obj;
+                    });
+                },
+
+                processProjectData(projects) {
+                    if (!projects || projects.length === 0) return [];
+
+                    // Group projects by baseProjectName
+                    const grouped = projects.reduce((acc, p) => {
+                        if (!p.baseProjectName) return acc;
+                        if (!acc[p.baseProjectName]) {
+                            acc[p.baseProjectName] = { tasks: [], mostRecentTimestamp: null };
+                        }
+                        acc[p.baseProjectName].tasks.push(p);
+                        
+                        // Track the most recent modification timestamp in the group
+                        const timestamp = p.lastModifiedTimestamp ? new Date(p.lastModifiedTimestamp) : new Date(0);
+                        if (!acc[p.baseProjectName].mostRecentTimestamp || timestamp > acc[p.baseProjectName].mostRecentTimestamp) {
+                            acc[p.baseProjectName].mostRecentTimestamp = timestamp;
+                        }
+                        return acc;
+                    }, {});
+
+                    // Map to an array, calculate progress, and sort
+                    return Object.entries(grouped)
+                        .map(([name, data]) => {
+                            const totalTasks = data.tasks.length;
+                            const completedTasks = data.tasks.filter(t => t.status === 'Completed').length;
+                            const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                            return {
+                                name,
+                                totalTasks,
+                                completedTasks,
+                                progress,
+                                mostRecentTimestamp: data.mostRecentTimestamp,
+                            };
+                        })
+                        .filter(p => p.completedTasks > 0) // Only show projects with some completion
+                        .sort((a, b) => b.mostRecentTimestamp - a.mostRecentTimestamp) // Sort by most recently modified
+                        .slice(0, 5); // Take the top 5
+                },
+
+                render(projectData) {
+                    this.elements.loadingContainer.style.display = 'none';
+                    this.elements.contentContainer.style.display = 'flex';
+                    this.elements.projectListContainer.innerHTML = '';
+
+                    if (!projectData || projectData.length === 0) {
+                        this.elements.noActivityMessage.style.display = 'block';
+                        return;
+                    }
+
+                    this.elements.noActivityMessage.style.display = 'none';
+                    const fragment = document.createDocumentFragment();
+
+                    projectData.forEach(p => {
+                        const item = this.elements.projectItemTemplate.content.cloneNode(true);
+                        const nameEl = item.querySelector('.project-name');
+                        const progressTextEl = item.querySelector('.project-progress-text');
+                        const progressBarFillEl = item.querySelector('.progress-bar-fill');
+
+                        nameEl.textContent = p.name.replace(/_/g, ' ');
+                        progressTextEl.textContent = `${p.completedTasks} / ${p.totalTasks} Areas Completed`;
+                        progressBarFillEl.style.width = `${p.progress}%`;
+
+                        fragment.appendChild(item);
+                    });
+
+                    this.elements.projectListContainer.appendChild(fragment);
+                },
+
+                showError(message) {
+                    this.elements.loadingContainer.style.display = 'flex';
+                    this.elements.contentContainer.style.display = 'none';
+                    this.elements.loadingContainer.querySelector('.spinner').style.display = 'none';
+                    this.elements.loadingContainer.querySelector('h1').textContent = 'Error';
+                    this.elements.loadingContainer.querySelector('.subtitle').textContent = message;
+                },
+            };
+
+            DowntimeApp.init();
+        });
+    </script>
+</body>
+</html>
+
