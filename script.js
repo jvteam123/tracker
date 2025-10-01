@@ -960,6 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.className = 'summary-stage-row';
                     row.insertCell().textContent = fixKey;
                     row.insertCell().textContent = totalTasks;
+                    row.insertCell().textContent = noRefixTechs.size;
                     row.insertCell().textContent = completedTasks;
                     const progressCell = row.insertCell();
                     progressCell.innerHTML = `
@@ -968,7 +969,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
                     row.insertCell().textContent = totalMinutes;
                     row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
-                    row.insertCell().textContent = noRefixTechs.size;
                 });
             });
         },
