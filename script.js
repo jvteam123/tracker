@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uniqueProjects.forEach(projectName => {
                 const projectHeaderRow = tableBody.insertRow();
                 projectHeaderRow.className = 'summary-project-header';
-                projectHeaderRow.innerHTML = `<td colspan="7">${this.formatProjectName(projectName)}</td>`;
+                projectHeaderRow.innerHTML = `<td colspan="6">${this.formatProjectName(projectName)}</td>`; // Changed colspan to 6
 
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
                 const groupedByFix = projectTasks.reduce((acc, project) => {
@@ -954,7 +954,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const completedTasks = tasksInFix.filter(p => p.status === 'Completed' || p.status === 'No Refix').length;
                     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
                     const totalMinutes = tasksInFix.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
-                    const noRefixTechs = new Set(tasksInFix.filter(p => p.status === 'No Refix').map(p => p.assignedTo));
                     
                     const row = tableBody.insertRow();
                     row.className = 'summary-stage-row';
@@ -968,7 +967,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`;
                     row.insertCell().textContent = totalMinutes;
                     row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
-                    row.insertCell().textContent = noRefixTechs.size;
                 });
             });
         },
