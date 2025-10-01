@@ -84,7 +84,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* New Pen Tool Animation Styles */
+        /* Pen Tool Animation Styles */
         .animated-icon {
             width: 250px; /* Wider to match the title */
             height: 100px;
@@ -99,7 +99,7 @@
             stroke: var(--accent-color);
             stroke-width: 2.5;
             fill: none;
-            stroke-dasharray: 450; /* Adjusted length of the new path */
+            stroke-dasharray: 450;
             stroke-dashoffset: 450;
             animation: draw-curve 5s ease-in-out infinite;
         }
@@ -125,7 +125,6 @@
         }
 
         #pen-icon {
-            fill: var(--text-color);
             opacity: 0;
             animation: move-pen 5s ease-in-out infinite;
             offset-path: path('M 10,60 C 80,120 180,-20 240,60');
@@ -296,7 +295,7 @@
                     <circle class="control-point" cx="180" cy="-20" r="4" />
                 </g>
                 <path id="pen-tool-path" d="M 10 60 C 80 120, 180 -20, 240 60" />
-                <path id="pen-icon" d="M2.5,17.4L0.9,19c-0.2,0.2-0.2,0.5,0,0.7l2.8,2.8c0.2,0.2,0.5,0.2,0.7,0l1.6-1.6L2.5,17.4z M17,1.5 c-0.2-0.2-0.5-0.2-0.7,0l-2.1,2.1L18,7.4l2.1-2.1c0.2-0.2,0.2-0.5,0-0.7L17,1.5z M14.2,4.3L3.5,15.1l3.5,3.5L17.7,7.8L14.2,4.3z" />
+                <image id="pen-icon" href="pen-tool.png" width="24" height="24" transform="translate(-12, -12)" />
             </svg>
 
             <h2 class="downtime-title">D O W N T I M E</h2>
