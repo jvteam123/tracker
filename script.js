@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notifications: [],
             archive: [],
             isAppInitialized: false,
+            signInTimeoutId: null, 
             filters: {
                 project: 'All',
                 fixCategory: 'All',
@@ -69,14 +70,27 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         handleAuthClick() {
             this.showLoading("Signing in...");
+            
+            // Set a timeout to handle cases where the Google Auth popup is blocked or fails silently
+            this.state.signInTimeoutId = setTimeout(() => {
+                this.hideLoading();
+                alert("Sign-in timed out. Please disable your pop-up blocker and try again. If the issue persists, you may need to allow third-party cookies for Google's sign-in service in your browser settings.");
+            }, 20000); // 20-second timeout
+
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
         async handleTokenResponse(resp) {
+            // As soon as we get a response, clear the timeout
+            if (this.state.signInTimeoutId) {
+                clearTimeout(this.state.signInTimeoutId);
+                this.state.signInTimeoutId = null;
+            }
+
             if (resp && resp.access_token) {
                 gapi.client.setToken(resp);
                 this.handleAuthorizedUser();
             } else {
-                console.log("Silent sign-in failed. Awaiting manual login.");
+                console.log("Sign-in failed or was cancelled by the user.");
                 this.handleSignedOutUser();
             }
         },
