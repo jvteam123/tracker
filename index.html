@@ -490,7 +490,14 @@
             display: inline-block;
             vertical-align: middle;
         }
-
+        tr.fix-stage-1, .summary-stage-row.fix-stage-1 { background-color: var(--fix-color-1); }
+        tr.fix-stage-2, .summary-stage-row.fix-stage-2 { background-color: var(--fix-color-2); }
+        tr.fix-stage-3, .summary-stage-row.fix-stage-3 { background-color: var(--fix-color-3); }
+        tr.fix-stage-4, .summary-stage-row.fix-stage-4 { background-color: var(--fix-color-4); }
+        tr.fix-stage-5, .summary-stage-row.fix-stage-5 { background-color: var(--fix-color-5); }
+        tr.fix-stage-1:hover, tr.fix-stage-2:hover, tr.fix-stage-3:hover, tr.fix-stage-4:hover, tr.fix-stage-5:hover {
+             background-color: #d1eaff; /* A common hover color */
+        }
     </style>
     <link rel="icon" type="image/png" href="icon.png">
 </head>
