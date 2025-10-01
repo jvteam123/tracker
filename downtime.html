@@ -64,8 +64,8 @@
             color: var(--secondary-text-color);
         }
         .loader {
-            border: 5px solid #e0eafc; /* Lighter blue */
-            border-top: 5px solid var(--accent-color); /* Main accent blue */
+            border: 5px solid #e0eafc;
+            border-top: 5px solid var(--accent-color);
             border-radius: 50%;
             width: 60px;
             height: 60px;
@@ -84,24 +84,28 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Pen Tool Animation Styles */
+        /* New Pen Tool Animation Styles */
         .animated-icon {
-            width: 100px;
+            width: 250px; /* Wider to match the title */
             height: 100px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+        }
+
+        .pen-tool-svg {
+            overflow: visible;
         }
 
         #pen-tool-path {
             stroke: var(--accent-color);
             stroke-width: 2.5;
             fill: none;
-            stroke-dasharray: 205; /* Approximate length of the path */
-            stroke-dashoffset: 205;
-            animation: draw-curve 4s ease-in-out infinite;
+            stroke-dasharray: 450; /* Adjusted length of the new path */
+            stroke-dashoffset: 450;
+            animation: draw-curve 5s ease-in-out infinite;
         }
-
+        
         .handle-line {
-            stroke: #bdc3c7;
+            stroke: #aeb8c2;
             stroke-width: 1;
         }
         .anchor-point {
@@ -111,16 +115,24 @@
         }
         .control-point {
             fill: white;
-            stroke: #bdc3c7;
+            stroke: #aeb8c2;
             stroke-width: 2;
         }
+
         #pen-tool-controls {
             opacity: 0;
-            animation: show-controls 4s ease-in-out infinite;
+            animation: show-controls 5s ease-in-out infinite;
+        }
+
+        #pen-icon {
+            fill: var(--text-color);
+            opacity: 0;
+            animation: move-pen 5s ease-in-out infinite;
+            offset-path: path('M 10,60 C 80,120 180,-20 240,60');
         }
 
         @keyframes draw-curve {
-            0% { stroke-dashoffset: 205; }
+            0% { stroke-dashoffset: 450; }
             40% { stroke-dashoffset: 0; }
             100% { stroke-dashoffset: 0; }
         }
@@ -128,6 +140,12 @@
         @keyframes show-controls {
             0%, 20%, 80%, 100% { opacity: 0; }
             30%, 70% { opacity: 1; }
+        }
+        
+        @keyframes move-pen {
+            0% { opacity: 1; offset-distance: 0%; }
+            40% { opacity: 1; offset-distance: 100%; }
+            41%, 100% { opacity: 0; offset-distance: 100%; }
         }
         
         .downtime-title {
@@ -267,17 +285,18 @@
         </div>
 
         <div id="content-container" style="display: none;">
-            <svg class="animated-icon" viewBox="0 0 100 100">
+            <svg class="animated-icon" viewBox="0 0 250 100">
                 <g id="pen-tool-controls">
-                    <line class="handle-line" x1="10" y1="80" x2="40" y2="10" />
-                    <rect class="anchor-point" x="7" y="77" width="6" height="6" />
-                    <circle class="control-point" cx="40" cy="10" r="4" />
+                    <line class="handle-line" x1="10" y1="60" x2="80" y2="120" />
+                    <rect class="anchor-point" x="7" y="57" width="6" height="6" />
+                    <circle class="control-point" cx="80" cy="120" r="4" />
             
-                    <line class="handle-line" x1="90" y1="80" x2="60" y2="10" />
-                    <rect class="anchor-point" x="87" y="77" width="6" height="6" />
-                    <circle class="control-point" cx="60" cy="10" r="4" />
+                    <line class="handle-line" x1="240" y1="60" x2="180" y2="-20" />
+                    <rect class="anchor-point" x="237" y="57" width="6" height="6" />
+                    <circle class="control-point" cx="180" cy="-20" r="4" />
                 </g>
-                <path id="pen-tool-path" d="M 10 80 C 40 10, 60 10, 90 80" />
+                <path id="pen-tool-path" d="M 10 60 C 80 120, 180 -20, 240 60" />
+                <path id="pen-icon" d="M2.5,17.4L0.9,19c-0.2,0.2-0.2,0.5,0,0.7l2.8,2.8c0.2,0.2,0.5,0.2,0.7,0l1.6-1.6L2.5,17.4z M17,1.5 c-0.2-0.2-0.5-0.2-0.7,0l-2.1,2.1L18,7.4l2.1-2.1c0.2-0.2,0.2-0.5,0-0.7L17,1.5z M14.2,4.3L3.5,15.1l3.5,3.5L17.7,7.8L14.2,4.3z" />
             </svg>
 
             <h2 class="downtime-title">D O W N T I M E</h2>
