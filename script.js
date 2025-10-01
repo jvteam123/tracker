@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uniqueProjects.forEach(projectName => {
                 const projectHeaderRow = tableBody.insertRow();
                 projectHeaderRow.className = 'summary-project-header';
-                projectHeaderRow.innerHTML = `<td colspan="7">${this.formatProjectName(projectName)}</td>`;
+                projectHeaderRow.innerHTML = `<td colspan="6">${this.formatProjectName(projectName)}</td>`;
 
                 const projectTasks = this.state.projects.filter(p => p.baseProjectName === projectName);
                 const groupedByFix = projectTasks.reduce((acc, project) => {
@@ -951,25 +951,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortedFixKeys.forEach(fixKey => {
                     const tasksInFix = groupedByFix[fixKey];
                     const totalTasks = tasksInFix.length;
+                    // Completed now includes 'No Refix' status
                     const completedTasks = tasksInFix.filter(p => p.status === 'Completed' || p.status === 'No Refix').length;
                     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
                     const totalMinutes = tasksInFix.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
-                    const noRefixTechs = new Set(tasksInFix.filter(p => p.status === 'No Refix').map(p => p.assignedTo));
                     
                     const row = tableBody.insertRow();
                     const fixNum = parseInt(fixKey.replace('Fix', ''), 10);
                     row.className = `summary-stage-row fix-stage-${fixNum}`;
 
+                    // Column 1: Project / Stage
                     row.insertCell().textContent = fixKey;
+                    // Column 2: Total Areas
                     row.insertCell().textContent = totalTasks;
-                    row.insertCell().textContent = noRefixTechs.size;
+                    // Column 3: Completed
                     row.insertCell().textContent = completedTasks;
+                    // Column 4: Progress
                     const progressCell = row.insertCell();
                     progressCell.innerHTML = `
                         <div class="progress-bar" title="${progress.toFixed(1)}%">
                             <div class="progress-bar-fill" style="width: ${progress}%;">${progress.toFixed(1)}%</div>
                         </div>`;
+                    // Column 5: Total Minutes
                     row.insertCell().textContent = totalMinutes;
+                    // Column 6: Total Hours (Decimal)
                     row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
                 });
             });
