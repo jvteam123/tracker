@@ -71,16 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
         handleAuthClick() {
             this.showLoading("Signing in...");
             
-            // Set a timeout to handle cases where the Google Auth popup is blocked or fails silently
             this.state.signInTimeoutId = setTimeout(() => {
                 this.hideLoading();
                 alert("Sign-in timed out. Please disable your pop-up blocker and try again. If the issue persists, you may need to allow third-party cookies for Google's sign-in service in your browser settings.");
-            }, 20000); // 20-second timeout
+            }, 20000);
 
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
         async handleTokenResponse(resp) {
-            // As soon as we get a response, clear the timeout
             if (this.state.signInTimeoutId) {
                 clearTimeout(this.state.signInTimeoutId);
                 this.state.signInTimeoutId = null;
@@ -376,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.disputesTableBody.addEventListener('click', (e) => this.handleDisputeActions(e));
             this.elements.closeDisputeDetailsBtn.onclick = () => this.elements.disputeDetailsModal.classList.remove('is-open');
             this.elements.disputeDetailsContent.addEventListener('click', (e) => this.handleCopyToClipboard(e));
+            this.elements.tlSummaryView.addEventListener('click', (e) => this.handleCopyToClipboard(e));
             this.elements.disputeStatusFilter.addEventListener('change', (e) => {
                 this.state.filters.disputeStatus = e.target.value;
                 this.renderDisputes();
@@ -415,22 +414,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const summaryBtn = this.elements.refreshDataBtnTlSummary;
             if (mainBtn.disabled || summaryBtn.disabled) return;
 
-            // Disable both buttons
             mainBtn.disabled = true;
             summaryBtn.disabled = true;
 
-            // Update main button visuals
             mainBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
             mainBtn.title = 'Refreshing...';
 
-            // Update summary button visuals
             summaryBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin icon"></i> Refreshing...';
 
             try {
                 await this.loadDataFromSheets(true);
             } catch (error) {
                 console.error("Failed to refresh data:", error);
-                // On error, re-enable both and restore text
                 mainBtn.disabled = false;
                 mainBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
                 mainBtn.title = 'Refresh Data';
@@ -440,7 +435,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // On success, start cooldown and update visuals
             mainBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
             mainBtn.title = `On cooldown for 5 minutes.`;
             
@@ -455,6 +449,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }, this.config.cacheDuration);
         },
         switchView(viewName) {
+            if (viewName === 'admin') {
+                const code = prompt("Please enter the admin passkey to continue:");
+                if (code !== "248617") {
+                    alert("Incorrect passkey. Access denied.");
+                    return;
+                }
+            }
+        
             this.elements.techDashboardContainer.style.display = 'none';
             this.elements.projectSettingsView.style.display = 'none';
             this.elements.tlSummaryView.style.display = 'none';
@@ -965,7 +967,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortedFixKeys.forEach(fixKey => {
                     const tasksInFix = groupedByFix[fixKey];
                     const totalTasks = tasksInFix.length;
-                    // Completed now includes 'No Refix' status
                     const completedTasks = tasksInFix.filter(p => p.status === 'Completed' || p.status === 'No Refix').length;
                     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
                     const totalMinutes = tasksInFix.reduce((sum, task) => sum + (parseInt(task.totalMinutes, 10) || 0), 0);
@@ -974,22 +975,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fixNum = parseInt(fixKey.replace('Fix', ''), 10);
                     row.className = `summary-stage-row fix-stage-${fixNum}`;
 
-                    // Column 1: Project / Stage
                     row.insertCell().textContent = fixKey;
-                    // Column 2: Total Areas
                     row.insertCell().textContent = totalTasks;
-                    // Column 3: Completed
                     row.insertCell().textContent = completedTasks;
-                    // Column 4: Progress
                     const progressCell = row.insertCell();
                     progressCell.innerHTML = `
                         <div class="progress-bar" title="${progress.toFixed(1)}%">
                             <div class="progress-bar-fill" style="width: ${progress}%;">${progress.toFixed(1)}%</div>
                         </div>`;
-                    // Column 5: Total Minutes
                     row.insertCell().textContent = totalMinutes;
-                    // Column 6: Total Hours (Decimal)
-                    row.insertCell().textContent = (totalMinutes / 60).toFixed(2);
+                    const totalHoursCell = row.insertCell();
+                    totalHoursCell.innerHTML = `
+                        <span id="total-hours-${projectName}-${fixKey}">${(totalMinutes / 60).toFixed(2)}</span>
+                        <i class="fas fa-copy copy-icon" data-clipboard-target="#total-hours-${projectName}-${fixKey}" style="cursor: pointer; margin-left: 8px;"></i>
+                    `;
                 });
             });
         },
@@ -1476,10 +1475,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="settings-card" style="margin-top: 20px;">
-                        <h3><i class="fas fa-upload icon"></i> Import Project</h3>
-                        <p>Import a project from a .json file.</p>
+                        <h3><i class="fas fa-upload icon"></i> Import/Export</h3>
+                        <p>Import or export projects from a .json file.</p>
                         <input type="file" id="importFile" accept=".json" style="display: none;">
-                        <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">Select JSON File</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">Import Project</button>
+                        <button class="btn btn-secondary" onclick="ProjectTrackerApp.handleExportAllProjects()">Export All Projects</button>
                     </div>
                 </div>
             `;
@@ -2039,6 +2039,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
         
             const exportFileDefaultName = `${baseProjectName}.json`;
+        
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        },
+        handleExportAllProjects() {
+            if (this.state.projects.length === 0) {
+                alert("No projects to export.");
+                return;
+            }
+        
+            const dataStr = JSON.stringify(this.state.projects, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+            const exportFileDefaultName = `all_projects_${new Date().toISOString().slice(0,10)}.json`;
         
             const linkElement = document.createElement('a');
             linkElement.setAttribute('href', dataUri);
