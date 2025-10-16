@@ -228,7 +228,7 @@
     const COOLDOWN_TIME = 300; // ms
     const HIT_FLASH_DURATION = 100; // ms for the red flash
     // Interpolation speed: Higher value means snappier/less smooth, lower means smoother/more latency
-    const INTERP_FACTOR = 0.3; // Increased to 0.3 for snappier feel
+    const INTERP_FACTOR = 0.5; // **FIXED: Increased from 0.3 to 0.5 for snappier real-time feel**
     const DEFAULT_STICKMAN_HEIGHT = 60; // Crucial for drawing remote players
 
     
@@ -478,6 +478,7 @@
                         currentState = {
                             x: newData.x, 
                             y: newData.y, 
+                            // **FIXED: Ensure displayX/Y are initialized to x/y on first add**
                             displayX: newData.x, 
                             displayY: newData.y,
                             height: newData.height || DEFAULT_STICKMAN_HEIGHT // Ensure height exists
