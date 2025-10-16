@@ -1044,6 +1044,9 @@
 
             // Draw all remote players based on their synchronized state
             Object.values(remotePlayers).forEach(remoteState => {
+                // >>>>>> CRITICAL FIX: Skip drawing if this is the local player <<<<<<
+                if (remoteState.id === localPlayerId) return; 
+
                 // Draw remote player using their state object
                 const tempPlayer = new Stickman(remoteState.x, remoteState.color, remoteState.id, remoteState.name);
                 tempPlayer.draw(remoteState);
