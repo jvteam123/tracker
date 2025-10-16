@@ -229,6 +229,8 @@
     const HIT_FLASH_DURATION = 100; // ms for the red flash
     // Interpolation speed: Higher value means snappier/less smooth, lower means smoother/more latency
     const INTERP_FACTOR = 0.3; // Increased to 0.3 for snappier feel
+    const DEFAULT_STICKMAN_HEIGHT = 60; // Crucial for drawing remote players
+
     
     // Using the project ID from the config for the public data path
     const PROJECT_ID = CONFIG.projectId;
@@ -414,6 +416,7 @@
             isCrouching: false,
             isAttacking: false,
             facing: 'right',
+            height: DEFAULT_STICKMAN_HEIGHT, // Include height explicitly
             lastUpdated: Date.now(),
             hitEffectTime: 0, 
         };
@@ -443,6 +446,7 @@
             isCrouching: player.isCrouching,
             isAttacking: player.isAttacking,
             facing: player.facing,
+            height: player.height, // CRITICAL: Always send height
             lastUpdated: Date.now(),
             hitEffectTime: player.hitEffectTime || 0, 
         }, { merge: true }).catch(e => console.warn("Sync failed:", e));
@@ -466,21 +470,32 @@
                         return;
                     }
                     
-                    const currentState = remotePlayers[playerId];
+                    let currentState = remotePlayers[playerId];
                     const newData = { ...data };
-
+                    
+                    // CRITICAL FIX: Ensure essential properties exist for drawing/interpolation
                     if (!currentState) {
-                        // First time seeing this player, initialize display position
-                        newData.displayX = newData.x;
-                        newData.displayY = newData.y;
-                    } else if (currentState.displayX === undefined) {
-                         // Fallback for players joining before this fix
-                        currentState.displayX = currentState.x;
-                        currentState.displayY = currentState.y;
+                        currentState = {
+                            x: newData.x, 
+                            y: newData.y, 
+                            displayX: newData.x, 
+                            displayY: newData.y,
+                            height: newData.height || DEFAULT_STICKMAN_HEIGHT // Ensure height exists
+                        };
+                    } else {
+                        // Merge new data into the existing state object
+                        currentState = { ...currentState, ...newData };
+                        
+                        // Defensive checks for display position (in case it wasn't set on first join)
+                        if (currentState.displayX === undefined) currentState.displayX = currentState.x;
+                        if (currentState.displayY === undefined) currentState.displayY = currentState.y;
+                        
+                        // Ensure height is always available
+                        if (currentState.height === undefined) currentState.height = DEFAULT_STICKMAN_HEIGHT;
                     }
                     
-                    // Update or add remote player state
-                    remotePlayers[playerId] = { ...currentState, ...newData };
+                    // Update remote player state
+                    remotePlayers[playerId] = currentState;
                 }
                 if (change.type === "removed") {
                     delete remotePlayers[playerId];
@@ -533,7 +548,7 @@
             this.vx = 0;
             this.vy = 0;
             this.width = 15;
-            this.height = 60;
+            this.height = DEFAULT_STICKMAN_HEIGHT;
             this.color = color;
             this.health = 100;
             this.isJumping = false;
@@ -613,12 +628,9 @@
             // --- INTERPOLATION STEP (Only for remote players) ---
             let drawX = state.x;
             let drawY = state.y;
+            let currentHeight = state.height || DEFAULT_STICKMAN_HEIGHT; // Defensive height check
             
             if (state.id !== localPlayerId) {
-                // Defensive initialization for remote players
-                if (state.displayX === undefined) state.displayX = state.x;
-                if (state.displayY === undefined) state.displayY = state.y;
-                
                 // Interpolate display position towards authoritative position (x, y)
                 state.displayX += (state.x - state.displayX) * INTERP_FACTOR;
                 state.displayY += (state.y - state.displayY) * INTERP_FACTOR;
@@ -633,7 +645,7 @@
             const isFlashing = Date.now() - state.hitEffectTime < HIT_FLASH_DURATION;
             const drawColor = isFlashing ? '#ff0000' : state.color; // Flash red on hit
             
-            const bodyHeight = state.isCrouching ? state.height * 0.7 : state.height;
+            const bodyHeight = state.isCrouching ? currentHeight * 0.7 : currentHeight;
             const headRadius = 8;
             const legSeparation = 10;
             const bodyFloorY = drawY; // The Y coordinate is the floor level for the feet/base
@@ -927,7 +939,10 @@
                 if (remoteState.health <= 0) return;
                 
                 // --- CRITICAL FIX: Use the authoritative state (x, y) for bullet hit detection ---
-                const playerBodyTop = remoteState.y - remoteState.height;
+                // Ensure remoteState.height is available, defaulting if necessary
+                const targetHeight = remoteState.height || DEFAULT_STICKMAN_HEIGHT;
+                
+                const playerBodyTop = remoteState.y - targetHeight;
                 const playerBodyBottom = remoteState.y;
                 const playerLeft = remoteState.x - remoteState.width / 2;
                 const playerRight = remoteState.x + remoteState.width / 2;
