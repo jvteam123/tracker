@@ -210,6 +210,7 @@
     let localPlayerId = null;
     let localPlayer = null;
     let remotePlayers = {}; // Dictionary to hold all remote player states
+    let keepAliveInterval = null; // NEW: Interval for sending keep-alive signals
     
     // --- GAME INITIALIZATION ---
     const canvas = document.getElementById('gameCanvas');
@@ -314,6 +315,7 @@
                     // Register player in Firestore and start listening for all players
                     registerPlayerInFirestore();
                     listenForPlayers();
+                    startKeepAlive(); // NEW: Start sending keep-alive signals
                     
                     // Start the game loop after everything is initialized
                     if (!window.gameLoopStarted) {
@@ -337,6 +339,7 @@
                 playerInfoDiv.style.display = 'none';
                 googleSignInBtn.style.display = 'block';
                 remotePlayers = {};
+                stopKeepAlive(); // NEW: Stop keep-alive when signed out
             }
         });
     }
@@ -353,6 +356,34 @@
                 showMessage('Google sign-in failed. Try again.', 3000);
             });
     }
+
+    // --- KEEP-ALIVE MECHANISM ---
+
+    function startKeepAlive() {
+        if (keepAliveInterval) clearInterval(keepAliveInterval);
+        
+        // Update the lastUpdated timestamp every 2 seconds if the player is not moving
+        keepAliveInterval = setInterval(sendKeepAlive, 2000); 
+    }
+
+    function stopKeepAlive() {
+        if (keepAliveInterval) {
+            clearInterval(keepAliveInterval);
+            keepAliveInterval = null;
+        }
+    }
+
+    function sendKeepAlive() {
+        if (!db || !localPlayer || !localPlayerId) return;
+
+        // If the player is moving/attacking, updatePlayerInFirestore already handles this.
+        // This ensures the timestamp is updated even when idle.
+        const playerRef = doc(db, PLAYER_COLLECTION_PATH, localPlayerId);
+        setDoc(playerRef, {
+            lastUpdated: Date.now(),
+        }, { merge: true }).catch(e => console.warn("Keep-alive failed:", e));
+    }
+
 
     // --- FIREBASE DATA OPERATIONS ---
 
@@ -425,9 +456,14 @@
                 const data = change.doc.data();
                 const playerId = data.id;
 
-                if (playerId === localPlayerId) return; // Skip local player
-
                 if (change.type === "added" || change.type === "modified") {
+                    if (playerId === localPlayerId && localPlayer) {
+                        // FIX: Update local player's transient state (health, hit effects) based on remote changes
+                        localPlayer.health = data.health;
+                        localPlayer.hitEffectTime = data.hitEffectTime;
+                        return;
+                    }
+                    
                     // Update or add remote player state
                     // We merge data into the remotePlayers object, which handles drawing
                     remotePlayers[playerId] = { ...remotePlayers[playerId], ...data };
@@ -436,7 +472,7 @@
                     delete remotePlayers[playerId];
                 }
             });
-            console.log("Total players online:", Object.keys(remotePlayers).length + (localPlayer ? 1 : 0));
+            console.log("Total warriors online:", Object.keys(remotePlayers).length + (localPlayer ? 1 : 0));
         });
     }
 
@@ -458,7 +494,7 @@
                 
                 transaction.update(targetRef, { 
                     health: newHealth,
-                    hitEffectTime: Date.now(), // NEW: Set hit effect time on target
+                    hitEffectTime: Date.now(), // Set hit effect time on target
                 });
 
                 if (newHealth === 0) {
@@ -549,13 +585,18 @@
             // Determine drawing color based on hit effect
             const isFlashing = Date.now() - state.hitEffectTime < HIT_FLASH_DURATION;
             const drawColor = isFlashing ? '#ff0000' : state.color; // Flash red on hit
+            
+            const bodyHeight = state.isCrouching ? state.height * 0.7 : state.height;
+            const headRadius = 8;
+            const legSeparation = 10;
+            const bodyY = state.y; // The Y coordinate is the floor level for the feet/base
 
             // 1. Draw Health Bar
             ctx.fillStyle = '#444';
             const barWidth = 60;
             const barHeight = 6;
             const barX = state.x - barWidth / 2;
-            const barY = state.y - state.height - 20; // Adjusted for body height
+            const barY = bodyY - bodyHeight - 20; 
             
             ctx.fillRect(barX, barY, barWidth, barHeight);
 
@@ -570,25 +611,27 @@
             ctx.font = '10px Inter';
             ctx.textAlign = 'center';
             ctx.fillStyle = drawColor;
-            ctx.fillText(state.name.split('@')[0], state.x, state.y - state.height - 25);
+            ctx.fillText(state.name.split('@')[0], state.x, barY - 5);
             
             // 3. Draw Stickman Body
+            
             // Head (Circle)
+            const headY = bodyY - bodyHeight + headRadius; 
             ctx.beginPath();
-            ctx.arc(state.x, state.y - state.height + 10, 8, 0, Math.PI * 2); // FIX: Adjust Head Y position relative to body start
+            ctx.arc(state.x, headY, headRadius, 0, Math.PI * 2); 
             ctx.fillStyle = drawColor;
             ctx.fill();
             ctx.closePath();
 
             // Body (Line)
-            const bodyEnd = state.y; // FIX: Body ends at the foot level (y)
-            const bodyStart = state.y - state.height + 20; // FIX: Body starts 20 units down from head center
+            const bodyEnd = bodyY - 15; 
+            const bodyStart = headY + headRadius;
             
             ctx.strokeStyle = drawColor;
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(state.x, bodyStart);
-            ctx.lineTo(state.x, bodyEnd - 20); // Body line stops before legs start
+            ctx.lineTo(state.x, bodyEnd); 
             ctx.stroke();
 
             // Arms (Lines)
@@ -597,23 +640,24 @@
             // Left arm
             ctx.beginPath();
             ctx.moveTo(state.x, bodyStart + 10);
-            ctx.lineTo(state.x + 10 + armOffset, bodyStart + 20);
+            ctx.lineTo(state.x + legSeparation + armOffset, bodyStart + 20);
             ctx.stroke();
 
             // Right arm
             ctx.beginPath();
             ctx.moveTo(state.x, bodyStart + 10);
-            ctx.lineTo(state.x - 10 - armOffset, bodyStart + 20);
+            ctx.lineTo(state.x - legSeparation - armOffset, bodyStart + 20);
             ctx.stroke();
 
             // Legs (Lines)
+            // Legs start where body ends, and end at the floor (bodyY)
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd - 20); // Legs start where body ends
-            ctx.lineTo(state.x - 10, bodyEnd + (state.isCrouching ? 5 : 0)); // Crouching adjustment
+            ctx.moveTo(state.x, bodyEnd); 
+            ctx.lineTo(state.x - legSeparation, bodyY); 
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd - 20);
-            ctx.lineTo(state.x + 10, bodyEnd + (state.isCrouching ? 5 : 0));
+            ctx.moveTo(state.x, bodyEnd);
+            ctx.lineTo(state.x + legSeparation, bodyY);
             ctx.stroke();
 
 
@@ -631,8 +675,8 @@
             const bladeWidth = 4;
             const dir = state.facing === 'right' ? 1 : -1;
             const armX = state.x + dir * 10;
-            const armY = state.y - 35; // Point where the arm holds the sword
-
+            const armY = state.y - state.height / 2; // Mid-body height
+            
             // 1. Draw Hilt (Handle/Grip) - Dark metal color
             ctx.strokeStyle = '#555';
             ctx.lineWidth = 6;
@@ -665,7 +709,7 @@
         drawGun(state, drawColor) {
             const dir = state.facing === 'right' ? 1 : -1;
             const centerX = state.x + dir * 10;
-            const gunY = state.y - 30;
+            const gunY = state.y - state.height / 2; // Mid-body height
             
             const gripHeight = 15;
             const gripWidth = 5;
@@ -770,8 +814,8 @@
             
             // Bullets are local to the shooter's screen to avoid heavy Firestore traffic
             const bullet = new Bullet(
-                this.x + (this.facing === 'right' ? 20 : -20), // FIX: Bullet starts further from the body, near the barrel
-                this.y - 30, 
+                this.x + (this.facing === 'right' ? 20 : -20), // Bullet starts near the barrel
+                this.y - this.height / 2, // Mid-body height
                 bulletVel, 
                 this.id
             );
@@ -783,22 +827,22 @@
             
             // Melee hitbox check
             const swordTipX = this.x + (this.facing === 'right' ? 60 : -60); // Sword tip is ~60 units away
-            const swordTipY = this.y - 35; // Sword vertical position
+            const swordTipY = this.y - this.height / 2; // Sword vertical position (mid-body)
 
             // Check against all remote players
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
 
-                // Check if sword tip is near the center of the remote player's body
+                // Target position (using the drawing logic's center Y)
                 const targetCenterX = remoteState.x;
-                const targetCenterY = remoteState.y - remoteState.height / 2;
+                const targetCenterY = remoteState.y - remoteState.height / 2; 
                 
                 // Distance check between sword tip and remote player center
                 const dx = targetCenterX - swordTipX;
                 const dy = targetCenterY - swordTipY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 20) { // Hitbox radius reduced for stickmen
+                if (distance < 30) { // Hitbox radius
                     // Hit detected! Apply damage via Firestore transaction
                     applyDamageToRemotePlayer(remoteState.id, 10); // Sword damage
                     this.isAttacking = false; // End attack immediately after hit
@@ -945,10 +989,6 @@
 
             // Draw Local Player last (on top)
             if (localPlayer) {
-                // Ensure local player has the latest hit effect time if they were hit by a remote player
-                if (remotePlayers[localPlayerId] && remotePlayers[localPlayerId].hitEffectTime) {
-                    localPlayer.hitEffectTime = remotePlayers[localPlayerId].hitEffectTime;
-                }
                 localPlayer.draw();
             }
 
@@ -1001,7 +1041,7 @@
     window.addEventListener('beforeunload', async () => {
         if (localPlayerId && db) {
             const playerRef = doc(db, PLAYER_COLLECTION_PATH, localPlayerId);
-            // This is a best-effort attempt; the connection listener is better
+            // Mark the player as effectively inactive/dead on disconnect
             await setDoc(playerRef, { health: 0, lastUpdated: Date.now() }, { merge: true });
         }
     });
