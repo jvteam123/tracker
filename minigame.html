@@ -632,11 +632,16 @@
             
             if (state.id !== localPlayerId) {
                 // Interpolate display position towards authoritative position (x, y)
+                // Fix: Use the current displayX/Y to start the interpolation, updating the state object directly
                 state.displayX += (state.x - state.displayX) * INTERP_FACTOR;
                 state.displayY += (state.y - state.displayY) * INTERP_FACTOR;
                 
                 drawX = state.displayX;
                 drawY = state.displayY;
+            } else {
+                // Local player should use their true position
+                drawX = state.x;
+                drawY = state.y;
             }
             // --- END INTERPOLATION STEP ---
 
@@ -671,7 +676,7 @@
             ctx.textAlign = 'center';
             ctx.fillStyle = drawColor;
             
-            // --- FIX HERE: Safely access name before splitting ---
+            // --- Safely access name before splitting ---
             const playerName = state.name || 'Unknown Warrior';
             ctx.fillText(playerName.split('@')[0], drawX, barY - 5);
             // --------------------------------------------------
@@ -1026,10 +1031,12 @@
         // 2. Update Bullets (local only)
         bullets = bullets.filter(bullet => !bullet.update());
         
-        // 3. Remote Player cleanup (if player hasn't updated in 10 seconds, assume disconnect)
+        // 3. Remote Player cleanup (if player hasn't updated in 30 seconds, assume disconnect)
         const now = Date.now();
         for (const id in remotePlayers) {
-            if (now - remotePlayers[id].lastUpdated > 10000) {
+            // INCREASED TIMEOUT: Now 30 seconds (30000ms) to prevent quick removal
+            if (now - remotePlayers[id].lastUpdated > 30000) { 
+                console.log(`Removing inactive warrior: ${remotePlayers[id].name}`);
                 delete remotePlayers[id];
             }
         }
@@ -1051,7 +1058,8 @@
                 // >>>>>> CRITICAL FIX: Skip drawing if this is the local player <<<<<<
                 if (remoteState.id === localPlayerId) return; 
 
-                // Draw remote player using their state object
+                // Draw remote player using their state object. 
+                // We pass the remoteState itself, as the draw function handles interpolation internally.
                 const tempPlayer = new Stickman(remoteState.x, remoteState.color, remoteState.id, remoteState.name);
                 tempPlayer.draw(remoteState);
             });
