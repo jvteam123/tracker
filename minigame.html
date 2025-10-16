@@ -781,8 +781,8 @@
             const isRemote = (state.id !== localPlayerId);
 
             if (isRemote) {
-                // CRITICAL: Ensure display coords exist before trying to read them
-                if (state.displayX === undefined || state.displayY === undefined) {
+                // CRITICAL FIX: Ensure display coords exist and are numbers before calculating
+                if (typeof state.displayX !== 'number' || typeof state.displayY !== 'number') {
                     state.displayX = state.x;
                     state.displayY = state.y;
                 }
@@ -1231,7 +1231,7 @@
                 if (remoteState.id === localPlayerId) return; 
 
                 // FIX: Draw remote player directly using its state object for interpolation continuity
-                // This correctly sets the 'this' context for the main draw function.
+                // This correctly sets the 'this' context for the main draw function, and avoids the helper method bug.
                 Stickman.prototype.draw.call(remoteState, remoteState);
             });
 
