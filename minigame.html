@@ -599,46 +599,78 @@
 
             // 4. Draw Weapon
             if (state.isAttacking) {
-                // Draw Sword Swing if attacking
                 this.drawSword(state);
             } else {
-                 // Draw Gun in resting position
-                this.drawGun(state);
+                 this.drawGun(state);
             }
         }
 
         drawSword(state) {
-            ctx.strokeStyle = '#00f2e0'; // Neon Cyan for the sword
-            ctx.lineWidth = 5;
+            const swordLength = 50;
+            const handleLength = 10;
+            const bladeWidth = 4;
+            const dir = state.facing === 'right' ? 1 : -1;
+            const armX = state.x + dir * 10;
+            const armY = state.y - 35; // Point where the arm holds the sword
 
-            const swordLength = 40;
-            
-            // Swinging the sword
-            const swingStart = state.facing === 'right' ? Math.PI * 1.75 : Math.PI * 1.25;
-            const swingEnd = state.facing === 'right' ? Math.PI * 0.25 : Math.PI * 0.75;
-
+            // 1. Draw Hilt (Handle/Grip) - Dark metal color
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 6;
             ctx.beginPath();
-            ctx.arc(state.x, state.y - 30, swordLength, swingStart, swingEnd);
+            ctx.moveTo(armX, armY);
+            ctx.lineTo(armX + dir * handleLength, armY);
             ctx.stroke();
 
-            // Spark effect during swing
-            ctx.fillStyle = '#ffeb3b';
+            // 2. Draw Blade - Neon Cyan Glow
+            // Shadow/Glow effect (Subtle light trail)
+            ctx.lineWidth = bladeWidth + 2; 
+            ctx.strokeStyle = 'rgba(0, 242, 224, 0.7)'; 
+            ctx.shadowColor = 'rgba(0, 242, 224, 1)';
+            ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.arc(state.x + (state.facing === 'right' ? 30 : -30), state.y - 50, 3, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(armX + dir * handleLength, armY);
+            ctx.lineTo(armX + dir * (handleLength + swordLength), armY);
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // 3. Draw the solid blade line (Bright edge)
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = bladeWidth;
+            ctx.beginPath();
+            ctx.moveTo(armX + dir * handleLength, armY);
+            ctx.lineTo(armX + dir * (handleLength + swordLength), armY);
+            ctx.stroke();
         }
         
         drawGun(state) {
-            ctx.fillStyle = '#f20050'; // Neon Pink for the gun
-            ctx.strokeStyle = '#f20050';
-            ctx.lineWidth = 2;
-            const barrelLength = 15;
+            const dir = state.facing === 'right' ? 1 : -1;
+            const centerX = state.x + dir * 10;
             const gunY = state.y - 30;
-            const gunX = state.x + (state.facing === 'right' ? 10 : -10); // Hold position
-            const barrelTipX = gunX + (state.facing === 'right' ? 15 : -15);
+            
+            const gripHeight = 15;
+            const gripWidth = 5;
+            const bodyLength = 20;
+            const bodyHeight = 7;
+            const barrelLength = 5;
 
-            // Gun body (rectangle)
-            ctx.fillRect(Math.min(gunX, barrelTipX), gunY - 3, Math.abs(barrelTipX - gunX), 6);
+            // 1. Draw Grip/Handle (vertical part) - Darker material
+            ctx.fillStyle = '#111'; 
+            const gripX = centerX + dir * 2;
+            ctx.fillRect(gripX - gripWidth / 2, gunY, gripWidth, gripHeight);
+            
+            // 2. Draw Body/Slide (horizontal part) - Dark metal
+            ctx.fillStyle = '#333'; 
+            const bodyX = centerX + dir * 2;
+            ctx.fillRect(bodyX + dir * 2, gunY - bodyHeight / 2, bodyLength, bodyHeight);
+
+            // 3. Draw Barrel Tip (Neon Pink Accent)
+            ctx.fillStyle = '#f20050'; 
+            ctx.fillRect(bodyX + dir * (bodyLength + 2), gunY - 2, barrelLength, 4); 
+            
+            // 4. Draw Grip Outline for definition
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(gripX - gripWidth / 2, gunY, gripWidth, gripHeight);
         }
 
         update() {
