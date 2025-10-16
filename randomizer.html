@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Name & List Randomizer</title>
+    <title>Name & List Randomizer (Persistent)</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -26,29 +26,44 @@
     <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-6 md:p-10 border border-gray-100">
 
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-indigo-700">List Randomizer</h1>
-            <p class="text-gray-600 mt-2">Enter names (one per line) and click 'Randomize' to get a new, numbered order.</p>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-indigo-700">Persistent List Randomizer</h1>
+            <p class="text-gray-600 mt-2">Your list is automatically saved. Select names and click 'Randomize'.</p>
         </header>
 
-        <!-- Input Area -->
-        <section class="mb-8">
+        <!-- Input Area (Bulk Entry) -->
+        <section class="mb-6 border-b pb-6">
             <div class="flex justify-between items-center mb-2">
-                <label for="namesInput" class="block text-lg font-semibold text-gray-700">1. Enter Names</label>
-                <!-- New Checkbox for Default Names -->
+                <label for="bulkInput" class="block text-lg font-semibold text-gray-700">1. Bulk Input (One Name Per Line)</label>
                 <div class="flex items-center">
                     <input type="checkbox" id="loadDefaults" onchange="toggleDefaultNames(this.checked)" 
                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                     <label for="loadDefaults" class="ml-2 block text-sm font-medium text-gray-700 cursor-pointer select-none">Use Default List</label>
                 </div>
             </div>
-            <textarea id="namesInput" rows="10" placeholder="e.g.,
+            <textarea id="bulkInput" rows="5" placeholder="e.g.,
 Alice Johnson
 Bob Smith
 Charlie Brown
-Diana Prince
 ..."
                 class="w-full p-4 border-2 border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner resize-none text-gray-800"></textarea>
+
+            <div class="flex justify-end mt-4">
+                <button onclick="loadNamesFromBulk(true)"
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 active:bg-indigo-700">
+                    Load/Refresh Selection List
+                </button>
+            </div>
         </section>
+
+        <!-- Selection Area -->
+        <section class="mb-8">
+            <label class="block text-lg font-semibold text-gray-700 mb-2">2. Names to Include (Check to select)</label>
+            <div id="namesSelectionArea" 
+                 class="p-4 border border-gray-300 rounded-xl bg-gray-50 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-2">
+                 <p class="text-gray-500 text-sm col-span-full">Names will load here once entered above or retrieved from storage.</p>
+            </div>
+        </section>
+
 
         <!-- Action Button -->
         <div class="flex justify-center mb-8">
@@ -63,10 +78,10 @@ Diana Prince
 
         <!-- Result Area -->
         <section>
-            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">2. Randomized List</label>
+            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">3. Randomized List</label>
             <div id="resultContainer" class="relative">
                 <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
-                    class="w-full p-4 h-64 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
+                    class="w-full p-4 h-80 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
                 
                 <!-- Copy Button -->
                 <button id="copyButton" onclick="copyResult()" disabled
@@ -85,7 +100,116 @@ Diana Prince
 
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- FIREBASE CONFIGURATION & INITIALIZATION ---
+        
+        // Global Firebase instances and variables
+        let app, db, auth;
+        let userId = null;
+        const COLLECTION_NAME = 'namesList';
+        const DOCUMENT_ID = 'userList';
+        
+        // MANDATORY GLOBAL VARIABLES
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        function initializeFirebase() {
+            if (!firebaseConfig) {
+                console.error("Firebase configuration not available. Persistence features will be disabled.");
+                return;
+            }
+            
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Authenticate user
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // User is authenticated, now load their data
+                        loadNamesFromFirestore();
+                    } else {
+                        // Sign in if no user is found
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Firebase Auth Error:", error);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase Initialization Failed:", e);
+            }
+        }
+        
+        // Helper to get the path for the private document
+        function getDocumentRef() {
+            if (!db || !userId) return null;
+            // Private path: /artifacts/{appId}/users/{userId}/namesList/userList
+            const docPath = `artifacts/${appId}/users/${userId}/${COLLECTION_NAME}/${DOCUMENT_ID}`;
+            return doc(db, docPath);
+        }
+
+        // Debounce utility to limit Firestore writes
+        let saveTimeout;
+        function debounce(func, delay) {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(func, delay);
+        }
+
+        // Function to save names to Firestore
+        window.saveNamesToFirestore = function() {
+            const docRef = getDocumentRef();
+            const bulkInput = document.getElementById('bulkInput');
+            const names = bulkInput.value;
+
+            if (!docRef || names.trim().length === 0) return;
+
+            // Use setDoc to create or overwrite the document
+            setDoc(docRef, { names: names, timestamp: new Date().toISOString() })
+                .catch((error) => {
+                    console.error("Error saving document: ", error);
+                });
+        }
+
+        // Function to load names from Firestore on initialization
+        async function loadNamesFromFirestore() {
+            const docRef = getDocumentRef();
+            const bulkInput = document.getElementById('bulkInput');
+
+            if (!docRef) return;
+
+            try {
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.names) {
+                        bulkInput.value = data.names;
+                        // Auto-load the selection area if names were loaded from persistence
+                        if (data.names.trim().length > 0) {
+                             // Pass false to suppress the message box on initial load
+                             window.loadNamesFromBulk(false); 
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading document: ", error);
+            }
+        }
+        
+        // --- END FIREBASE FUNCTIONS ---
+        
         // Hardcoded list of default names
         const defaultNames = `Lorens Christopher Ebrado
 Arjohn Abapo
@@ -99,17 +223,66 @@ Serg Sembrano
 Negel Roloma
 Vince April Pitogo`;
 
+        // Function to render the interactive list of names with checkboxes
+        function renderNamesList(namesArray) {
+            const selectionArea = document.getElementById('namesSelectionArea');
+            selectionArea.innerHTML = ''; // Clear previous list
+            
+            if (namesArray.length === 0) {
+                 selectionArea.innerHTML = '<p class="text-gray-500 text-sm col-span-full">List is empty. Enter names in the Bulk Input area.</p>';
+                 return;
+            }
+
+            namesArray.forEach((name, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2 py-1 px-2 hover:bg-white rounded transition duration-100'; 
+                div.innerHTML = `
+                    <input type="checkbox" id="name-${index}" name="selectedName" value="${name}" checked 
+                           class="h-4 w-4 text-indigo-600 border-gray-400 rounded focus:ring-indigo-500 cursor-pointer flex-shrink-0">
+                    <label for="name-${index}" class="text-gray-800 cursor-pointer select-none truncate">${name}</label>
+                `;
+                selectionArea.appendChild(div);
+            });
+        }
+
+        // New function to load names from bulk input and render the selectable list
+        window.loadNamesFromBulk = function(showMsg = true) {
+            const bulkInput = document.getElementById('bulkInput');
+            const rawText = bulkInput.value;
+            let names = rawText.split('\n')
+                               .map(name => name.trim())
+                               .filter(name => name.length > 0);
+            
+            if (names.length === 0) {
+                renderNamesList([]);
+                if (showMsg) showMessage("Input list is empty!", true);
+                return;
+            }
+            
+            renderNamesList(names);
+            if (showMsg) showMessage(`Loaded ${names.length} names for selection.`);
+        }
+
+
         // Function to toggle default names based on checkbox state
-        function toggleDefaultNames(isChecked) {
-            const inputElement = document.getElementById('namesInput');
+        window.toggleDefaultNames = function(isChecked) {
+            const bulkInput = document.getElementById('bulkInput');
             if (isChecked) {
-                inputElement.value = defaultNames;
+                bulkInput.value = defaultNames;
+                // Auto-load the list when defaults are checked for better flow
+                window.loadNamesFromBulk(true); 
             } else {
                 // Only clear the textarea if its content exactly matches the default list (to preserve user input)
-                if (inputElement.value.trim() === defaultNames.trim()) {
-                    inputElement.value = "";
+                if (bulkInput.value.trim() === defaultNames.trim()) {
+                    bulkInput.value = "";
+                }
+                // If the input is now empty, clear the selection area
+                if (bulkInput.value.trim().length === 0) {
+                     renderNamesList([]);
                 }
             }
+            // Trigger a save after changing the input
+            debounce(saveNamesToFirestore, 100);
         }
 
         // Use a simple custom message box for feedback instead of alert()
@@ -158,39 +331,38 @@ Vince April Pitogo`;
             return array;
         }
 
-        function randomizeNames() {
-            const inputElement = document.getElementById('namesInput');
+        // Updated randomizeNames function to read selected names from the checkboxes
+        window.randomizeNames = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             const copyButton = document.getElementById('copyButton');
-
-            // 1. Get and clean names
-            const rawText = inputElement.value;
-            let names = rawText.split('\n')
-                               .map(name => name.trim()) // Remove leading/trailing whitespace
-                               .filter(name => name.length > 0); // Remove empty lines
+            // Get all CHECKED checkboxes in the selection area
+            const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
+            
+            // Extract the value (name) from each checked checkbox
+            let names = Array.from(checkboxes).map(cb => cb.value);
 
             if (names.length === 0) {
-                resultTextarea.value = "Please enter at least one name to randomize.";
+                resultTextarea.value = "No names were selected for randomization. Please load a list and check one or more boxes.";
                 copyButton.disabled = true;
-                showMessage("Input list is empty!", true);
+                showMessage("No names selected!", true);
                 return;
             }
 
-            // 2. Shuffle the array
+            // Shuffle the array
             const shuffledNames = shuffleArray(names);
 
-            // 3. Format with new numbering (1., 2., 3., etc.)
+            // Format with new numbering (1., 2., 3., etc.)
             const numberedList = shuffledNames.map((name, index) => {
                 return `${index + 1}. ${name}`;
             }).join('\n');
 
-            // 4. Display result
+            // Display result
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            showMessage(`Successfully randomized ${names.length} names!`);
+            showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
 
-        function copyResult() {
+        window.copyResult = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             
             // Check if there is content to copy
@@ -211,6 +383,18 @@ Vince April Pitogo`;
                 showMessage("Copy failed. Please select and copy manually.", true);
             }
         }
+        
+        // --- APPLICATION STARTUP ---
+        window.onload = function() {
+            // Initialize Firebase and Authentication, which triggers the data load
+            initializeFirebase();
+
+            const bulkInput = document.getElementById('bulkInput');
+            // Save state on every input change, debounced to 1000ms
+            bulkInput.addEventListener('input', () => {
+                debounce(saveNamesToFirestore, 1000);
+            });
+        };
     </script>
 </body>
 </html>
