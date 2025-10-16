@@ -778,7 +778,7 @@
             let currentHeight = state.height || DEFAULT_STICKMAN_HEIGHT; // Defensive height check
             
             if (state.id !== localPlayerId) {
-                // CRITICAL FIX #1: Initialize display coords if they are undefined (first frame)
+                // CRITICAL: Ensure display coords exist before trying to read them
                 if (state.displayX === undefined || state.displayY === undefined) {
                     state.displayX = state.x;
                     state.displayY = state.y;
@@ -790,9 +790,6 @@
                 
                 drawX = state.displayX;
                 drawY = state.displayY;
-                
-                // Debugging (Remove this after confirming movement works)
-                // console.log(`Remote ${state.id}: AuthX=${state.x.toFixed(2)}, DrawX=${drawX.toFixed(2)}`);
 
             } else {
                 // Local player should use their true position
@@ -1228,10 +1225,9 @@
                 // >>>>>> CRITICAL FIX: Skip drawing if this is the local player <<<<<<
                 if (remoteState.id === localPlayerId) return; 
 
-                // Draw remote player using their state object. 
-                // We pass the remoteState itself, as the draw function handles interpolation internally.
-                const tempPlayer = new Stickman(remoteState.x, remoteState.color, remoteState.id, remoteState.name);
-                tempPlayer.draw(remoteState);
+                // FIX: Draw remote player directly using its state object for interpolation continuity
+                // No need to instantiate a new Stickman object here; the state object holds the necessary properties.
+                Stickman.prototype.draw.call(remoteState, remoteState);
             });
 
             // Draw Local Player last (on top)
