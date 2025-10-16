@@ -503,7 +503,7 @@
                         hitParticles.push(new HitParticle(currentState.displayX || newData.x, currentState.displayY || newData.y - currentState.height / 2, '#f20050')); // Red hit
                     }
                     
-                    // CRITICAL FIX: Ensure essential properties exist for drawing/interpolation
+                    // CRITICAL FIX: Ensure essential properties exist and merge incoming data cleanly
                     if (!currentState) {
                         // New player: Initialize display position to match authoritative position
                         currentState = {
@@ -515,13 +515,14 @@
                             lastHealth: newData.health || 100, // Initialize lastHealth
                         };
                     } else {
-                        // Existing player: Merge new data and maintain existing displayX/Y
-                        currentState = { ...currentState, ...newData };
-                        
-                        // Fallback check in case displayX/Y were missed on initial add
-                        if (currentState.displayX === undefined) currentState.displayX = currentState.x;
-                        if (currentState.displayY === undefined) currentState.displayY = currentState.y;
-                        if (currentState.height === undefined) currentState.height = DEFAULT_STICKMAN_HEIGHT;
+                        // Existing player: Merge new data and maintain existing displayX/Y properties
+                        currentState = { 
+                            ...currentState, 
+                            ...newData,
+                            // Ensure display properties are not overwritten by the merge
+                            displayX: currentState.displayX !== undefined ? currentState.displayX : newData.x,
+                            displayY: currentState.displayY !== undefined ? currentState.displayY : newData.y,
+                        };
                     }
                     
                     // Update remote player state
@@ -789,6 +790,10 @@
                 
                 drawX = state.displayX;
                 drawY = state.displayY;
+                
+                // Debugging (Remove this after confirming movement works)
+                // console.log(`Remote ${state.id}: AuthX=${state.x.toFixed(2)}, DrawX=${drawX.toFixed(2)}`);
+
             } else {
                 // Local player should use their true position
                 drawX = state.x;
