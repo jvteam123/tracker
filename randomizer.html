@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Name & List Randomizer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for output area */
+        #resultTextarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        #resultTextarea::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* gray-300 */
+            border-radius: 4px;
+        }
+        #resultTextarea::-webkit-scrollbar-track {
+            background: #f3f4f6; /* gray-100 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans antialiased">
+
+    <!-- Main Container -->
+    <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-6 md:p-10 border border-gray-100">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-indigo-700">List Randomizer</h1>
+            <p class="text-gray-600 mt-2">Enter names (one per line) and click 'Randomize' to get a new, numbered order.</p>
+        </header>
+
+        <!-- Input Area -->
+        <section class="mb-8">
+            <label for="namesInput" class="block text-lg font-semibold text-gray-700 mb-2">1. Enter Names</label>
+            <textarea id="namesInput" rows="10" placeholder="e.g.,
+Alice Johnson
+Bob Smith
+Charlie Brown
+Diana Prince
+..."
+                class="w-full p-4 border-2 border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner resize-none text-gray-800"></textarea>
+        </section>
+
+        <!-- Action Button -->
+        <div class="flex justify-center mb-8">
+            <button id="randomizeButton" onclick="randomizeNames()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 active:bg-indigo-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2.582l-5.582 5.582A2 2 0 0113.414 18H10a2 2 0 00-2 2v2M4 13V9a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4l-2 2v2" />
+                </svg>
+                Randomize & Number
+            </button>
+        </div>
+
+        <!-- Result Area -->
+        <section>
+            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">2. Randomized List</label>
+            <div id="resultContainer" class="relative">
+                <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
+                    class="w-full p-4 h-64 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
+                
+                <!-- Copy Button -->
+                <button id="copyButton" onclick="copyResult()" disabled
+                    class="absolute top-4 right-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                        <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                    </svg>
+                    Copy
+                </button>
+                
+                <!-- Message Box for feedback -->
+                <div id="messageBox" class="absolute bottom-4 left-0 right-0 p-3 mx-4 rounded-lg text-center font-medium transition-opacity duration-300 opacity-0 pointer-events-none text-sm" style="display: none;"></div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Use a simple custom message box for feedback instead of alert()
+        function showMessage(text, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            messageBox.classList.remove('opacity-0', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+
+            if (isError) {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+
+            // Animate fade in and out
+            setTimeout(() => {
+                messageBox.classList.add('opacity-100');
+            }, 10);
+            
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-100');
+                messageBox.classList.add('opacity-0');
+            }, 2000);
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 2300);
+        }
+
+        // Fisher-Yates (Knuth) Shuffle Algorithm
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+
+            // While there remain elements to shuffle.
+            while (currentIndex != 0) {
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
+            }
+
+            return array;
+        }
+
+        function randomizeNames() {
+            const inputElement = document.getElementById('namesInput');
+            const resultTextarea = document.getElementById('resultTextarea');
+            const copyButton = document.getElementById('copyButton');
+
+            // 1. Get and clean names
+            const rawText = inputElement.value;
+            let names = rawText.split('\n')
+                               .map(name => name.trim()) // Remove leading/trailing whitespace
+                               .filter(name => name.length > 0); // Remove empty lines
+
+            if (names.length === 0) {
+                resultTextarea.value = "Please enter at least one name to randomize.";
+                copyButton.disabled = true;
+                showMessage("Input list is empty!", true);
+                return;
+            }
+
+            // 2. Shuffle the array
+            const shuffledNames = shuffleArray(names);
+
+            // 3. Format with new numbering (1., 2., 3., etc.)
+            const numberedList = shuffledNames.map((name, index) => {
+                return `${index + 1}. ${name}`;
+            }).join('\n');
+
+            // 4. Display result
+            resultTextarea.value = numberedList;
+            copyButton.disabled = false;
+            showMessage(`Successfully randomized ${names.length} names!`);
+        }
+
+        function copyResult() {
+            const resultTextarea = document.getElementById('resultTextarea');
+            
+            // Check if there is content to copy
+            if (resultTextarea.value.length === 0 || resultTextarea.value.includes("will appear here")) {
+                showMessage("Nothing to copy yet!", true);
+                return;
+            }
+
+            // Select the text
+            resultTextarea.select();
+            
+            try {
+                // Execute copy command
+                document.execCommand('copy');
+                showMessage("Randomized list copied to clipboard!");
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                showMessage("Copy failed. Please select and copy manually.", true);
+            }
+        }
+    </script>
+</body>
+</html>
