@@ -371,12 +371,16 @@
 
         const playerRef = doc(db, PLAYER_COLLECTION_PATH, localPlayerId);
         
+        // FIX: Ensure the initial Y position places the player directly on the ground (FLOOR).
+        // The Stickman's Y position is the base of their feet, so we set it to FLOOR.
+        const initialY = FLOOR; 
+
         const initialPlayerState = {
             id: localPlayerId,
             name: localPlayer.name,
             color: localPlayer.color,
             x: canvas.width / 2 + Math.random() * 100 - 50, // slight random spawn offset
-            y: FLOOR,
+            y: initialY, // Set Y to the ground constant
             vx: 0,
             vy: 0,
             health: 100,
