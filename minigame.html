@@ -537,13 +537,13 @@
     }
 
     async function applyDamageToRemotePlayer(targetId, damage) {
-        if (!db) {
-            console.error("Database not initialized for damage transaction.");
+        if (!db || !isGameReady) { // <-- CRITICAL FIX: Ensure game is fully ready
+            console.error("Database or game not ready for damage transaction.");
             return;
         }
 
         if (!PLAYER_COLLECTION_PATH || typeof PLAYER_COLLECTION_PATH !== 'string' || !targetId) {
-             console.error("Invalid path segments for damage transaction.");
+             console.error("Invalid path segments for damage transaction."); // <-- This path should only be hit if constants are missing.
              return;
         }
 
@@ -1046,8 +1046,8 @@
         }
 
         checkMeleeHit() {
-            if (!this.isAttacking) return;
-            
+            if (!this.isAttacking || !isGameReady) return; // <-- Check game readiness here
+
             // Melee hitbox check
             const swordTipX = this.x + (this.facing === 'right' ? 60 : -60); // Sword tip is ~60 units away
             const swordTipY = this.y - this.height / 2; // Sword vertical position (mid-body)
@@ -1099,6 +1099,8 @@
         }
 
         update() {
+            if (!isGameReady) return false; // <-- Check game readiness here
+
             this.x += this.vx;
 
             // Check hit against all remote players
