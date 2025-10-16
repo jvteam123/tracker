@@ -221,13 +221,29 @@
     
     // --- GAME CONSTANTS ---
     const GRAVITY = 0.5;
-    const FLOOR = canvas.height - 40;
+    const FLOOR = canvas.height - 27; // Set main ground floor at Y=400
     const JUMP_VELOCITY = -12;
     const MOVE_SPEED = 4;
     const COOLDOWN_TIME = 300; // ms
     // Using the project ID from the config for the public data path
     const PROJECT_ID = CONFIG.projectId;
     const PLAYER_COLLECTION_PATH = `/artifacts/${PROJECT_ID}/public/data/players`;
+
+    // Static obstacles for the map (x, y, w, h, type)
+    const obstacles = [
+        // Tower Platform (Tower top is at y=300)
+        {x: 550, y: 300, w: 100, h: 100, type: 'platform'}, 
+        // Wall/Stone structure
+        {x: 100, y: 300, w: 50, h: 100, type: 'wall'}, 
+        // Small Stone (low obstacle)
+        {x: 250, y: 370, w: 30, h: 30, type: 'wall'},
+        // Low cover (bushes/grass)
+        {x: 350, y: 380, w: 80, h: 20, type: 'bush'}, 
+        // Tree (non-colliding visually for atmosphere)
+        {x: 60, y: 300, w: 20, h: 100, type: 'tree'},
+        {x: 700, y: 320, w: 20, h: 80, type: 'tree'},
+    ];
+
 
     // --- GAME STATE ---
     let keys = {};
@@ -673,34 +689,73 @@
             ctx.strokeRect(gripX - gripWidth / 2, gunY, gripWidth, gripHeight);
         }
 
-        update() {
-            if (this.health <= 0) return;
-            
-            // 1. Apply Physics (Gravity) to local player
-            this.vy += GRAVITY;
-            this.y += this.vy;
+        checkPlatformCollision() {
+            let isColliding = false;
+            let onGround = this.y >= FLOOR;
 
-            // 2. Floor Collision
-            if (this.y > FLOOR) {
+            // Iterate over all obstacles to check for landing
+            for (const obs of obstacles) {
+                // Only platforms and walls can be landed on
+                if (obs.type === 'platform' || obs.type === 'wall' || obs.type === 'bush') {
+                    
+                    // Check horizontal overlap
+                    const horizontalOverlap = this.x >= obs.x && this.x <= (obs.x + obs.w);
+
+                    // Check if player is falling onto the platform top
+                    const isFallingOnto = this.y < obs.y && this.y + this.vy >= obs.y;
+
+                    if (horizontalOverlap && isFallingOnto) {
+                        this.y = obs.y; // Set position to platform top
+                        this.vy = 0;
+                        this.isJumping = false;
+                        isColliding = true;
+                        break; // Found a platform, stop checking
+                    }
+                }
+            }
+
+            // Apply gravity/floor check only if not on an obstacle
+            if (!isColliding) {
+                // 1. Apply Physics (Gravity) to local player
+                this.vy += GRAVITY;
+                this.y += this.vy;
+
+                // 2. Main Floor Collision
+                if (this.y > FLOOR) {
+                    this.y = FLOOR;
+                    this.vy = 0;
+                    this.isJumping = false;
+                }
+            } else if (this.y >= FLOOR) {
+                 // Check if the player fell off a platform onto the main floor
                 this.y = FLOOR;
                 this.vy = 0;
                 this.isJumping = false;
             }
 
-            // 3. Apply Movement
+            return isColliding || this.y === FLOOR;
+        }
+
+        update() {
+            if (this.health <= 0) return;
+            
+            // 1. Handle Physics and Platform Collision
+            this.checkPlatformCollision();
+
+            // 2. Apply Movement
             this.x += this.vx;
 
-            // 4. Boundary Check
+            // 3. Boundary Check
             if (this.x < this.width / 2) this.x = this.width / 2;
             if (this.x > canvas.width - this.width / 2) this.x = canvas.width - this.width / 2;
             
-            // 5. Check for attack end (local client only)
+            // 4. Check for attack end (local client only)
             if (Date.now() - this.lastAttackTime > 150 && this.isAttacking) {
                 this.isAttacking = false;
                 updatePlayerInFirestore(this);
             }
             
-            // 6. Check for hits on *remote* players (Client-side hit detection)
+            // 5. Check for hits on *remote* players (Client-side hit detection)
             this.checkMeleeHit();
         }
         
@@ -791,6 +846,51 @@
         }
     }
 
+    function drawObstacles() {
+        obstacles.forEach(obs => {
+            if (obs.type === 'platform') {
+                // Tower Base (Dark metal)
+                ctx.fillStyle = '#333';
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                // Tower Top (Neon accent)
+                ctx.fillStyle = '#00f2e0';
+                ctx.fillRect(obs.x, obs.y, obs.w, 5);
+
+            } else if (obs.type === 'wall') {
+                // Wall/Stone (Mossy gray)
+                ctx.fillStyle = '#444'; 
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                // Stone texture/shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h * 0.2); 
+
+            } else if (obs.type === 'bush') {
+                // Low Cover/Grass (Dark Green Neon)
+                ctx.fillStyle = '#006400';
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                // Sharp grass outline
+                ctx.fillStyle = '#00e676';
+                ctx.beginPath();
+                for (let i = 0; i < obs.w; i += 5) {
+                    ctx.moveTo(obs.x + i, obs.y);
+                    ctx.lineTo(obs.x + i + 2.5, obs.y - 10);
+                    ctx.lineTo(obs.x + i + 5, obs.y);
+                }
+                ctx.fill();
+            } else if (obs.type === 'tree') {
+                 // Tree Trunk
+                ctx.fillStyle = '#4e342e'; // Brown
+                ctx.fillRect(obs.x + obs.w/2 - 5, obs.y, 10, obs.h);
+                
+                // Tree Canopy (Neon Green)
+                ctx.fillStyle = '#00cc00';
+                ctx.beginPath();
+                ctx.arc(obs.x + obs.w/2, obs.y, obs.w * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+
 
     // --- GAME LOOP & RENDERING ---
     function update() {
@@ -820,6 +920,9 @@
         ctx.fillRect(0, FLOOR, canvas.width, canvas.height - FLOOR);
 
         if (isGameReady) {
+            // Draw Obstacles before players
+            drawObstacles();
+
             // Draw all remote players based on their synchronized state
             Object.values(remotePlayers).forEach(remoteState => {
                 // Draw remote player using their state object
