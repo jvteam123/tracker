@@ -670,7 +670,11 @@
             ctx.font = '10px Inter';
             ctx.textAlign = 'center';
             ctx.fillStyle = drawColor;
-            ctx.fillText(state.name.split('@')[0], drawX, barY - 5);
+            
+            // --- FIX HERE: Safely access name before splitting ---
+            const playerName = state.name || 'Unknown Warrior';
+            ctx.fillText(playerName.split('@')[0], drawX, barY - 5);
+            // --------------------------------------------------
             
             // 3. Draw Stickman Body
             
