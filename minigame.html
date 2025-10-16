@@ -515,14 +515,20 @@
                             lastHealth: newData.health || 100, // Initialize lastHealth
                         };
                     } else {
-                        // Existing player: Merge new data and maintain existing displayX/Y properties
+                        // Existing player: Merge all incoming data first
                         currentState = { 
                             ...currentState, 
                             ...newData,
-                            // Ensure display properties are not overwritten by the merge
-                            displayX: currentState.displayX !== undefined ? currentState.displayX : newData.x,
-                            displayY: currentState.displayY !== undefined ? currentState.displayY : newData.y,
+                            // CRITICAL: Preserve displayX/Y interpolation state
+                            displayX: currentState.displayX,
+                            displayY: currentState.displayY,
                         };
+                        
+                        // Fallback check: If the player was just created or display data is corrupted, reset it
+                        if (currentState.displayX === undefined || currentState.displayY === undefined) {
+                            currentState.displayX = newData.x;
+                            currentState.displayY = newData.y;
+                        }
                     }
                     
                     // Update remote player state
