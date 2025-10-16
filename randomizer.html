@@ -32,7 +32,15 @@
 
         <!-- Input Area -->
         <section class="mb-8">
-            <label for="namesInput" class="block text-lg font-semibold text-gray-700 mb-2">1. Enter Names</label>
+            <div class="flex justify-between items-center mb-2">
+                <label for="namesInput" class="block text-lg font-semibold text-gray-700">1. Enter Names</label>
+                <!-- New Checkbox for Default Names -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="loadDefaults" onchange="toggleDefaultNames(this.checked)" 
+                           class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                    <label for="loadDefaults" class="ml-2 block text-sm font-medium text-gray-700 cursor-pointer select-none">Use Default List</label>
+                </div>
+            </div>
             <textarea id="namesInput" rows="10" placeholder="e.g.,
 Alice Johnson
 Bob Smith
@@ -78,6 +86,32 @@ Diana Prince
     </div>
 
     <script>
+        // Hardcoded list of default names
+        const defaultNames = `Lorens Christopher Ebrado
+Arjohn Abapo
+Hyacinth Hortelano
+Jayson Aliser
+Joana May Taboada
+John Vincent Sison
+Kenneth Lester Villajos
+Nazareno Oppus
+Serg Sembrano
+Negel Roloma
+Vince April Pitogo`;
+
+        // Function to toggle default names based on checkbox state
+        function toggleDefaultNames(isChecked) {
+            const inputElement = document.getElementById('namesInput');
+            if (isChecked) {
+                inputElement.value = defaultNames;
+            } else {
+                // Only clear the textarea if its content exactly matches the default list (to preserve user input)
+                if (inputElement.value.trim() === defaultNames.trim()) {
+                    inputElement.value = "";
+                }
+            }
+        }
+
         // Use a simple custom message box for feedback instead of alert()
         function showMessage(text, isError = false) {
             const messageBox = document.getElementById('messageBox');
