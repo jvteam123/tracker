@@ -236,6 +236,11 @@
     const PROJECT_ID = CONFIG.projectId;
     const PLAYER_COLLECTION_PATH = `/artifacts/${PROJECT_ID}/public/data/players`;
 
+    // Visual Effect Arrays
+    let damageTexts = []; // To store floating damage numbers
+    let attackEffects = []; // To store muzzle flashes and sword slashes
+    let hitParticles = []; // To store particle effects on hit
+
     // Static obstacles for the map (x, y, w, h, type)
     const obstacles = [
         // Tower Platform (Tower top is at y=300)
@@ -424,6 +429,7 @@
             height: DEFAULT_STICKMAN_HEIGHT, // Include height explicitly
             lastUpdated: Date.now(),
             hitEffectTime: 0, 
+            lastHealth: 100, // New field to track health changes for damage numbers
         };
 
         try {
@@ -455,6 +461,7 @@
             height: player.height, 
             lastUpdated: Date.now(),
             hitEffectTime: player.hitEffectTime || 0, 
+            lastHealth: player.lastHealth, // Send last health for damage calc
         }, { merge: true }).catch(e => console.warn("Sync failed:", e));
     }
 
@@ -469,15 +476,30 @@
                 const playerId = data.id;
 
                 if (change.type === "added" || change.type === "modified") {
+                    
+                    // --- Handle Damage/Floating Numbers ---
                     if (playerId === localPlayerId && localPlayer) {
+                        const damageTaken = localPlayer.health - data.health;
+                        if (damageTaken > 0) {
+                            damageTexts.push(new DamageText(localPlayer.x, localPlayer.y - localPlayer.height - 10, damageTaken));
+                            hitParticles.push(new HitParticle(localPlayer.x, localPlayer.y - localPlayer.height / 2, '#f20050')); // Red hit
+                        }
                         // Update local player's transient state (health, hit effects)
                         localPlayer.health = data.health;
                         localPlayer.hitEffectTime = data.hitEffectTime;
+                        localPlayer.lastHealth = data.health;
                         return;
                     }
                     
                     let currentState = remotePlayers[playerId];
                     const newData = { ...data };
+                    
+                    // Check for remote damage taken before merging
+                    if (currentState && currentState.health > newData.health) {
+                        const damageTaken = currentState.health - newData.health;
+                        damageTexts.push(new DamageText(currentState.displayX, currentState.displayY - currentState.height - 10, damageTaken));
+                        hitParticles.push(new HitParticle(currentState.displayX, currentState.displayY - currentState.height / 2, '#f20050')); // Red hit
+                    }
                     
                     // CRITICAL FIX: Ensure essential properties exist for drawing/interpolation
                     if (!currentState) {
@@ -487,7 +509,8 @@
                             y: newData.y, 
                             displayX: newData.x, 
                             displayY: newData.y,
-                            height: newData.height || DEFAULT_STICKMAN_HEIGHT 
+                            height: newData.height || DEFAULT_STICKMAN_HEIGHT,
+                            lastHealth: newData.health || 100, // Initialize lastHealth
                         };
                     } else {
                         // Existing player: Merge new data and maintain existing displayX/Y
@@ -496,7 +519,6 @@
                         // Fallback check in case displayX/Y were missed on initial add
                         if (currentState.displayX === undefined) currentState.displayX = currentState.x;
                         if (currentState.displayY === undefined) currentState.displayY = currentState.y;
-                        
                         if (currentState.height === undefined) currentState.height = DEFAULT_STICKMAN_HEIGHT;
                     }
                     
@@ -517,7 +539,6 @@
             return;
         }
 
-        // FIX: Ensure doc creation is robust by checking for valid path segments
         if (!PLAYER_COLLECTION_PATH || typeof PLAYER_COLLECTION_PATH !== 'string' || !targetId) {
              console.error("Invalid path segments for damage transaction.");
              return;
@@ -540,6 +561,7 @@
                 transaction.update(targetRef, { 
                     health: newHealth,
                     hitEffectTime: Date.now(), // Set hit effect time on target
+                    lastHealth: currentHealth, // Store old health for the remote client to calculate damage
                 });
 
                 if (newHealth === 0) {
@@ -547,9 +569,109 @@
                 }
             });
         } catch (e) {
-            // Note: The "stored version does not match" error is expected in high-frequency transactions.
-            // We only log a warning here to keep the console clean but acknowledge the failure.
             console.warn("Damage transaction failed (likely concurrency issue, retrying internally):", e);
+        }
+    }
+
+
+    // --- VISUAL EFFECT CLASSES ---
+
+    class DamageText {
+        constructor(x, y, damage) {
+            this.x = x;
+            this.y = y;
+            this.text = `-${damage}`;
+            this.life = 60; // Frames
+            this.color = damage >= 15 ? '#ffeb3b' : '#ff1744'; // Crit damage or normal
+        }
+
+        update() {
+            this.y -= 0.5; // Float up
+            this.life--;
+            return this.life <= 0; // Mark for removal
+        }
+
+        draw() {
+            ctx.font = `${10 + (60 - this.life) * 0.1}px Inter`; // Grow slightly
+            ctx.textAlign = 'center';
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.life / 60; // Fade out
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.globalAlpha = 1.0; // Reset alpha
+        }
+    }
+
+    class HitParticle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 2;
+            this.vy = (Math.random() - 0.5) * 2 - 1; // Slight upward bias
+            this.life = 30; // Frames
+            this.color = color; // e.g., '#f20050' for red blood
+            this.radius = 2 + Math.random() * 2;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.05; // Gravity
+            this.life--;
+            return this.life <= 0;
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.life / 30;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    class AttackEffect {
+        constructor(x, y, type, facing) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.facing = facing;
+            this.life = 10; // Frames (very quick flash)
+        }
+
+        update() {
+            this.life--;
+            return this.life <= 0;
+        }
+
+        draw() {
+            const dir = this.facing === 'right' ? 1 : -1;
+            ctx.globalAlpha = this.life / 10;
+            ctx.shadowBlur = 10;
+
+            if (this.type === 'muzzle') {
+                // Muzzle Flash (Neon Yellow/Orange)
+                ctx.fillStyle = '#ffc107';
+                ctx.shadowColor = '#ffeb3b';
+                const flashSize = 10;
+                ctx.beginPath();
+                ctx.arc(this.x + dir * 15, this.y, flashSize, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (this.type === 'slash') {
+                // Sword Slash (Neon Cyan Trail)
+                ctx.strokeStyle = '#00f2e0';
+                ctx.shadowColor = '#00f2e0';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(this.x + dir * 30, this.y, 25, 
+                    this.facing === 'right' ? Math.PI * 0.5 : Math.PI * 1.5, 
+                    this.facing === 'right' ? Math.PI * 1.5 : Math.PI * 0.5);
+                ctx.stroke();
+            }
+
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1.0;
         }
     }
 
@@ -574,6 +696,7 @@
             this.lastAttackTime = 0;
             this.weapon = 'sword'; 
             this.hitEffectTime = 0; // Local property for the visual effect
+            this.lastHealth = 100; // Local health for sending to Firestore
             
             // For smooth remote drawing
             this.displayX = x; 
@@ -621,6 +744,8 @@
                 this.lastAttackTime = Date.now();
                 this.isAttacking = true;
                 attacked = true;
+                // Add visual slash effect
+                attackEffects.push(new AttackEffect(this.x, this.y - this.height / 2, 'slash', this.facing));
             }
             
             // Gun Attack (Firing a bullet)
@@ -628,6 +753,8 @@
                  this.lastAttackTime = Date.now();
                  this.fireGun();
                  attacked = true;
+                 // Add visual muzzle effect
+                 attackEffects.push(new AttackEffect(this.x, this.y - this.height / 2, 'muzzle', this.facing));
             }
 
             // CRITICAL FIX: Update Firestore if any movement or action occurred 
@@ -1050,10 +1177,15 @@
         localPlayer.handleInput();
         localPlayer.update(); // Apply local physics (gravity, movement)
         
-        // 2. Update Bullets (local only)
+        // 2. Update Visual Effects
+        damageTexts = damageTexts.filter(text => !text.update());
+        attackEffects = attackEffects.filter(effect => !effect.update());
+        hitParticles = hitParticles.filter(particle => !particle.update());
+        
+        // 3. Update Bullets (local only)
         bullets = bullets.filter(bullet => !bullet.update());
         
-        // 3. Remote Player cleanup (if player hasn't updated in 30 seconds, assume disconnect)
+        // 4. Remote Player cleanup (if player hasn't updated in 30 seconds, assume disconnect)
         const now = Date.now();
         for (const id in remotePlayers) {
             // INCREASED TIMEOUT: Now 30 seconds (30000ms) to prevent quick removal
@@ -1093,6 +1225,11 @@
 
             // Draw Local Bullets
             bullets.forEach(bullet => bullet.draw());
+            
+            // Draw Visual Effects on top of everything
+            attackEffects.forEach(effect => effect.draw());
+            hitParticles.forEach(particle => particle.draw());
+            damageTexts.forEach(text => text.draw());
             
             // Show player count
              ctx.font = '14px Inter';
