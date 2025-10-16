@@ -777,7 +777,10 @@
             let drawY = state.y;
             let currentHeight = state.height || DEFAULT_STICKMAN_HEIGHT; // Defensive height check
             
-            if (state.id !== localPlayerId) {
+            // Check if this is a remote state object (which won't have the Stickman methods)
+            const isRemote = (state.id !== localPlayerId);
+
+            if (isRemote) {
                 // CRITICAL: Ensure display coords exist before trying to read them
                 if (state.displayX === undefined || state.displayY === undefined) {
                     state.displayX = state.x;
@@ -884,9 +887,11 @@
 
             // 4. Draw Weapon
             if (state.isAttacking) {
-                this.drawSword(state, drawColor, drawX, bodyFloorY);
+                // CRITICAL FIX: Explicitly call prototype method for helper functions
+                Stickman.prototype.drawSword.call(state, state, drawColor, drawX, bodyFloorY);
             } else {
-                 this.drawGun(state, drawColor, drawX, bodyFloorY);
+                 // CRITICAL FIX: Explicitly call prototype method for helper functions
+                 Stickman.prototype.drawGun.call(state, state, drawColor, drawX, bodyFloorY);
             }
         }
 
@@ -1226,7 +1231,7 @@
                 if (remoteState.id === localPlayerId) return; 
 
                 // FIX: Draw remote player directly using its state object for interpolation continuity
-                // No need to instantiate a new Stickman object here; the state object holds the necessary properties.
+                // This correctly sets the 'this' context for the main draw function.
                 Stickman.prototype.draw.call(remoteState, remoteState);
             });
 
