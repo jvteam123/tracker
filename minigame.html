@@ -210,7 +210,7 @@
     let localPlayerId = null;
     let localPlayer = null;
     let remotePlayers = {}; // Dictionary to hold all remote player states
-    let keepAliveInterval = null; // NEW: Interval for sending keep-alive signals
+    let keepAliveInterval = null; 
     
     // --- GAME INITIALIZATION ---
     const canvas = document.getElementById('gameCanvas');
@@ -227,6 +227,9 @@
     const MOVE_SPEED = 4;
     const COOLDOWN_TIME = 300; // ms
     const HIT_FLASH_DURATION = 100; // ms for the red flash
+    // NEW: Interpolation speed (adjust for smoother/snappier movement)
+    const INTERP_FACTOR = 0.2; 
+    
     // Using the project ID from the config for the public data path
     const PROJECT_ID = CONFIG.projectId;
     const PLAYER_COLLECTION_PATH = `/artifacts/${PROJECT_ID}/public/data/players`;
@@ -315,7 +318,7 @@
                     // Register player in Firestore and start listening for all players
                     registerPlayerInFirestore();
                     listenForPlayers();
-                    startKeepAlive(); // NEW: Start sending keep-alive signals
+                    startKeepAlive(); 
                     
                     // Start the game loop after everything is initialized
                     if (!window.gameLoopStarted) {
@@ -339,7 +342,7 @@
                 playerInfoDiv.style.display = 'none';
                 googleSignInBtn.style.display = 'block';
                 remotePlayers = {};
-                stopKeepAlive(); // NEW: Stop keep-alive when signed out
+                stopKeepAlive(); 
             }
         });
     }
@@ -376,7 +379,6 @@
     function sendKeepAlive() {
         if (!db || !localPlayer || !localPlayerId) return;
 
-        // If the player is moving/attacking, updatePlayerInFirestore already handles this.
         // This ensures the timestamp is updated even when idle.
         const playerRef = doc(db, PLAYER_COLLECTION_PATH, localPlayerId);
         setDoc(playerRef, {
@@ -413,8 +415,7 @@
             isAttacking: false,
             facing: 'right',
             lastUpdated: Date.now(),
-            hitEffectTime: 0, // NEW: Initial hit effect time
-            // Only non-transient data should be here
+            hitEffectTime: 0, 
         };
 
         try {
@@ -427,10 +428,10 @@
         }
     }
     
+    // Function to update local player state to Firestore
     function updatePlayerInFirestore(player) {
         if (!db || !player) return;
 
-        // Debounce or only update necessary fields for efficiency
         const playerRef = doc(db, PLAYER_COLLECTION_PATH, player.id);
         setDoc(playerRef, {
             x: player.x,
@@ -442,7 +443,7 @@
             isAttacking: player.isAttacking,
             facing: player.facing,
             lastUpdated: Date.now(),
-            hitEffectTime: player.hitEffectTime || 0, // Include hitEffectTime
+            hitEffectTime: player.hitEffectTime || 0, 
         }, { merge: true }).catch(e => console.warn("Sync failed:", e));
     }
 
@@ -458,15 +459,29 @@
 
                 if (change.type === "added" || change.type === "modified") {
                     if (playerId === localPlayerId && localPlayer) {
-                        // FIX: Update local player's transient state (health, hit effects) based on remote changes
+                        // Update local player's transient state (health, hit effects)
                         localPlayer.health = data.health;
                         localPlayer.hitEffectTime = data.hitEffectTime;
                         return;
                     }
                     
+                    // --- NEW INTERPOLATION LOGIC ---
+                    const currentState = remotePlayers[playerId];
+                    const newData = { ...data };
+
+                    if (!currentState) {
+                        // First time seeing this player, initialize display position
+                        newData.displayX = newData.x;
+                        newData.displayY = newData.y;
+                    } else if (currentState.displayX === undefined) {
+                         // Fallback for players joining before this fix
+                        currentState.displayX = currentState.x;
+                        currentState.displayY = currentState.y;
+                    }
+                    
                     // Update or add remote player state
-                    // We merge data into the remotePlayers object, which handles drawing
-                    remotePlayers[playerId] = { ...remotePlayers[playerId], ...data };
+                    remotePlayers[playerId] = { ...currentState, ...newData };
+                    // --- END INTERPOLATION LOGIC ---
                 }
                 if (change.type === "removed") {
                     delete remotePlayers[playerId];
@@ -527,15 +542,26 @@
             this.lastAttackTime = 0;
             this.weapon = 'sword'; 
             this.hitEffectTime = 0; // Local property for the visual effect
+            
+            // For smooth remote drawing
+            this.displayX = x; 
+            this.displayY = FLOOR;
         }
 
         // Method to update this local player's state based on input
         handleInput() {
             if (this.health <= 0) return;
 
-            // Only track input; movement is applied in update()
             let moved = false;
+            let jumped = false;
+            let attacked = false;
+            
+            // Store previous state for comparison
+            const wasCrouching = this.isCrouching;
+            const wasAttacking = this.isAttacking;
+            
             this.isCrouching = false;
+            this.isAttacking = false;
 
             if (keys['a']) {
                 this.vx = -MOVE_SPEED;
@@ -555,24 +581,25 @@
             if (keys['w'] && !this.isJumping) {
                 this.vy = JUMP_VELOCITY;
                 this.isJumping = true;
-                updatePlayerInFirestore(this);
+                jumped = true;
             }
             
             // Sword Attack
             if (keys['f'] && Date.now() > this.lastAttackTime + COOLDOWN_TIME) {
                 this.lastAttackTime = Date.now();
                 this.isAttacking = true;
-                updatePlayerInFirestore(this);
+                attacked = true;
             }
             
             // Gun Attack (Firing a bullet)
             if (keys['g'] && Date.now() > this.lastAttackTime + 2 * COOLDOWN_TIME) {
                  this.lastAttackTime = Date.now();
                  this.fireGun();
-                 updatePlayerInFirestore(this); // Sync attack status
+                 attacked = true;
             }
 
-            if (moved || this.isCrouching || this.isAttacking) {
+            // Only sync to Firestore if state actually changed
+            if (moved || jumped || attacked || this.isCrouching !== wasCrouching || this.isAttacking !== wasAttacking) {
                 updatePlayerInFirestore(this);
             }
         }
@@ -582,6 +609,24 @@
             // Player is dead
             if (state.health <= 0) return;
 
+            // --- NEW: INTERPOLATION STEP (Only for remote players) ---
+            let drawX = state.x;
+            let drawY = state.y;
+            
+            if (state.id !== localPlayerId) {
+                if (state.displayX === undefined) state.displayX = state.x;
+                if (state.displayY === undefined) state.displayY = state.y;
+                
+                // Interpolate display position towards authoritative position (x, y)
+                state.displayX += (state.x - state.displayX) * INTERP_FACTOR;
+                state.displayY += (state.y - state.displayY) * INTERP_FACTOR;
+                
+                drawX = state.displayX;
+                drawY = state.displayY;
+            }
+            // --- END INTERPOLATION STEP ---
+
+
             // Determine drawing color based on hit effect
             const isFlashing = Date.now() - state.hitEffectTime < HIT_FLASH_DURATION;
             const drawColor = isFlashing ? '#ff0000' : state.color; // Flash red on hit
@@ -589,14 +634,14 @@
             const bodyHeight = state.isCrouching ? state.height * 0.7 : state.height;
             const headRadius = 8;
             const legSeparation = 10;
-            const bodyY = state.y; // The Y coordinate is the floor level for the feet/base
+            const bodyFloorY = drawY; // The Y coordinate is the floor level for the feet/base
 
             // 1. Draw Health Bar
             ctx.fillStyle = '#444';
             const barWidth = 60;
             const barHeight = 6;
-            const barX = state.x - barWidth / 2;
-            const barY = bodyY - bodyHeight - 20; 
+            const barX = drawX - barWidth / 2;
+            const barY = bodyFloorY - bodyHeight - 20; 
             
             ctx.fillRect(barX, barY, barWidth, barHeight);
 
@@ -611,27 +656,27 @@
             ctx.font = '10px Inter';
             ctx.textAlign = 'center';
             ctx.fillStyle = drawColor;
-            ctx.fillText(state.name.split('@')[0], state.x, barY - 5);
+            ctx.fillText(state.name.split('@')[0], drawX, barY - 5);
             
             // 3. Draw Stickman Body
             
             // Head (Circle)
-            const headY = bodyY - bodyHeight + headRadius; 
+            const headY = bodyFloorY - bodyHeight + headRadius; 
             ctx.beginPath();
-            ctx.arc(state.x, headY, headRadius, 0, Math.PI * 2); 
+            ctx.arc(drawX, headY, headRadius, 0, Math.PI * 2); 
             ctx.fillStyle = drawColor;
             ctx.fill();
             ctx.closePath();
 
             // Body (Line)
-            const bodyEnd = bodyY - 15; 
+            const bodyEnd = bodyFloorY - 15; 
             const bodyStart = headY + headRadius;
             
             ctx.strokeStyle = drawColor;
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyStart);
-            ctx.lineTo(state.x, bodyEnd); 
+            ctx.moveTo(drawX, bodyStart);
+            ctx.lineTo(drawX, bodyEnd); 
             ctx.stroke();
 
             // Arms (Lines)
@@ -639,43 +684,43 @@
             
             // Left arm
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyStart + 10);
-            ctx.lineTo(state.x + legSeparation + armOffset, bodyStart + 20);
+            ctx.moveTo(drawX, bodyStart + 10);
+            ctx.lineTo(drawX + legSeparation + armOffset, bodyStart + 20);
             ctx.stroke();
 
             // Right arm
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyStart + 10);
-            ctx.lineTo(state.x - legSeparation - armOffset, bodyStart + 20);
+            ctx.moveTo(drawX, bodyStart + 10);
+            ctx.lineTo(drawX - legSeparation - armOffset, bodyStart + 20);
             ctx.stroke();
 
             // Legs (Lines)
-            // Legs start where body ends, and end at the floor (bodyY)
+            // Legs start where body ends, and end at the floor (bodyFloorY)
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd); 
-            ctx.lineTo(state.x - legSeparation, bodyY); 
+            ctx.moveTo(drawX, bodyEnd); 
+            ctx.lineTo(drawX - legSeparation, bodyFloorY); 
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd);
-            ctx.lineTo(state.x + legSeparation, bodyY);
+            ctx.moveTo(drawX, bodyEnd);
+            ctx.lineTo(drawX + legSeparation, bodyFloorY);
             ctx.stroke();
 
 
             // 4. Draw Weapon
             if (state.isAttacking) {
-                this.drawSword(state, drawColor);
+                this.drawSword(state, drawColor, drawX, bodyFloorY);
             } else {
-                 this.drawGun(state, drawColor);
+                 this.drawGun(state, drawColor, drawX, bodyFloorY);
             }
         }
 
-        drawSword(state, drawColor) {
+        drawSword(state, drawColor, drawX, bodyFloorY) {
             const swordLength = 50;
             const handleLength = 10;
             const bladeWidth = 4;
             const dir = state.facing === 'right' ? 1 : -1;
-            const armX = state.x + dir * 10;
-            const armY = state.y - state.height / 2; // Mid-body height
+            const armX = drawX + dir * 10;
+            const armY = bodyFloorY - state.height / 2; // Mid-body height
             
             // 1. Draw Hilt (Handle/Grip) - Dark metal color
             ctx.strokeStyle = '#555';
@@ -706,10 +751,10 @@
             ctx.stroke();
         }
         
-        drawGun(state, drawColor) {
+        drawGun(state, drawColor, drawX, bodyFloorY) {
             const dir = state.facing === 'right' ? 1 : -1;
-            const centerX = state.x + dir * 10;
-            const gunY = state.y - state.height / 2; // Mid-body height
+            const centerX = drawX + dir * 10;
+            const gunY = bodyFloorY - state.height / 2; // Mid-body height
             
             const gripHeight = 15;
             const gripWidth = 5;
