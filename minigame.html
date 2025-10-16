@@ -228,7 +228,7 @@
     const COOLDOWN_TIME = 300; // ms
     const HIT_FLASH_DURATION = 100; // ms for the red flash
     // Interpolation speed: Higher value means snappier/less smooth, lower means smoother/more latency
-    const INTERP_FACTOR = 0.5; // **FIXED: Increased from 0.3 to 0.5 for snappier real-time feel**
+    const INTERP_FACTOR = 0.5; // Aggressive setting for real-time feel
     const DEFAULT_STICKMAN_HEIGHT = 60; // Crucial for drawing remote players
 
     
@@ -332,7 +332,12 @@
                     localPlayer.id = localPlayerId;
                     localPlayer.color = playerColor;
                     localPlayer.name = displayName;
-                    updatePlayerInFirestore(localPlayer);
+                    // Send minimal state update on re-auth
+                    setDoc(doc(db, PLAYER_COLLECTION_PATH, localPlayerId), {
+                        name: localPlayer.name,
+                        color: localPlayer.color,
+                        lastUpdated: Date.now()
+                    }, { merge: true }).catch(e => console.warn("Player profile update failed:", e));
                 }
 
 
@@ -422,6 +427,7 @@
         };
 
         try {
+            // Use setDoc to register the player with full profile and initial state
             await setDoc(playerRef, initialPlayerState, { merge: true });
             console.log("Player registered/updated:", localPlayerId);
             showMessage('Connected to the Arena! Fight!', 2000);
@@ -436,7 +442,7 @@
         if (!db || !player) return;
 
         const playerRef = doc(db, PLAYER_COLLECTION_PATH, player.id);
-        // Only send necessary state data to minimize payload size
+        // Only send essential state data for real-time synchronization
         setDoc(playerRef, {
             x: player.x,
             y: player.y,
@@ -446,7 +452,7 @@
             isCrouching: player.isCrouching,
             isAttacking: player.isAttacking,
             facing: player.facing,
-            height: player.height, // CRITICAL: Always send height
+            height: player.height, 
             lastUpdated: Date.now(),
             hitEffectTime: player.hitEffectTime || 0, 
         }, { merge: true }).catch(e => console.warn("Sync failed:", e));
@@ -475,23 +481,22 @@
                     
                     // CRITICAL FIX: Ensure essential properties exist for drawing/interpolation
                     if (!currentState) {
+                        // New player: Initialize display position to match authoritative position
                         currentState = {
                             x: newData.x, 
                             y: newData.y, 
-                            // **FIXED: Ensure displayX/Y are initialized to x/y on first add**
                             displayX: newData.x, 
                             displayY: newData.y,
-                            height: newData.height || DEFAULT_STICKMAN_HEIGHT // Ensure height exists
+                            height: newData.height || DEFAULT_STICKMAN_HEIGHT 
                         };
                     } else {
-                        // Merge new data into the existing state object
+                        // Existing player: Merge new data and maintain existing displayX/Y
                         currentState = { ...currentState, ...newData };
                         
-                        // Defensive checks for display position (in case it wasn't set on first join)
+                        // Fallback check in case displayX/Y were missed on initial add
                         if (currentState.displayX === undefined) currentState.displayX = currentState.x;
                         if (currentState.displayY === undefined) currentState.displayY = currentState.y;
                         
-                        // Ensure height is always available
                         if (currentState.height === undefined) currentState.height = DEFAULT_STICKMAN_HEIGHT;
                     }
                     
@@ -507,7 +512,17 @@
     }
 
     async function applyDamageToRemotePlayer(targetId, damage) {
-        if (!db) return;
+        if (!db) {
+            console.error("Database not initialized for damage transaction.");
+            return;
+        }
+
+        // FIX: Ensure doc creation is robust by checking for valid path segments
+        if (!PLAYER_COLLECTION_PATH || typeof PLAYER_COLLECTION_PATH !== 'string' || !targetId) {
+             console.error("Invalid path segments for damage transaction.");
+             return;
+        }
+
         const targetRef = doc(db, PLAYER_COLLECTION_PATH, targetId);
 
         try {
@@ -615,7 +630,7 @@
                  attacked = true;
             }
 
-            // Only sync to Firestore if state actually changed
+            // CRITICAL FIX: Update Firestore if any movement or action occurred 
             if (moved || jumped || attacked || this.isCrouching !== wasCrouching || this.isAttacking !== wasAttacking) {
                 updatePlayerInFirestore(this);
             }
@@ -633,7 +648,6 @@
             
             if (state.id !== localPlayerId) {
                 // Interpolate display position towards authoritative position (x, y)
-                // Fix: Use the current displayX/Y to start the interpolation, updating the state object directly
                 state.displayX += (state.x - state.displayX) * INTERP_FACTOR;
                 state.displayY += (state.y - state.displayY) * INTERP_FACTOR;
                 
@@ -677,7 +691,7 @@
             ctx.textAlign = 'center';
             ctx.fillStyle = drawColor;
             
-            // --- Safely access name before splitting ---
+            // --- FIX: Safely access name before splitting ---
             const playerName = state.name || 'Unknown Warrior';
             ctx.fillText(playerName.split('@')[0], drawX, barY - 5);
             // --------------------------------------------------
@@ -808,7 +822,6 @@
 
         checkPlatformCollision() {
             let isColliding = false;
-            let onGround = this.y >= FLOOR;
 
             // Iterate over all obstacles to check for landing
             for (const obs of obstacles) {
@@ -902,9 +915,13 @@
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
 
-                // --- CRITICAL FIX: Use the authoritative state (x, y) for hit detection ---
+                // --- CRITICAL: Check against the local player's ID --
+                if (remoteState.id === localPlayerId) return;
+
+                // --- Use the authoritative state (x, y) for hit detection ---
                 const targetCenterX = remoteState.x;
-                const targetCenterY = remoteState.y - remoteState.height / 2; 
+                const targetHeight = remoteState.height || DEFAULT_STICKMAN_HEIGHT;
+                const targetCenterY = remoteState.y - targetHeight / 2; 
                 
                 // Distance check between sword tip and remote player center
                 const dx = targetCenterX - swordTipX;
@@ -948,7 +965,10 @@
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
                 
-                // --- CRITICAL FIX: Use the authoritative state (x, y) for bullet hit detection ---
+                // --- CRITICAL: Check against the local player's ID --
+                if (remoteState.id === localPlayerId) return;
+                
+                // --- Use the authoritative state (x, y) for bullet hit detection ---
                 // Ensure remoteState.height is available, defaulting if necessary
                 const targetHeight = remoteState.height || DEFAULT_STICKMAN_HEIGHT;
                 
@@ -960,6 +980,7 @@
                 if (this.x > playerLeft && this.x < playerRight &&
                     this.y > playerBodyTop && this.y < playerBodyBottom) {
                         
+                    // Only apply damage if the owner of the bullet is not the target
                     if (this.ownerId !== remoteState.id) {
                         applyDamageToRemotePlayer(remoteState.id, this.damage);
                         hit = true; 
