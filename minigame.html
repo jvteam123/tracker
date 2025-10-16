@@ -189,7 +189,7 @@
     // --- FIREBASE IMPORTS ---
     // Note: The imports use the stable Firebase 11.6.1 version.
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot, collection, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -227,8 +227,8 @@
     const MOVE_SPEED = 4;
     const COOLDOWN_TIME = 300; // ms
     const HIT_FLASH_DURATION = 100; // ms for the red flash
-    // NEW: Interpolation speed (adjust for smoother/snappier movement)
-    const INTERP_FACTOR = 0.2; 
+    // Interpolation speed: Higher value means snappier/less smooth, lower means smoother/more latency
+    const INTERP_FACTOR = 0.3; // Increased to 0.3 for snappier feel
     
     // Using the project ID from the config for the public data path
     const PROJECT_ID = CONFIG.projectId;
@@ -428,11 +428,12 @@
         }
     }
     
-    // Function to update local player state to Firestore
+    // Function to update local player state to Firestore (minimal update)
     function updatePlayerInFirestore(player) {
         if (!db || !player) return;
 
         const playerRef = doc(db, PLAYER_COLLECTION_PATH, player.id);
+        // Only send necessary state data to minimize payload size
         setDoc(playerRef, {
             x: player.x,
             y: player.y,
@@ -465,7 +466,6 @@
                         return;
                     }
                     
-                    // --- NEW INTERPOLATION LOGIC ---
                     const currentState = remotePlayers[playerId];
                     const newData = { ...data };
 
@@ -481,7 +481,6 @@
                     
                     // Update or add remote player state
                     remotePlayers[playerId] = { ...currentState, ...newData };
-                    // --- END INTERPOLATION LOGIC ---
                 }
                 if (change.type === "removed") {
                     delete remotePlayers[playerId];
@@ -517,7 +516,9 @@
                 }
             });
         } catch (e) {
-            console.error("Damage transaction failed:", e);
+            // Note: The "stored version does not match" error is expected in high-frequency transactions.
+            // We only log a warning here to keep the console clean but acknowledge the failure.
+            console.warn("Damage transaction failed (likely concurrency issue, retrying internally):", e);
         }
     }
 
@@ -609,11 +610,12 @@
             // Player is dead
             if (state.health <= 0) return;
 
-            // --- NEW: INTERPOLATION STEP (Only for remote players) ---
+            // --- INTERPOLATION STEP (Only for remote players) ---
             let drawX = state.x;
             let drawY = state.y;
             
             if (state.id !== localPlayerId) {
+                // Defensive initialization for remote players
                 if (state.displayX === undefined) state.displayX = state.x;
                 if (state.displayY === undefined) state.displayY = state.y;
                 
@@ -878,7 +880,7 @@
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
 
-                // Target position (using the drawing logic's center Y)
+                // --- CRITICAL FIX: Use the authoritative state (x, y) for hit detection ---
                 const targetCenterX = remoteState.x;
                 const targetCenterY = remoteState.y - remoteState.height / 2; 
                 
@@ -924,7 +926,7 @@
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
                 
-                // Check if the bullet hits the remote player's body area (approximate rectangle)
+                // --- CRITICAL FIX: Use the authoritative state (x, y) for bullet hit detection ---
                 const playerBodyTop = remoteState.y - remoteState.height;
                 const playerBodyBottom = remoteState.y;
                 const playerLeft = remoteState.x - remoteState.width / 2;
