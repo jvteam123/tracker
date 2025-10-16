@@ -477,28 +477,30 @@
 
                 if (change.type === "added" || change.type === "modified") {
                     
-                    // --- Handle Damage/Floating Numbers ---
+                    // --- Handle Damage/Floating Numbers (Local Player) ---
                     if (playerId === localPlayerId && localPlayer) {
                         const damageTaken = localPlayer.health - data.health;
                         if (damageTaken > 0) {
                             damageTexts.push(new DamageText(localPlayer.x, localPlayer.y - localPlayer.height - 10, damageTaken));
                             hitParticles.push(new HitParticle(localPlayer.x, localPlayer.y - localPlayer.height / 2, '#f20050')); // Red hit
                         }
-                        // Update local player's transient state (health, hit effects)
+                        // CRITICAL: Update local player's transient state (health, hit effects)
                         localPlayer.health = data.health;
                         localPlayer.hitEffectTime = data.hitEffectTime;
                         localPlayer.lastHealth = data.health;
                         return;
                     }
                     
+                    // --- Handle Remote Player State ---
                     let currentState = remotePlayers[playerId];
                     const newData = { ...data };
                     
-                    // Check for remote damage taken before merging
+                    // Check for remote damage taken before merging (uses old health vs new)
                     if (currentState && currentState.health > newData.health) {
                         const damageTaken = currentState.health - newData.health;
-                        damageTexts.push(new DamageText(currentState.displayX, currentState.displayY - currentState.height - 10, damageTaken));
-                        hitParticles.push(new HitParticle(currentState.displayX, currentState.displayY - currentState.height / 2, '#f20050')); // Red hit
+                        // Use the interpolated/display position for the visual effect
+                        damageTexts.push(new DamageText(currentState.displayX || newData.x, currentState.displayY || newData.y - currentState.height - 10, damageTaken));
+                        hitParticles.push(new HitParticle(currentState.displayX || newData.x, currentState.displayY || newData.y - currentState.height / 2, '#f20050')); // Red hit
                     }
                     
                     // CRITICAL FIX: Ensure essential properties exist for drawing/interpolation
@@ -552,7 +554,8 @@
                 if (!targetDoc.exists()) {
                     throw "Target player does not exist!";
                 }
-
+                
+                // Get authoritative health from the transaction read
                 const currentHealth = targetDoc.data().health;
                 if (currentHealth <= 0) return; // Already dead
 
@@ -774,6 +777,12 @@
             let currentHeight = state.height || DEFAULT_STICKMAN_HEIGHT; // Defensive height check
             
             if (state.id !== localPlayerId) {
+                // CRITICAL FIX #1: Initialize display coords if they are undefined (first frame)
+                if (state.displayX === undefined || state.displayY === undefined) {
+                    state.displayX = state.x;
+                    state.displayY = state.y;
+                }
+                
                 // Interpolate display position towards authoritative position (x, y)
                 state.displayX += (state.x - state.displayX) * INTERP_FACTOR;
                 state.displayY += (state.y - state.displayY) * INTERP_FACTOR;
