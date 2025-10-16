@@ -225,6 +225,7 @@
     const JUMP_VELOCITY = -12;
     const MOVE_SPEED = 4;
     const COOLDOWN_TIME = 300; // ms
+    const HIT_FLASH_DURATION = 100; // ms for the red flash
     // Using the project ID from the config for the public data path
     const PROJECT_ID = CONFIG.projectId;
     const PLAYER_COLLECTION_PATH = `/artifacts/${PROJECT_ID}/public/data/players`;
@@ -284,20 +285,6 @@
         app = initializeApp(CONFIG);
         auth = getAuth(app);
         db = getFirestore(app);
-        
-        // --- FIX: Removed the problematic signInAnonymously call ---
-        /*
-        try {
-            if (!auth.currentUser) {
-                await signInAnonymously(auth);
-            }
-        } catch (error) {
-            console.error("Initial sign-in failed:", error);
-            userStatus.textContent = 'Authentication Failed. Please sign in with Google.';
-            googleSignInBtn.style.display = 'block';
-        }
-        */
-        // --- END FIX ---
         
         // Ensure the Google sign-in button is always visible until auth state is known
         userStatus.textContent = 'Please sign in to join the war.';
@@ -395,6 +382,7 @@
             isAttacking: false,
             facing: 'right',
             lastUpdated: Date.now(),
+            hitEffectTime: 0, // NEW: Initial hit effect time
             // Only non-transient data should be here
         };
 
@@ -423,6 +411,7 @@
             isAttacking: player.isAttacking,
             facing: player.facing,
             lastUpdated: Date.now(),
+            hitEffectTime: player.hitEffectTime || 0, // Include hitEffectTime
         }, { merge: true }).catch(e => console.warn("Sync failed:", e));
     }
 
@@ -440,7 +429,8 @@
 
                 if (change.type === "added" || change.type === "modified") {
                     // Update or add remote player state
-                    remotePlayers[playerId] = data;
+                    // We merge data into the remotePlayers object, which handles drawing
+                    remotePlayers[playerId] = { ...remotePlayers[playerId], ...data };
                 }
                 if (change.type === "removed") {
                     delete remotePlayers[playerId];
@@ -468,7 +458,7 @@
                 
                 transaction.update(targetRef, { 
                     health: newHealth,
-                    // Optionally add hit feedback/effect state
+                    hitEffectTime: Date.now(), // NEW: Set hit effect time on target
                 });
 
                 if (newHealth === 0) {
@@ -500,6 +490,7 @@
             this.facing = 'right';
             this.lastAttackTime = 0;
             this.weapon = 'sword'; 
+            this.hitEffectTime = 0; // Local property for the visual effect
         }
 
         // Method to update this local player's state based on input
@@ -555,12 +546,16 @@
             // Player is dead
             if (state.health <= 0) return;
 
+            // Determine drawing color based on hit effect
+            const isFlashing = Date.now() - state.hitEffectTime < HIT_FLASH_DURATION;
+            const drawColor = isFlashing ? '#ff0000' : state.color; // Flash red on hit
+
             // 1. Draw Health Bar
             ctx.fillStyle = '#444';
             const barWidth = 60;
             const barHeight = 6;
             const barX = state.x - barWidth / 2;
-            const barY = state.y - state.height - 20;
+            const barY = state.y - state.height - 20; // Adjusted for body height
             
             ctx.fillRect(barX, barY, barWidth, barHeight);
 
@@ -574,28 +569,26 @@
             // 2. Draw Name/ID
             ctx.font = '10px Inter';
             ctx.textAlign = 'center';
-            ctx.fillStyle = state.color;
+            ctx.fillStyle = drawColor;
             ctx.fillText(state.name.split('@')[0], state.x, state.y - state.height - 25);
-            ctx.fillStyle = state.color;
-
-
+            
             // 3. Draw Stickman Body
             // Head (Circle)
             ctx.beginPath();
-            ctx.arc(state.x, state.y - state.height - 10, 8, 0, Math.PI * 2);
-            ctx.fillStyle = state.color;
+            ctx.arc(state.x, state.y - state.height + 10, 8, 0, Math.PI * 2); // FIX: Adjust Head Y position relative to body start
+            ctx.fillStyle = drawColor;
             ctx.fill();
             ctx.closePath();
 
             // Body (Line)
-            const bodyEnd = state.y - 10;
-            const bodyStart = state.y - state.height;
+            const bodyEnd = state.y; // FIX: Body ends at the foot level (y)
+            const bodyStart = state.y - state.height + 20; // FIX: Body starts 20 units down from head center
             
-            ctx.strokeStyle = state.color;
+            ctx.strokeStyle = drawColor;
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(state.x, bodyStart);
-            ctx.lineTo(state.x, bodyEnd);
+            ctx.lineTo(state.x, bodyEnd - 20); // Body line stops before legs start
             ctx.stroke();
 
             // Arms (Lines)
@@ -615,24 +608,24 @@
 
             // Legs (Lines)
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd);
-            ctx.lineTo(state.x - 10, bodyEnd + (state.isCrouching ? 5 : 20));
+            ctx.moveTo(state.x, bodyEnd - 20); // Legs start where body ends
+            ctx.lineTo(state.x - 10, bodyEnd + (state.isCrouching ? 5 : 0)); // Crouching adjustment
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(state.x, bodyEnd);
-            ctx.lineTo(state.x + 10, bodyEnd + (state.isCrouching ? 5 : 20));
+            ctx.moveTo(state.x, bodyEnd - 20);
+            ctx.lineTo(state.x + 10, bodyEnd + (state.isCrouching ? 5 : 0));
             ctx.stroke();
 
 
             // 4. Draw Weapon
             if (state.isAttacking) {
-                this.drawSword(state);
+                this.drawSword(state, drawColor);
             } else {
-                 this.drawGun(state);
+                 this.drawGun(state, drawColor);
             }
         }
 
-        drawSword(state) {
+        drawSword(state, drawColor) {
             const swordLength = 50;
             const handleLength = 10;
             const bladeWidth = 4;
@@ -661,7 +654,7 @@
             ctx.shadowBlur = 0; // Reset shadow
 
             // 3. Draw the solid blade line (Bright edge)
-            ctx.strokeStyle = '#ffffff'; 
+            ctx.strokeStyle = drawColor; // Use drawColor (color or red flash)
             ctx.lineWidth = bladeWidth;
             ctx.beginPath();
             ctx.moveTo(armX + dir * handleLength, armY);
@@ -669,7 +662,7 @@
             ctx.stroke();
         }
         
-        drawGun(state) {
+        drawGun(state, drawColor) {
             const dir = state.facing === 'right' ? 1 : -1;
             const centerX = state.x + dir * 10;
             const gunY = state.y - 30;
@@ -695,7 +688,7 @@
             ctx.fillRect(bodyX + dir * (bodyLength + 2), gunY - 2, barrelLength, 4); 
             
             // 4. Draw Grip Outline for definition
-            ctx.strokeStyle = '#555';
+            ctx.strokeStyle = drawColor; // Use drawColor (color or red flash)
             ctx.lineWidth = 1;
             ctx.strokeRect(gripX - gripWidth / 2, gunY, gripWidth, gripHeight);
         }
@@ -710,7 +703,8 @@
                 if (obs.type === 'platform' || obs.type === 'wall' || obs.type === 'bush') {
                     
                     // Check horizontal overlap
-                    const horizontalOverlap = this.x >= obs.x && this.x <= (obs.x + obs.w);
+                    // Broadened horizontal check slightly
+                    const horizontalOverlap = this.x >= obs.x - this.width/2 && this.x <= (obs.x + obs.w + this.width/2);
 
                     // Check if player is falling onto the platform top
                     const isFallingOnto = this.y < obs.y && this.y + this.vy >= obs.y;
@@ -737,7 +731,7 @@
                     this.vy = 0;
                     this.isJumping = false;
                 }
-            } else if (this.y >= FLOOR) {
+            } else if (this.y > FLOOR) {
                  // Check if the player fell off a platform onto the main floor
                 this.y = FLOOR;
                 this.vy = 0;
@@ -776,7 +770,7 @@
             
             // Bullets are local to the shooter's screen to avoid heavy Firestore traffic
             const bullet = new Bullet(
-                this.x + (this.facing === 'right' ? 10 : -10), 
+                this.x + (this.facing === 'right' ? 20 : -20), // FIX: Bullet starts further from the body, near the barrel
                 this.y - 30, 
                 bulletVel, 
                 this.id
@@ -787,19 +781,24 @@
         checkMeleeHit() {
             if (!this.isAttacking) return;
             
-            const range = 50;
-            const hitX = this.x + (this.facing === 'right' ? range : -range);
-            const hitY = this.y - 30;
-            
+            // Melee hitbox check
+            const swordTipX = this.x + (this.facing === 'right' ? 60 : -60); // Sword tip is ~60 units away
+            const swordTipY = this.y - 35; // Sword vertical position
+
             // Check against all remote players
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
 
-                const dx = remoteState.x - hitX;
-                const dy = remoteState.y - 30 - hitY;
+                // Check if sword tip is near the center of the remote player's body
+                const targetCenterX = remoteState.x;
+                const targetCenterY = remoteState.y - remoteState.height / 2;
+                
+                // Distance check between sword tip and remote player center
+                const dx = targetCenterX - swordTipX;
+                const dy = targetCenterY - swordTipY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 30) {
+                if (distance < 20) { // Hitbox radius reduced for stickmen
                     // Hit detected! Apply damage via Firestore transaction
                     applyDamageToRemotePlayer(remoteState.id, 10); // Sword damage
                     this.isAttacking = false; // End attack immediately after hit
@@ -836,12 +835,15 @@
             Object.values(remotePlayers).forEach(remoteState => {
                 if (remoteState.health <= 0) return;
                 
-                // Simple distance check
-                const dx = remoteState.x - this.x;
-                const dy = (remoteState.y - 30) - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Check if the bullet hits the remote player's body area (approximate rectangle)
+                const playerBodyTop = remoteState.y - remoteState.height;
+                const playerBodyBottom = remoteState.y;
+                const playerLeft = remoteState.x - remoteState.width / 2;
+                const playerRight = remoteState.x + remoteState.width / 2;
 
-                if (distance < remoteState.width + this.radius) {
+                if (this.x > playerLeft && this.x < playerRight &&
+                    this.y > playerBodyTop && this.y < playerBodyBottom) {
+                        
                     if (this.ownerId !== remoteState.id) {
                         applyDamageToRemotePlayer(remoteState.id, this.damage);
                         hit = true; 
@@ -943,6 +945,10 @@
 
             // Draw Local Player last (on top)
             if (localPlayer) {
+                // Ensure local player has the latest hit effect time if they were hit by a remote player
+                if (remotePlayers[localPlayerId] && remotePlayers[localPlayerId].hitEffectTime) {
+                    localPlayer.hitEffectTime = remotePlayers[localPlayerId].hitEffectTime;
+                }
                 localPlayer.draw();
             }
 
