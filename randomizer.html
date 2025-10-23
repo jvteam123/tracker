@@ -169,7 +169,7 @@ Vince April Pitogo`;
             
             if (selectedListName) {
                  selector.value = selectedListName;
-                 document.getElementById('deleteListBtn').disabled = true; // Still true initially, loadSelectedList enables it
+                 // Note: Delete button remains disabled until loadSelectedList explicitly enables it.
             }
         }
         
@@ -240,7 +240,7 @@ Vince April Pitogo`;
             const selector = document.getElementById('listSelector');
             const listName = selector.value;
             
-            document.getElementById('deleteListBtn').disabled = true; // Disable until a valid list is loaded
+            document.getElementById('deleteListBtn').disabled = true; // Disable delete until a valid list is loaded
             
             if (!listName) {
                 return;
@@ -262,7 +262,8 @@ Vince April Pitogo`;
                     loadDefaultsCheckbox.checked = false;
                 }
 
-                window.loadNamesFromBulk(true); // This loads the list, saves to CURRENT_LIST_KEY, and updates selection area.
+                // FIX: Pass false to suppress the message box on load from selector.
+                window.loadNamesFromBulk(false); 
                 document.getElementById('deleteListBtn').disabled = false;
                 showMessage(`List "${listName}" loaded.`);
             }
@@ -297,6 +298,7 @@ Vince April Pitogo`;
         window.clearBulkInput = function() {
             document.getElementById('bulkInput').value = "";
             document.getElementById('loadDefaults').checked = false;
+            document.getElementById('listSelector').value = ""; // Reset selector on clear
             window.loadNamesFromBulk(false);
             showMessage("Input list cleared.");
         }
@@ -356,8 +358,11 @@ Vince April Pitogo`;
                 }
             }
             
-            // FIX: Always call loadNamesFromBulk() after toggling, to refresh the selection area and save current state.
-            window.loadNamesFromBulk(true); // Passing true shows the message
+            // FIX: Reset selector on toggle to prevent sync issues with saved lists.
+            document.getElementById('listSelector').value = ""; 
+
+            // Always call loadNamesFromBulk() after toggling, to refresh the selection area and save current state.
+            window.loadNamesFromBulk(true); 
         }
 
         function showMessage(text, isError = false) {
@@ -449,9 +454,27 @@ Vince April Pitogo`;
             loadNamesFromLocalStorage();
 
             const bulkInput = document.getElementById('bulkInput');
+            
+            // Event listener for manual text input
             bulkInput.addEventListener('input', () => {
+                // Reset selector on any manual typing
+                document.getElementById('listSelector').value = ""; 
+                
+                // Check if the bulk input content still matches the default list
+                const loadDefaultsCheckbox = document.getElementById('loadDefaults');
+                if (bulkInput.value.trim() === DEFAULT_NAMES.trim()) {
+                    loadDefaultsCheckbox.checked = true;
+                } else {
+                    loadDefaultsCheckbox.checked = false;
+                }
+
                 clearTimeout(window.saveTimeout);
                 window.saveTimeout = setTimeout(() => saveCurrentInput(bulkInput.value), 1000);
+            });
+            
+            // Event listener for toggle default
+            document.getElementById('loadDefaults').addEventListener('change', (e) => {
+                window.toggleDefaultNames(e.target.checked);
             });
         };
     </script>
