@@ -69,14 +69,16 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            text-align: center;
         }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        #google-login-btn {
+            background-color: #f44336; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            padding: 10px 20px;
+            font-size: 16px;
         }
     </style>
 </head>
@@ -98,10 +100,9 @@
     <div id="content-area">
         <div id="login-form-container">
             <h2>Sign In to DevTrack</h2>
-            <input type="text" id="email-input" placeholder="Email (test@dev.com)">
-            <input type="password" id="password-input" placeholder="Password (password)">
-            <button id="login-btn" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In / Register</button>
-            <p id="auth-status-message" style="color:red;"></p>
+            <p>Use your Google Account for team access.</p>
+            <button id="google-login-btn">Sign In with Google</button>
+            <p id="auth-status-message" style="color:red; margin-top: 10px;"></p>
         </div>
 
         <div id="app-content" style="display:none;">
@@ -125,7 +126,8 @@
     <script type="module">
         // --- 1. FIREBASE MODULAR IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        // ADDED: GoogleAuthProvider and signInWithPopup
+        import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
@@ -145,19 +147,14 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-
-
+        
         // --- 3. DOM ELEMENTS ---
-        const emailInput = document.getElementById('email-input');
-        const passwordInput = document.getElementById('password-input');
-        const loginBtn = document.getElementById('login-btn');
+        const googleLoginBtn = document.getElementById('google-login-btn');
         const logoutBtnSidebar = document.getElementById('logout-btn-sidebar');
         const authStatusMessage = document.getElementById('auth-status-message');
         const signedInStatus = document.getElementById('signed-in-status');
-
         const loginFormContainer = document.getElementById('login-form-container');
         const appContent = document.getElementById('app-content');
-        
         const postTitleInput = document.getElementById('post-title-input');
         const postTextInput = document.getElementById('post-text-input');
         const postLinkInput = document.getElementById('post-link-input');
@@ -165,18 +162,17 @@
         const submitPostBtn = document.getElementById('submit-post-btn');
         const feedDiv = document.getElementById('feed');
 
-
-        // --- 4. AUTHENTICATION & UI TOGGLE ---
+        // --- 4. GOOGLE AUTHENTICATION LOGIC ---
+        
+        // 4a. Authentication State Listener
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Show App Content, Hide Login Form
                 loginFormContainer.style.display = 'none';
                 appContent.style.display = 'block';
                 signedInStatus.textContent = 'Signed In';
                 logoutBtnSidebar.style.display = 'block';
                 loadFeed();
             } else {
-                // Show Login Form, Hide App Content
                 loginFormContainer.style.display = 'block';
                 appContent.style.display = 'none';
                 signedInStatus.textContent = 'Signed Out';
@@ -184,40 +180,30 @@
             }
         });
 
-        loginBtn.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            authStatusMessage.textContent = '';
-            if (!email || !password) {
-                authStatusMessage.textContent = 'Please enter both email and password.';
-                return;
-            }
+        // 4b. Sign In with Google Handler
+        googleLoginBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            authStatusMessage.textContent = 'Signing in...';
 
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                // This opens the Google pop-up window
+                await signInWithPopup(auth, provider);
                 authStatusMessage.textContent = 'Login successful!';
             } catch (error) {
-                // Try to register the user if login fails (first-time users)
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    authStatusMessage.textContent = 'New user registered and logged in!';
-                } catch (regError) {
-                    authStatusMessage.textContent = `Error: ${regError.message}`;
-                    console.error("Auth Error:", error);
-                }
+                // Handle errors (e.g., pop-up blocked, user closed pop-up)
+                authStatusMessage.textContent = `Sign-in failed: ${error.message}`;
+                console.error("Google Auth Error:", error);
             }
         });
 
+        // 4c. Log Out Handler
         logoutBtnSidebar.addEventListener('click', () => {
             signOut(auth);
-            // Clear inputs and messages on logout
-            emailInput.value = '';
-            passwordInput.value = '';
             authStatusMessage.textContent = '';
         });
 
 
-        // --- 5. POST/UPDATE LOGIC ---
+        // --- 5. POST/UPDATE LOGIC (Remains the same as before) ---
         submitPostBtn.addEventListener('click', async () => {
             const user = auth.currentUser;
             if (!user || !postTextInput.value.trim()) return alert("Post text required.");
@@ -225,14 +211,12 @@
             const imageFile = postImageUpload.files[0];
             let imageURL = null;
 
-            // 1. UPLOAD IMAGE to Storage
             if (imageFile) {
                 const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
                 const snapshot = await uploadBytes(storageRef, imageFile);
                 imageURL = await getDownloadURL(snapshot.ref);
             }
 
-            // 2. WRITE to Firestore
             try {
                 await addDoc(collection(db, 'posts'), {
                     title: postTitleInput.value.trim(),
@@ -251,7 +235,7 @@
             }
         });
 
-        // --- 6. FEED RENDERING LOGIC ---
+        // --- 6. FEED RENDERING LOGIC (Remains the same as before) ---
         function loadFeed() {
             const postsCol = collection(db, 'posts');
             const feedQuery = query(postsCol, orderBy('timestamp', 'desc'), limit(10));
@@ -283,13 +267,12 @@
             });
         }
 
-        // --- 7. COMMENTS LOGIC ---
+        // --- 7. COMMENTS LOGIC (Remains the same as before) ---
         function loadComments(postId) {
             const commentsDiv = document.getElementById(`comments-section-${postId}`);
             const commentsQuery = query(collection(db, `posts/${postId}/comments`), orderBy('timestamp', 'asc'));
             
             onSnapshot(commentsQuery, (snapshot) => {
-                // Clear and re-render comments
                 commentsDiv.innerHTML = '<h4>Comments:</h4>';
                 snapshot.forEach(commentDoc => {
                     const comment = commentDoc.data();
@@ -311,12 +294,8 @@
             
             const commentText = prompt("Enter your comment/reply text:");
             if (!commentText) return;
-            
-            // Note: Image upload for replies is omitted here for code brevity,
-            // but would use the same logic as the main post upload (Storage).
 
             try {
-                // Write the comment
                 await addDoc(collection(db, `posts/${postId}/comments`), {
                     text: commentText,
                     author: user.email,
@@ -324,7 +303,6 @@
                     timestamp: serverTimestamp(),
                 });
                 
-                // Increment the counter on the main post (1 Write for the comment + 1 Write for the counter update)
                 await updateDoc(doc(db, 'posts', postId), {
                     commentsCount: increment(1)
                 });
