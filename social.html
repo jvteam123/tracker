@@ -3,43 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevTrack | TL/Tech Feed</title>
+    <title>DevTrack | Team Lead Feed</title>
+    
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        header, main { max-width: 800px; margin: 0 auto; }
-        .post { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
-        .comment { margin-left: 20px; border-left: 2px solid #eee; padding-left: 10px; }
-        .comments-section { margin-top: 10px; }
+        /* --- General Styling --- */
+        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f7f6; display: flex; }
+        
+        /* --- Sidebar (Dark Theme) --- */
+        #sidebar { 
+            width: 250px; 
+            background-color: #2b313a; /* Dark Blue/Gray */
+            color: #f0f0f0; 
+            height: 100vh; 
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .team-header { 
+            text-align: center; 
+            padding-bottom: 20px; 
+            border-bottom: 1px solid #444; 
+        }
+        .nav-item { 
+            padding: 15px 20px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center;
+        }
+        .nav-item:hover, .nav-item.active { 
+            background-color: #3e444d; /* Slightly Lighter Hover */
+        }
+        
+        /* --- Main Content (Light Theme) --- */
+        #content-area { 
+            flex-grow: 1; 
+            padding: 20px;
+        }
+        
+        /* --- Feed & Posts --- */
+        .post-container { 
+            background-color: white; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            padding: 15px; 
+            margin-bottom: 15px;
+        }
+        .comment-area { 
+            border-top: 1px solid #eee; 
+            padding-top: 10px; 
+            margin-top: 15px; 
+        }
+        .comment { 
+            background-color: #f9f9f9; 
+            border-left: 3px solid #f44336; /* Red accent for comments */
+            padding: 8px; 
+            margin-top: 5px; 
+            border-radius: 4px;
+        }
         img { max-width: 150px; height: auto; display: block; margin: 5px 0; }
+        
+        /* --- Login Form --- */
+        #login-form-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-    <header>
-        <h1>DevTrack Team Feed</h1>
-        <div id="auth-ui">
-            <button id="login-btn">Log In (Test User)</button>
-            <span id="user-info">Not logged in.</span>
-            <button id="logout-btn" style="display:none;">Log Out</button>
+
+    <div id="sidebar">
+        <div class="team-header">
+            <h2>Team123</h2>
+            <small id="signed-in-status">Signed Out</small>
         </div>
-    </header>
+        <div id="nav-container">
+            <div class="nav-item active">📋 Dashboard (Feed)</div>
+            <div class="nav-item" onclick="alert('TL Summary feature coming soon!')">📈 TL Summary</div>
+            <div class="nav-item" onclick="alert('User Management feature coming soon!')">👥 User Management</div>
+            <div class="nav-item" id="logout-btn-sidebar" style="display:none;">🔒 Log Out</div>
+        </div>
+    </div>
 
-    <main id="app-content" style="display:none;">
-        <h2>Create New Update</h2>
-        <input type="text" id="post-title-input" placeholder="Title (e.g., Q3 Project Status)" value="Q4 Sprint Plan">
-        <textarea id="post-text-input" placeholder="Detailed update/text..."></textarea>
-        <input type="url" id="post-link-input" placeholder="Optional: Link URL">
-        <input type="file" id="post-image-upload" accept="image/*">
-        <button id="submit-post-btn">Publish Update</button>
+    <div id="content-area">
+        <div id="login-form-container">
+            <h2>Sign In to DevTrack</h2>
+            <input type="text" id="email-input" placeholder="Email (test@dev.com)">
+            <input type="password" id="password-input" placeholder="Password (password)">
+            <button id="login-btn" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In / Register</button>
+            <p id="auth-status-message" style="color:red;"></p>
+        </div>
 
-        <hr>
-
-        <h2>Live Feed</h2>
-        <div id="feed">
+        <div id="app-content" style="display:none;">
+            <h2>Post New Update</h2>
+            <div class="post-container" style="background-color: #f0f0f0;">
+                <input type="text" id="post-title-input" placeholder="Title (e.g., Q3 Project Status)">
+                <textarea id="post-text-input" placeholder="Detailed update/text..."></textarea>
+                <input type="url" id="post-link-input" placeholder="Optional: Link URL">
+                <input type="file" id="post-image-upload" accept="image/*">
+                <button id="submit-post-btn" style="background-color: #4CAF50; color: white; border: none; padding: 10px;">Publish Update</button>
             </div>
-    </main>
+            
+            <hr>
+
+            <h2>Team Updates</h2>
+            <div id="feed">
+                </div>
+        </div>
+    </div>
 
     <script type="module">
-        // 1. IMPORT NECESSARY MODULAR SDK FUNCTIONS VIA CDN
+        // --- 1. FIREBASE MODULAR IMPORTS ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -58,63 +142,82 @@
 
         // 2. INITIALIZE SERVICES
         const app = initializeApp(firebaseConfig);
-        // const analytics = getAnalytics(app); // Analytics is optional/omitted for demo
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
 
 
-        // --- DOM ELEMENTS ---
+        // --- 3. DOM ELEMENTS ---
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
         const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userInfoSpan = document.getElementById('user-info');
+        const logoutBtnSidebar = document.getElementById('logout-btn-sidebar');
+        const authStatusMessage = document.getElementById('auth-status-message');
+        const signedInStatus = document.getElementById('signed-in-status');
+
+        const loginFormContainer = document.getElementById('login-form-container');
         const appContent = document.getElementById('app-content');
+        
         const postTitleInput = document.getElementById('post-title-input');
         const postTextInput = document.getElementById('post-text-input');
         const postLinkInput = document.getElementById('post-link-input');
         const postImageUpload = document.getElementById('post-image-upload');
         const submitPostBtn = document.getElementById('submit-post-btn');
         const feedDiv = document.getElementById('feed');
-        
-        // --- AUTHENTICATION ---
+
+
+        // --- 4. AUTHENTICATION & UI TOGGLE ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                userInfoSpan.textContent = `Logged in as: ${user.email} (UID: ${user.uid.substring(0, 4)}...)`;
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'inline';
+                // Show App Content, Hide Login Form
+                loginFormContainer.style.display = 'none';
                 appContent.style.display = 'block';
+                signedInStatus.textContent = 'Signed In';
+                logoutBtnSidebar.style.display = 'block';
                 loadFeed();
             } else {
-                userInfoSpan.textContent = 'Not logged in.';
-                loginBtn.style.display = 'inline';
-                logoutBtn.style.display = 'none';
+                // Show Login Form, Hide App Content
+                loginFormContainer.style.display = 'block';
                 appContent.style.display = 'none';
+                signedInStatus.textContent = 'Signed Out';
+                logoutBtnSidebar.style.display = 'none';
             }
         });
 
         loginBtn.addEventListener('click', async () => {
-            const email = prompt("Enter email (test@dev.com):");
-            const password = prompt("Enter password (password):");
-            if (!email || !password) return;
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authStatusMessage.textContent = '';
+            if (!email || !password) {
+                authStatusMessage.textContent = 'Please enter both email and password.';
+                return;
+            }
 
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                console.log("Logged in!");
+                authStatusMessage.textContent = 'Login successful!';
             } catch (error) {
-                // If sign-in fails, try to create account for testing
+                // Try to register the user if login fails (first-time users)
                 try {
                     await createUserWithEmailAndPassword(auth, email, password);
-                    alert("User created and logged in!");
+                    authStatusMessage.textContent = 'New user registered and logged in!';
                 } catch (regError) {
-                    alert(`Login/Registration Error: ${regError.message}`);
+                    authStatusMessage.textContent = `Error: ${regError.message}`;
+                    console.error("Auth Error:", error);
                 }
             }
         });
 
-        logoutBtn.addEventListener('click', () => signOut(auth));
+        logoutBtnSidebar.addEventListener('click', () => {
+            signOut(auth);
+            // Clear inputs and messages on logout
+            emailInput.value = '';
+            passwordInput.value = '';
+            authStatusMessage.textContent = '';
+        });
 
 
-        // --- POST/UPDATE LOGIC ---
+        // --- 5. POST/UPDATE LOGIC ---
         submitPostBtn.addEventListener('click', async () => {
             const user = auth.currentUser;
             if (!user || !postTextInput.value.trim()) return alert("Post text required.");
@@ -148,29 +251,30 @@
             }
         });
 
-        // --- FEED RENDERING LOGIC ---
+        // --- 6. FEED RENDERING LOGIC ---
         function loadFeed() {
             const postsCol = collection(db, 'posts');
             const feedQuery = query(postsCol, orderBy('timestamp', 'desc'), limit(10));
 
-            // Real-time listener for the feed
             onSnapshot(feedQuery, (snapshot) => {
                 feedDiv.innerHTML = '';
                 snapshot.forEach(postDoc => {
                     const post = postDoc.data();
                     const postId = postDoc.id;
+                    const timestampStr = post.timestamp ? new Date(post.timestamp.toDate()).toLocaleString() : 'Just now';
+
                     const postElement = document.createElement('div');
-                    postElement.className = 'post';
+                    postElement.className = 'post-container';
                     
                     postElement.innerHTML = `
-                        <h3>${post.title}</h3>
+                        <h3>${post.title} <small style="color:#f44336; float:right;">By: ${post.author}</small></h3>
                         <p>${post.text}</p>
                         ${post.linkURL ? `<p><a href="${post.linkURL}" target="_blank">View Attached Link</a></p>` : ''}
                         ${post.imageURL ? `<img src="${post.imageURL}">` : ''}
-                        <small>By: ${post.author} at ${new Date(post.timestamp?.toDate()).toLocaleString()} | Comments: <span id="count-${postId}">${post.commentsCount || 0}</span></small>
+                        <small>Posted: ${timestampStr} | Comments: <span id="count-${postId}">${post.commentsCount || 0}</span></small>
                         
-                        <div id="comments-section-${postId}" class="comments-section"></div>
-                        <button onclick="window.commentToggle('${postId}')">Add Comment/Reply</button>
+                        <div id="comments-section-${postId}" class="comment-area"></div>
+                        <button onclick="window.commentToggle('${postId}')" style="margin-top: 10px; background-color: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px;">Comment/Reply</button>
                     `;
                     feedDiv.appendChild(postElement);
 
@@ -179,46 +283,48 @@
             });
         }
 
-        // --- COMMENTS LOGIC ---
+        // --- 7. COMMENTS LOGIC ---
         function loadComments(postId) {
             const commentsDiv = document.getElementById(`comments-section-${postId}`);
             const commentsQuery = query(collection(db, `posts/${postId}/comments`), orderBy('timestamp', 'asc'));
             
             onSnapshot(commentsQuery, (snapshot) => {
+                // Clear and re-render comments
                 commentsDiv.innerHTML = '<h4>Comments:</h4>';
-                // Simplified rendering: just list all comments sequentially
                 snapshot.forEach(commentDoc => {
                     const comment = commentDoc.data();
                     const commentEl = document.createElement('div');
                     commentEl.className = 'comment';
                     commentEl.innerHTML = `
-                        <p><strong>${comment.author} (Tech):</strong> ${comment.text}</p>
+                        <p><strong>${comment.author}:</strong> ${comment.text}</p>
                         ${comment.imageURL ? `<img src="${comment.imageURL}">` : ''}
-                        `;
+                    `;
                     commentsDiv.appendChild(commentEl);
                 });
             });
         }
 
-        // Global function for comment/reply form (Placeholder)
+        // --- 8. GLOBAL COMMENT TOGGLE FUNCTION (Simplified) ---
         window.commentToggle = async (postId) => {
             const user = auth.currentUser;
             if (!user) return alert("Please log in to comment.");
             
             const commentText = prompt("Enter your comment/reply text:");
             if (!commentText) return;
+            
+            // Note: Image upload for replies is omitted here for code brevity,
+            // but would use the same logic as the main post upload (Storage).
 
-            // Simple Write for a comment
             try {
+                // Write the comment
                 await addDoc(collection(db, `posts/${postId}/comments`), {
                     text: commentText,
                     author: user.email,
                     authorId: user.uid,
                     timestamp: serverTimestamp(),
-                    // parentCommentId: null for top-level comment (threading logic omitted for simplicity)
                 });
                 
-                // OPTIONAL: Manually update the comment counter on the main post document (avoids Cloud Function)
+                // Increment the counter on the main post (1 Write for the comment + 1 Write for the counter update)
                 await updateDoc(doc(db, 'posts', postId), {
                     commentsCount: increment(1)
                 });
@@ -228,8 +334,6 @@
                 alert("Failed to post comment.");
             }
         };
-
-        // window.loadFeed = loadFeed; // expose loadFeed if needed globally
     </script>
 </body>
 </html>
