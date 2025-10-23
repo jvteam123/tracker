@@ -152,9 +152,7 @@ Vince April Pitogo`;
             
             if (savedNames) {
                 bulkInput.value = savedNames;
-                // Auto-load the selection area if names were loaded from persistence
                 if (savedNames.trim().length > 0) {
-                     // Pass false to suppress the message box on initial load
                      window.loadNamesFromBulk(false); 
                 }
             }
@@ -162,10 +160,9 @@ Vince April Pitogo`;
         
         // --- END LOCAL STORAGE FUNCTIONS ---
         
-        // Function to render the interactive list of names with checkboxes
         function renderNamesList(namesArray) {
             const selectionArea = document.getElementById('namesSelectionArea');
-            selectionArea.innerHTML = ''; // Clear previous list
+            selectionArea.innerHTML = ''; 
             
             if (namesArray.length === 0) {
                  selectionArea.innerHTML = '<p class="text-gray-500 text-sm col-span-full">List is empty. Enter names in the Bulk Input area.</p>';
@@ -184,7 +181,6 @@ Vince April Pitogo`;
             });
         }
 
-        // New function to load names from bulk input and render the selectable list
         window.loadNamesFromBulk = function(showMsg = true) {
             const bulkInput = document.getElementById('bulkInput');
             const rawText = bulkInput.value;
@@ -201,33 +197,25 @@ Vince April Pitogo`;
             renderNamesList(names);
             if (showMsg) showMessage(`Loaded ${names.length} names for selection.`);
             
-            // Save to local storage after loading/refreshing
             saveNamesToLocalStorage(rawText);
         }
 
-
-        // Function to toggle default names based on checkbox state
         window.toggleDefaultNames = function(isChecked) {
             const bulkInput = document.getElementById('bulkInput');
             if (isChecked) {
                 bulkInput.value = DEFAULT_NAMES;
-                // Auto-load the list when defaults are checked for better flow
                 window.loadNamesFromBulk(true); 
             } else {
-                // Only clear the textarea if its content exactly matches the default list (to preserve user input)
                 if (bulkInput.value.trim() === DEFAULT_NAMES.trim()) {
                     bulkInput.value = "";
                 }
-                // If the input is now empty, clear the selection area
                 if (bulkInput.value.trim().length === 0) {
                      renderNamesList([]);
                 }
             }
-            // Trigger a save after changing the input
             saveNamesToLocalStorage(bulkInput.value);
         }
 
-        // Use a simple custom message box for feedback instead of alert()
         function showMessage(text, isError = false) {
             const messageBox = document.getElementById('messageBox');
             messageBox.textContent = text;
@@ -240,7 +228,6 @@ Vince April Pitogo`;
                 messageBox.classList.add('bg-green-100', 'text-green-700');
             }
 
-            // Animate fade in and out
             setTimeout(() => {
                 messageBox.classList.add('opacity-100');
             }, 10);
@@ -255,17 +242,13 @@ Vince April Pitogo`;
             }, 2300);
         }
 
-        // Fisher-Yates (Knuth) Shuffle Algorithm
         function shuffleArray(array) {
             let currentIndex = array.length, randomIndex;
 
-            // While there remain elements to shuffle.
             while (currentIndex != 0) {
-                // Pick a remaining element.
                 randomIndex = Math.floor(Math.random() * currentIndex);
                 currentIndex--;
 
-                // And swap it with the current element.
                 [array[currentIndex], array[randomIndex]] = [
                     array[randomIndex], array[currentIndex]];
             }
@@ -273,15 +256,12 @@ Vince April Pitogo`;
             return array;
         }
 
-        // Updated randomizeNames function to read selected names from the checkboxes
         window.randomizeNames = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             const copyButton = document.getElementById('copyButton');
             const copyScreenshotButton = document.getElementById('copyScreenshotButton'); 
-            // Get all CHECKED checkboxes in the selection area
             const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
             
-            // Extract the value (name) from each checked checkbox
             let names = Array.from(checkboxes).map(cb => cb.value);
 
             if (names.length === 0) {
@@ -292,18 +272,15 @@ Vince April Pitogo`;
                 return;
             }
 
-            // Shuffle the array
             const shuffledNames = shuffleArray(names);
 
-            // Format with new numbering (1., 2., 3., etc.)
             const numberedList = shuffledNames.map((name, index) => {
                 return `${index + 1}. ${name}`;
             }).join('\n');
 
-            // Display result
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            // Only enable the photo button if the library is loaded (window.html2canvas exists)
+            // Enable the photo button only if the library is loaded
             copyScreenshotButton.disabled = (typeof window.html2canvas === 'undefined'); 
             showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
@@ -311,17 +288,14 @@ Vince April Pitogo`;
         window.copyResult = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             
-            // Check if there is content to copy
             if (resultTextarea.value.length === 0 || resultTextarea.value.includes("will appear here")) {
                 showMessage("Nothing to copy yet!", true);
                 return;
             }
 
-            // Select the text
             resultTextarea.select();
             
             try {
-                // Execute copy command
                 document.execCommand('copy');
                 showMessage("Randomized list copied to clipboard!");
             } catch (err) {
@@ -330,12 +304,10 @@ Vince April Pitogo`;
             }
         }
         
-        // --- FUNCTION: Copy Screenshot (Fixed for global html2canvas) ---
         window.copyScreenshot = async function() {
             const html2canvas_global = window.html2canvas;
 
             if (typeof html2canvas_global === 'undefined') {
-                 // Check if the script failed to load (by checking the console error from the onerror attribute on the CDN script tag)
                  showMessage("Screenshot library failed to load. Check your browser console for network errors or try refreshing.", true);
                  return;
             }
@@ -349,14 +321,12 @@ Vince April Pitogo`;
                 return;
             }
 
-            // 1. Temporarily hide buttons and disable button during capture
             copyScreenshotButton.disabled = true;
             copyButton.style.opacity = '0';
             copyScreenshotButton.style.opacity = '0';
             
             showMessage("Capturing image...", false);
 
-            // 2. Create a temporary styled container to hold the text content for a clean screenshot
             const tempDiv = document.createElement('div');
             tempDiv.className = 'screenshot-target';
             tempDiv.textContent = resultTextarea.value;
@@ -364,14 +334,12 @@ Vince April Pitogo`;
             document.body.appendChild(tempDiv);
             
             try {
-                // 3. Render the off-screen div to a canvas
                 const canvas = await html2canvas_global(tempDiv, {
-                    scale: 2, // Capture at a higher resolution
-                    backgroundColor: null, // Allow CSS background to show
+                    scale: 2, 
+                    backgroundColor: null, 
                     logging: false
                 });
                 
-                // 4. Convert canvas to Blob and copy to clipboard
                 canvas.toBlob(async (blob) => {
                     if (!blob) {
                         showMessage("Failed to generate image.", true);
@@ -379,7 +347,6 @@ Vince April Pitogo`;
                     }
                     
                     try {
-                        // Check if ClipboardItem is supported (required for image copy)
                         if (typeof ClipboardItem === 'undefined') {
                              throw new Error("ClipboardItem API not supported by this browser.");
                         }
@@ -397,7 +364,6 @@ Vince April Pitogo`;
                 showMessage(`Screenshot failed: ${e.message}`, true);
                 console.error('html2canvas error:', e);
             } finally {
-                // 5. Cleanup and restore
                 document.body.removeChild(tempDiv);
                 copyScreenshotButton.disabled = false;
                 copyButton.style.opacity = '1';
@@ -405,18 +371,20 @@ Vince April Pitogo`;
             }
         }
 
-        // --- APPLICATION STARTUP ---
         window.onload = function() {
-            // Load saved state from local storage
             loadNamesFromLocalStorage();
 
             const bulkInput = document.getElementById('bulkInput');
-            // Save state on every input change, debounced to 1000ms
             bulkInput.addEventListener('input', () => {
-                // Use a debounce function to avoid saving on every key stroke
                 clearTimeout(window.saveTimeout);
                 window.saveTimeout = setTimeout(() => saveNamesToLocalStorage(bulkInput.value), 1000);
             });
+            
+            // Check library load status on window load and disable button if necessary
+            const copyScreenshotButton = document.getElementById('copyScreenshotButton');
+            if (typeof window.html2canvas === 'undefined') {
+                copyScreenshotButton.disabled = true;
+            }
         };
     </script>
 </body>
