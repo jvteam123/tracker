@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevTrack | TL/Tech Feed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        header, main { max-width: 800px; margin: 0 auto; }
+        .post { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+        .comment { margin-left: 20px; border-left: 2px solid #eee; padding-left: 10px; }
+        .comments-section { margin-top: 10px; }
+        img { max-width: 150px; height: auto; display: block; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DevTrack Team Feed</h1>
+        <div id="auth-ui">
+            <button id="login-btn">Log In (Test User)</button>
+            <span id="user-info">Not logged in.</span>
+            <button id="logout-btn" style="display:none;">Log Out</button>
+        </div>
+    </header>
+
+    <main id="app-content" style="display:none;">
+        <h2>Create New Update</h2>
+        <input type="text" id="post-title-input" placeholder="Title (e.g., Q3 Project Status)" value="Q4 Sprint Plan">
+        <textarea id="post-text-input" placeholder="Detailed update/text..."></textarea>
+        <input type="url" id="post-link-input" placeholder="Optional: Link URL">
+        <input type="file" id="post-image-upload" accept="image/*">
+        <button id="submit-post-btn">Publish Update</button>
+
+        <hr>
+
+        <h2>Live Feed</h2>
+        <div id="feed">
+            </div>
+    </main>
+
+    <script type="module">
+        // 1. IMPORT NECESSARY MODULAR SDK FUNCTIONS VIA CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1rWP0ky1L-4TqCwtm0OZZSa76EuymP8o",
+            authDomain: "mysocial-3b3fc.firebaseapp.com",
+            projectId: "mysocial-3b3fc",
+            storageBucket: "mysocial-3b3fc.firebasestorage.app",
+            messagingSenderId: "126693884353",
+            appId: "1:126693884353:web:2c0af86f20a7e9c8142f40",
+            measurementId: "G-JEYGQQLMQX"
+        };
+
+        // 2. INITIALIZE SERVICES
+        const app = initializeApp(firebaseConfig);
+        // const analytics = getAnalytics(app); // Analytics is optional/omitted for demo
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+
+        // --- DOM ELEMENTS ---
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoSpan = document.getElementById('user-info');
+        const appContent = document.getElementById('app-content');
+        const postTitleInput = document.getElementById('post-title-input');
+        const postTextInput = document.getElementById('post-text-input');
+        const postLinkInput = document.getElementById('post-link-input');
+        const postImageUpload = document.getElementById('post-image-upload');
+        const submitPostBtn = document.getElementById('submit-post-btn');
+        const feedDiv = document.getElementById('feed');
+        
+        // --- AUTHENTICATION ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userInfoSpan.textContent = `Logged in as: ${user.email} (UID: ${user.uid.substring(0, 4)}...)`;
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline';
+                appContent.style.display = 'block';
+                loadFeed();
+            } else {
+                userInfoSpan.textContent = 'Not logged in.';
+                loginBtn.style.display = 'inline';
+                logoutBtn.style.display = 'none';
+                appContent.style.display = 'none';
+            }
+        });
+
+        loginBtn.addEventListener('click', async () => {
+            const email = prompt("Enter email (test@dev.com):");
+            const password = prompt("Enter password (password):");
+            if (!email || !password) return;
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                console.log("Logged in!");
+            } catch (error) {
+                // If sign-in fails, try to create account for testing
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    alert("User created and logged in!");
+                } catch (regError) {
+                    alert(`Login/Registration Error: ${regError.message}`);
+                }
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => signOut(auth));
+
+
+        // --- POST/UPDATE LOGIC ---
+        submitPostBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (!user || !postTextInput.value.trim()) return alert("Post text required.");
+
+            const imageFile = postImageUpload.files[0];
+            let imageURL = null;
+
+            // 1. UPLOAD IMAGE to Storage
+            if (imageFile) {
+                const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
+                const snapshot = await uploadBytes(storageRef, imageFile);
+                imageURL = await getDownloadURL(snapshot.ref);
+            }
+
+            // 2. WRITE to Firestore
+            try {
+                await addDoc(collection(db, 'posts'), {
+                    title: postTitleInput.value.trim(),
+                    text: postTextInput.value.trim(),
+                    linkURL: postLinkInput.value.trim() || null,
+                    imageURL: imageURL,
+                    author: user.email,
+                    authorId: user.uid,
+                    timestamp: serverTimestamp(),
+                    commentsCount: 0,
+                });
+                postTitleInput.value = postTextInput.value = postLinkInput.value = postImageUpload.value = '';
+            } catch (error) {
+                console.error("Error publishing update:", error);
+                alert("Failed to publish post.");
+            }
+        });
+
+        // --- FEED RENDERING LOGIC ---
+        function loadFeed() {
+            const postsCol = collection(db, 'posts');
+            const feedQuery = query(postsCol, orderBy('timestamp', 'desc'), limit(10));
+
+            // Real-time listener for the feed
+            onSnapshot(feedQuery, (snapshot) => {
+                feedDiv.innerHTML = '';
+                snapshot.forEach(postDoc => {
+                    const post = postDoc.data();
+                    const postId = postDoc.id;
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post';
+                    
+                    postElement.innerHTML = `
+                        <h3>${post.title}</h3>
+                        <p>${post.text}</p>
+                        ${post.linkURL ? `<p><a href="${post.linkURL}" target="_blank">View Attached Link</a></p>` : ''}
+                        ${post.imageURL ? `<img src="${post.imageURL}">` : ''}
+                        <small>By: ${post.author} at ${new Date(post.timestamp?.toDate()).toLocaleString()} | Comments: <span id="count-${postId}">${post.commentsCount || 0}</span></small>
+                        
+                        <div id="comments-section-${postId}" class="comments-section"></div>
+                        <button onclick="window.commentToggle('${postId}')">Add Comment/Reply</button>
+                    `;
+                    feedDiv.appendChild(postElement);
+
+                    loadComments(postId);
+                });
+            });
+        }
+
+        // --- COMMENTS LOGIC ---
+        function loadComments(postId) {
+            const commentsDiv = document.getElementById(`comments-section-${postId}`);
+            const commentsQuery = query(collection(db, `posts/${postId}/comments`), orderBy('timestamp', 'asc'));
+            
+            onSnapshot(commentsQuery, (snapshot) => {
+                commentsDiv.innerHTML = '<h4>Comments:</h4>';
+                // Simplified rendering: just list all comments sequentially
+                snapshot.forEach(commentDoc => {
+                    const comment = commentDoc.data();
+                    const commentEl = document.createElement('div');
+                    commentEl.className = 'comment';
+                    commentEl.innerHTML = `
+                        <p><strong>${comment.author} (Tech):</strong> ${comment.text}</p>
+                        ${comment.imageURL ? `<img src="${comment.imageURL}">` : ''}
+                        `;
+                    commentsDiv.appendChild(commentEl);
+                });
+            });
+        }
+
+        // Global function for comment/reply form (Placeholder)
+        window.commentToggle = async (postId) => {
+            const user = auth.currentUser;
+            if (!user) return alert("Please log in to comment.");
+            
+            const commentText = prompt("Enter your comment/reply text:");
+            if (!commentText) return;
+
+            // Simple Write for a comment
+            try {
+                await addDoc(collection(db, `posts/${postId}/comments`), {
+                    text: commentText,
+                    author: user.email,
+                    authorId: user.uid,
+                    timestamp: serverTimestamp(),
+                    // parentCommentId: null for top-level comment (threading logic omitted for simplicity)
+                });
+                
+                // OPTIONAL: Manually update the comment counter on the main post document (avoids Cloud Function)
+                await updateDoc(doc(db, 'posts', postId), {
+                    commentsCount: increment(1)
+                });
+
+            } catch (error) {
+                console.error("Error commenting:", error);
+                alert("Failed to post comment.");
+            }
+        };
+
+        // window.loadFeed = loadFeed; // expose loadFeed if needed globally
+    </script>
+</body>
+</html>
