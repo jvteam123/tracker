@@ -53,7 +53,7 @@
             border-bottom: 1px solid transparent; /* No bottom border */
             display: flex;
             align-items: baseline;
-            cursor: default; /* Use default cursor to hide drag capability */
+            cursor: default; /* Always default unless explicitly dragging */
             transition: background-color 0.15s, opacity 0.15s;
             font-family: monospace;
             color: #1f2937; /* Dark Gray text */
@@ -62,6 +62,10 @@
             -webkit-user-select: none; 
             -moz-user-select: none; 
             user-select: none;
+        }
+        /* Style hint when drag is enabled (after double-click) */
+        .drag-item[draggable="true"] {
+             cursor: grab; /* Indicate ready to drag */
         }
         .drag-item:hover {
             background-color: transparent; /* No visible change on hover */
@@ -156,7 +160,7 @@ Bob Smith
                 <button onclick="clearBulkInput()"
                     class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    Clear List
+                    Clear Input
                 </button>
                 <button onclick="loadNamesFromBulk(true)"
                     class="bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-300">
@@ -182,19 +186,19 @@ Bob Smith
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2.582l-5.582 5.582A2 2 0 0113.414 18H10a2 2 0 00-2 2v2M4 13V9a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4l-2 2v2" />
                 </svg>
-                RANDOMIZE
+                RANDOMIZE ASSIGNMENTS
             </button>
         </div>
 
         <!-- Result Area -->
         <section>
-            <label for="resultListContainer" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Area List</label>
+            <label for="resultListContainer" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Assignment List (Double-click to Enable Drag)</label>
             <div id="resultContainer" class="relative">
                 
                 <!-- NEW LIST CONTAINER (Replaces Textarea) -->
                 <div id="resultListContainer" 
                     class="shadow-lg">
-                    <p class="p-4 text-gray-500 text-base"></p>
+                    <p class="p-4 text-gray-500 text-base">Click "RANDOMIZE ASSIGNMENTS" to generate the list.</p>
                 </div>
                 
                 <!-- This is just a placeholder for the old button location, functionality is tied to the drag list -->
@@ -509,10 +513,16 @@ Vince April Pitogo`;
             return array;
         }
 
-        // --- DRAG-AND-DROP LOGIC ---
+        // --- DRAG-AND-DROP LOGIC (MODIFIED FOR DOUBLE-CLICK TRIGGER) ---
         let dragSrcEl = null;
 
         function handleDragStart(e) {
+            // Check if dragging is enabled via double-click
+            if (!this.hasAttribute('draggable') || this.getAttribute('draggable') === 'false') {
+                e.preventDefault();
+                return false;
+            }
+            
             this.classList.add('dragging');
             dragSrcEl = this;
             e.dataTransfer.effectAllowed = 'move';
@@ -559,13 +569,41 @@ Vince April Pitogo`;
 
         function handleDragEnd(e) {
             this.classList.remove('dragging');
+            // Disable dragging immediately after the drag ends (single-use activation)
+            this.removeAttribute('draggable'); 
+            
             // Remove all drag-over classes
             const listItems = document.querySelectorAll('.drag-item');
             listItems.forEach(item => item.classList.remove('drag-over'));
         }
         
+        function handleDoubleClick(e) {
+            const item = e.currentTarget;
+            const isDraggable = item.getAttribute('draggable') === 'true';
+
+            // 1. Disable drag on ALL other items
+            const allItems = document.querySelectorAll('.drag-item');
+            allItems.forEach(i => i.removeAttribute('draggable'));
+
+            // 2. Toggle the state for the double-clicked item
+            if (!isDraggable) {
+                // Enable drag on this item
+                item.setAttribute('draggable', 'true');
+                showMessage("Drag activated for this item. Drag now.", false);
+            } else {
+                // Drag was already active, double-click disables it
+                item.removeAttribute('draggable');
+            }
+        }
+
         function addDragListeners(item) {
-            item.setAttribute('draggable', 'true');
+            // Initially draggable is NOT set (or set to false)
+            item.removeAttribute('draggable');
+            
+            // Add the double-click listener to activate drag
+            item.addEventListener('dblclick', handleDoubleClick, false);
+
+            // Add standard drag event listeners
             item.addEventListener('dragstart', handleDragStart, false);
             item.addEventListener('dragenter', handleDragEnter, false);
             item.addEventListener('dragover', handleDragOver, false);
