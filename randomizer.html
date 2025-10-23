@@ -353,7 +353,7 @@ Vince April Pitogo`;
         window.randomizeNames = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             const copyButton = document.getElementById('copyButton');
-            const copyScreenshotButton = document.getElementById('copyScreenshotButton'); // Get new button
+            const copyScreenshotButton = document.getElementById('copyScreenshotButton'); 
             // Get all CHECKED checkboxes in the selection area
             const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
             
@@ -363,7 +363,7 @@ Vince April Pitogo`;
             if (names.length === 0) {
                 resultTextarea.value = "No names were selected for randomization. Please load a list and check one or more boxes.";
                 copyButton.disabled = true;
-                copyScreenshotButton.disabled = true; // Disable new button
+                copyScreenshotButton.disabled = true; 
                 showMessage("No names selected!", true);
                 return;
             }
@@ -379,7 +379,7 @@ Vince April Pitogo`;
             // Display result
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            copyScreenshotButton.disabled = false; // Enable new button
+            copyScreenshotButton.disabled = false; 
             showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
 
@@ -405,9 +405,12 @@ Vince April Pitogo`;
             }
         }
         
-        // --- NEW FUNCTION: Copy Screenshot ---
+        // --- NEW FUNCTION: Copy Screenshot (Updated to use window.html2canvas) ---
         window.copyScreenshot = async function() {
-            if (typeof html2canvas === 'undefined') {
+            // CRITICAL FIX: Use the global window object for html2canvas
+            const html2canvas_global = window.html2canvas;
+
+            if (typeof html2canvas_global === 'undefined') {
                  showMessage("Screenshot library not loaded. Please refresh the page.", true);
                  return;
             }
@@ -437,7 +440,7 @@ Vince April Pitogo`;
             
             try {
                 // 3. Render the off-screen div to a canvas
-                const canvas = await html2canvas(tempDiv, {
+                const canvas = await html2canvas_global(tempDiv, {
                     scale: 2, // Capture at a higher resolution
                     backgroundColor: null, // Allow CSS background to show
                     logging: false
@@ -451,11 +454,16 @@ Vince April Pitogo`;
                     }
                     
                     try {
+                        // Check if ClipboardItem is supported (required for image copy)
+                        if (typeof ClipboardItem === 'undefined') {
+                             throw new Error("ClipboardItem API not supported by this browser.");
+                        }
+
                         const item = new ClipboardItem({'image/png': blob});
                         await navigator.clipboard.write([item]);
                         showMessage("Screenshot copied to clipboard!");
                     } catch (err) {
-                        showMessage("Clipboard write failed. Ensure your browser allows image copy (usually requires HTTPS or localhost).", true);
+                        showMessage("Clipboard write failed. Ensure your browser is up-to-date and allows image copy.", true);
                         console.error('Clipboard write error:', err);
                     }
                 }, 'image/png');
