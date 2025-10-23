@@ -14,14 +14,14 @@
         .ring-primary { --tw-ring-color: #3730a3; }
         
         /* Custom scrollbar for output area (Professional look) */
-        #resultTextarea::-webkit-scrollbar {
+        #resultListContainer::-webkit-scrollbar { /* Target the new list container */
             width: 8px;
         }
-        #resultTextarea::-webkit-scrollbar-thumb {
+        #resultListContainer::-webkit-scrollbar-thumb {
             background: #94a3b8; /* slate-400 */
             border-radius: 4px;
         }
-        #resultTextarea::-webkit-scrollbar-track {
+        #resultListContainer::-webkit-scrollbar-track {
             background: #f1f5f9; /* slate-100 */
         }
 
@@ -42,6 +42,52 @@
         /* Selection List Hover Effect */
         #namesSelectionArea > div:hover {
             background-color: #e0e7ff; /* Lighter Indigo for subtle feedback */
+        }
+
+        /* --- NEW DRAG-AND-DROP STYLES --- */
+        .drag-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background-color: #f0fdf4; /* Light Green */
+            border: 1px solid #d1fae5; /* Green border */
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            cursor: move; /* Indicate draggable */
+            transition: background-color 0.15s, opacity 0.15s;
+            font-family: monospace;
+            color: #065f46; /* Dark Green text */
+            font-size: 1rem;
+        }
+        .drag-item:hover {
+            background-color: #d1fae5;
+        }
+        .drag-item.dragging {
+            opacity: 0.4;
+        }
+        .drag-item .number {
+            font-weight: bold;
+            margin-right: 12px;
+            width: 25px;
+            text-align: right;
+            color: #34d399; /* Medium Green for number */
+        }
+        .drag-placeholder {
+            border: 2px dashed #93c5fd; /* Blue dashed border */
+            height: 50px;
+            background-color: #eff6ff; /* Light blue background */
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        /* New Container for Results (replaces textarea) */
+        #resultListContainer {
+            min-height: 20rem; 
+            max-height: 20rem; 
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #d1fae5;
+            background-color: #f7fee7; /* Very light green background */
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -123,15 +169,18 @@ Bob Smith
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2.582l-5.582 5.582A2 2 0 0113.414 18H10a2 2 0 00-2 2v2M4 13V9a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4l-2 2v2" />
                 </svg>
-                RANDOMIZE
+                RANDOMIZE ASSIGNMENTS
             </button>
         </div>
 
         <section>
-            <label for="resultTextarea" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Assignment List</label>
+            <label for="resultListContainer" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Assignment List (Drag to Rearrange)</label>
             <div id="resultContainer" class="relative">
-                <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
-                    class="w-full p-4 h-80 border border-green-400 bg-green-50 rounded-lg shadow-inner resize-none text-green-800 font-mono text-base"></textarea>
+                
+                <div id="resultListContainer" 
+                    class="shadow-lg">
+                    <p class="p-4 text-gray-500 text-base">Click "RANDOMIZE ASSIGNMENTS" to generate the list.</p>
+                </div>
                 
                 <button id="copyButton" onclick="copyResult()" disabled
                     class="absolute top-4 right-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -427,6 +476,7 @@ Vince April Pitogo`;
             }, 2300);
         }
 
+        // --- Fisher-Yates Shuffle Algorithm (Unchanged) ---
         function shuffleArray(array) {
             let currentIndex = array.length, randomIndex;
 
@@ -441,50 +491,140 @@ Vince April Pitogo`;
             return array;
         }
 
+        // --- DRAG-AND-DROP LOGIC ---
+        let dragSrcEl = null;
+
+        function handleDragStart(e) {
+            this.style.opacity = '0.4';
+            dragSrcEl = this;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+            e.dataTransfer.setData('text/plain', this.textContent);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            if (this !== dragSrcEl) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            this.classList.remove('drag-over');
+
+            if (dragSrcEl !== this) {
+                // Determine if we drop before or after the target
+                const rect = this.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top;
+                const targetList = this.parentNode;
+
+                if (offsetY < rect.height / 2) {
+                    targetList.insertBefore(dragSrcEl, this);
+                } else {
+                    targetList.insertBefore(dragSrcEl, this.nextSibling);
+                }
+
+                // Re-number the list after the drop
+                renumberList();
+            }
+
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+            // Remove all drag-over classes
+            const listItems = document.querySelectorAll('.drag-item');
+            listItems.forEach(item => item.classList.remove('drag-over'));
+        }
+        
+        function addDragListeners(item) {
+            item.setAttribute('draggable', 'true');
+            item.addEventListener('dragstart', handleDragStart, false);
+            item.addEventListener('dragenter', handleDragEnter, false);
+            item.addEventListener('dragover', handleDragOver, false);
+            item.addEventListener('dragleave', handleDragLeave, false);
+            item.addEventListener('drop', handleDrop, false);
+            item.addEventListener('dragend', handleDragEnd, false);
+        }
+        
+        function renumberList() {
+             const listContainer = document.getElementById('resultListContainer');
+             const listItems = listContainer.querySelectorAll('.drag-item');
+             listItems.forEach((item, index) => {
+                 const numberSpan = item.querySelector('.number');
+                 if (numberSpan) {
+                     numberSpan.textContent = `${index + 1}.`;
+                 }
+             });
+        }
+        
+        // --- RANDOMIZE FUNCTION (Modified to render list items) ---
         window.randomizeNames = function() {
-            const resultTextarea = document.getElementById('resultTextarea');
+            const listContainer = document.getElementById('resultListContainer');
             const copyButton = document.getElementById('copyButton');
             const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
             
             let names = Array.from(checkboxes).map(cb => cb.value);
 
             if (names.length === 0) {
-                resultTextarea.value = "No names were selected for randomization. Please load a list and check one or more boxes.";
+                listContainer.innerHTML = `<p class="p-4 text-gray-500 text-base">No names selected. Please check items in the list above.</p>`;
                 copyButton.disabled = true;
                 showMessage("No names selected!", true);
                 return;
             }
 
             const shuffledNames = shuffleArray(names);
+            listContainer.innerHTML = '';
+            
+            shuffledNames.forEach((name, index) => {
+                const item = document.createElement('div');
+                item.className = 'drag-item';
+                item.innerHTML = `<span class="number">${index + 1}.</span> <span class="name-content">${name}</span>`;
+                
+                addDragListeners(item);
+                listContainer.appendChild(item);
+            });
 
-            const numberedList = shuffledNames.map((name, index) => {
-                return `${index + 1}. ${name}`;
-            }).join('\n');
-
-            resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
+            showMessage(`Successfully randomized and ready to arrange!`);
         }
 
+        // --- COPY FUNCTION (Modified to extract content from draggable divs) ---
         window.copyResult = function() {
-            const resultTextarea = document.getElementById('resultTextarea');
+            const listContainer = document.getElementById('resultListContainer');
+            const listItems = listContainer.querySelectorAll('.drag-item');
             
-            if (resultTextarea.value.length === 0 || resultTextarea.value.includes("will appear here")) {
+            if (listItems.length === 0) {
                 showMessage("Nothing to copy yet!", true);
                 return;
             }
 
-            resultTextarea.select();
+            const finalContent = Array.from(listItems).map(item => {
+                const number = item.querySelector('.number').textContent.trim();
+                const name = item.querySelector('.name-content').textContent.trim();
+                return `${number} ${name}`;
+            }).join('\n');
             
-            try {
-                document.execCommand('copy');
-                showMessage("Randomized list copied to clipboard!");
-            } catch (err) {
+            // Use Clipboard API for modern copy
+            navigator.clipboard.writeText(finalContent).then(() => {
+                showMessage("Reordered list copied to clipboard!");
+            }).catch(err => {
                 console.error('Could not copy text: ', err);
-                showMessage("Copy failed. Please select and copy manually.", true);
-            }
+                showMessage("Copy failed. Please check browser permissions.", true);
+            });
         }
-
+        
         window.onload = function() {
             populateListSelector();
             loadNamesFromLocalStorage();
