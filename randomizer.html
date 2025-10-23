@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Area Randomizer</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for output area */
@@ -18,11 +17,25 @@
         #resultTextarea::-webkit-scrollbar-track {
             background: #f3f4f6; /* gray-100 */
         }
+        
+        /* New CSS for the temporary element used by html2canvas */
+        .screenshot-target {
+            padding: 20px;
+            background-color: #f0fff4; /* bg-green-50 */
+            border-radius: 12px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            color: #10b981; /* text-green-800 */
+            font-size: 14px;
+            max-width: 400px; /* Limit width for a cleaner screenshot image */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: absolute;
+            left: -9999px; /* Keep it off-screen */
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans antialiased">
 
-    <!-- Main Container -->
     <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-6 md:p-10 border border-gray-100">
 
         <header class="text-center mb-8">
@@ -30,7 +43,6 @@
             <p class="text-gray-600 mt-2">Your list is automatically saved. Select names and click 'Randomize'.</p>
         </header>
 
-        <!-- Input Area (Bulk Entry) -->
         <section class="mb-6 border-b pb-6">
             <div class="flex justify-between items-center mb-2">
                 <label for="bulkInput" class="block text-lg font-semibold text-gray-700">1. Bulk Input (One Name Per Line)</label>
@@ -55,7 +67,6 @@ Charlie Brown
             </div>
         </section>
 
-        <!-- Selection Area -->
         <section class="mb-8">
             <label class="block text-lg font-semibold text-gray-700 mb-2">2. Names to Include (Check to select)</label>
             <div id="namesSelectionArea" 
@@ -65,7 +76,6 @@ Charlie Brown
         </section>
 
 
-        <!-- Action Button -->
         <div class="flex justify-center mb-8">
             <button id="randomizeButton" onclick="randomizeNames()"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 active:bg-indigo-800 flex items-center">
@@ -76,14 +86,12 @@ Charlie Brown
             </button>
         </div>
 
-        <!-- Result Area -->
         <section>
             <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">3. Randomized List</label>
             <div id="resultContainer" class="relative">
                 <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
                     class="w-full p-4 h-80 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
                 
-                <!-- Copy Button -->
                 <button id="copyButton" onclick="copyResult()" disabled
                     class="absolute top-4 right-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -93,12 +101,22 @@ Charlie Brown
                     Copy
                 </button>
                 
-                <!-- Message Box for feedback -->
+                <button id="copyScreenshotButton" onclick="copyScreenshot()" disabled
+                    class="absolute top-16 right-4 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.865-1.155A2 2 0 0111.977 4h2.046a2 2 0 011.664.89l.865 1.155c.334.445.92.89 1.664.89h.93a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Photo
+                </button>
+
                 <div id="messageBox" class="absolute bottom-4 left-0 right-0 p-3 mx-4 rounded-lg text-center font-medium transition-opacity duration-300 opacity-0 pointer-events-none text-sm" style="display: none;"></div>
             </div>
         </section>
 
     </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQODhGkmP/zR0m3+fQ/P0d93/W9g+eN1G5QzD0s1R1M2tV1D1F5+x0B5/2T9A7C7K/v+5+y5+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -335,6 +353,7 @@ Vince April Pitogo`;
         window.randomizeNames = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             const copyButton = document.getElementById('copyButton');
+            const copyScreenshotButton = document.getElementById('copyScreenshotButton'); // Get new button
             // Get all CHECKED checkboxes in the selection area
             const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
             
@@ -344,6 +363,7 @@ Vince April Pitogo`;
             if (names.length === 0) {
                 resultTextarea.value = "No names were selected for randomization. Please load a list and check one or more boxes.";
                 copyButton.disabled = true;
+                copyScreenshotButton.disabled = true; // Disable new button
                 showMessage("No names selected!", true);
                 return;
             }
@@ -359,6 +379,7 @@ Vince April Pitogo`;
             // Display result
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
+            copyScreenshotButton.disabled = false; // Enable new button
             showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
 
@@ -384,6 +405,73 @@ Vince April Pitogo`;
             }
         }
         
+        // --- NEW FUNCTION: Copy Screenshot ---
+        window.copyScreenshot = async function() {
+            if (typeof html2canvas === 'undefined') {
+                 showMessage("Screenshot library not loaded. Please refresh the page.", true);
+                 return;
+            }
+
+            const resultTextarea = document.getElementById('resultTextarea');
+            const copyScreenshotButton = document.getElementById('copyScreenshotButton');
+            const copyButton = document.getElementById('copyButton');
+
+            if (resultTextarea.value.length === 0 || resultTextarea.value.includes("will appear here")) {
+                showMessage("Nothing to capture yet!", true);
+                return;
+            }
+
+            // 1. Temporarily hide buttons and disable button during capture
+            copyScreenshotButton.disabled = true;
+            copyButton.style.opacity = '0';
+            copyScreenshotButton.style.opacity = '0';
+            
+            showMessage("Capturing image...", false);
+
+            // 2. Create a temporary styled container to hold the text content for a clean screenshot
+            const tempDiv = document.createElement('div');
+            tempDiv.className = 'screenshot-target';
+            tempDiv.textContent = resultTextarea.value;
+            
+            document.body.appendChild(tempDiv);
+            
+            try {
+                // 3. Render the off-screen div to a canvas
+                const canvas = await html2canvas(tempDiv, {
+                    scale: 2, // Capture at a higher resolution
+                    backgroundColor: null, // Allow CSS background to show
+                    logging: false
+                });
+                
+                // 4. Convert canvas to Blob and copy to clipboard
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        showMessage("Failed to generate image.", true);
+                        return;
+                    }
+                    
+                    try {
+                        const item = new ClipboardItem({'image/png': blob});
+                        await navigator.clipboard.write([item]);
+                        showMessage("Screenshot copied to clipboard!");
+                    } catch (err) {
+                        showMessage("Clipboard write failed. Ensure your browser allows image copy (usually requires HTTPS or localhost).", true);
+                        console.error('Clipboard write error:', err);
+                    }
+                }, 'image/png');
+
+            } catch(e) {
+                showMessage(`Screenshot failed: ${e.message}`, true);
+                console.error('html2canvas error:', e);
+            } finally {
+                // 5. Cleanup and restore
+                document.body.removeChild(tempDiv);
+                copyScreenshotButton.disabled = false;
+                copyButton.style.opacity = '1';
+                copyScreenshotButton.style.opacity = '1';
+            }
+        }
+
         // --- APPLICATION STARTUP ---
         window.onload = function() {
             // Initialize Firebase and Authentication, which triggers the data load
