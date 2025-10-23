@@ -3,48 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Area Randomizer</title>
+    <title>Professional Area Randomizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom scrollbar for output area */
+        /* Custom scrollbar for output area (Professional look) */
         #resultTextarea::-webkit-scrollbar {
             width: 8px;
         }
         #resultTextarea::-webkit-scrollbar-thumb {
-            background: #d1d5db; /* gray-300 */
+            background: #94a3b8; /* slate-400 */
             border-radius: 4px;
         }
         #resultTextarea::-webkit-scrollbar-track {
-            background: #f3f4f6; /* gray-100 */
+            background: #f1f5f9; /* slate-100 */
+        }
+
+        /* General Body and Container Styling */
+        body {
+            background-color: #f8fafc; /* Lighter background */
+        }
+        .main-card {
+            box-shadow: 0 10px 30px rgba(45, 55, 72, 0.1); /* Stronger, professional shadow */
+        }
+        
+        /* Input and Button Focus Styling */
+        .input-focus:focus {
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3); /* indigo-500 ring */
+        }
+        
+        /* Selection List Hover Effect */
+        #namesSelectionArea > div:hover {
+            background-color: #eef2ff; /* indigo-50 for subtle feedback */
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans antialiased">
+<body class="bg-gray-50 min-h-screen p-4 md:p-10 font-sans antialiased">
 
-    <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-6 md:p-10 border border-gray-100">
+    <div class="max-w-4xl mx-auto bg-white main-card rounded-xl p-8 md:p-12 border border-gray-200">
 
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-indigo-700">Area Randomizer</h1>
-            <p class="text-gray-600 mt-2">Manage multiple lists using the section below.</p>
+        <header class="text-center mb-10 border-b pb-4">
+            <h1 class="text-4xl font-extrabold text-gray-800 tracking-tight">Assignment Randomizer</h1>
+            <p class="text-gray-500 mt-2 text-lg">Manage, save, and randomize assignment lists with persistent storage.</p>
         </header>
 
-        <section class="mb-6 pb-6 border-b border-indigo-200">
-            <label class="block text-lg font-semibold text-gray-700 mb-3">1. Saved List Management</label>
-            <div class="flex flex-col sm:flex-row gap-3">
+        <section class="mb-8 pb-6 border-b border-gray-100">
+            <label class="block text-xl font-bold text-gray-700 mb-4">1. Saved List Management</label>
+            <div class="flex flex-col sm:flex-row gap-4">
                 
                 <select id="listSelector" onchange="loadSelectedList()"
-                        class="flex-grow p-3 border-2 border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner text-gray-800">
-                    <option value="">-- Load a Saved List --</option>
+                        class="flex-grow p-3 border border-gray-300 rounded-lg input-focus transition duration-150 text-gray-700">
+                    <option value="">-- Load or Create a List --</option>
                 </select>
 
                 <button id="saveListBtn" onclick="saveCurrentList()"
-                    class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-300 active:bg-green-700 flex-shrink-0">
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-6 4v4m0 0l-2-2m2 2l2-2" /></svg>
                     Save Current
                 </button>
 
                 <button id="deleteListBtn" onclick="deleteSelectedList()" disabled
-                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 active:bg-red-700 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     Delete Selected
                 </button>
@@ -52,59 +71,58 @@
         </section>
 
 
-        <section class="mb-6 border-b pb-6">
-            <div class="flex justify-between items-center mb-2">
-                <label for="bulkInput" class="block text-lg font-semibold text-gray-700">2. Bulk Input (One Name Per Line)</label>
+        <section class="mb-8 pb-6 border-b border-gray-100">
+            <div class="flex justify-between items-center mb-4">
+                <label for="bulkInput" class="block text-xl font-bold text-gray-700">2. Input List (One Name Per Line)</label>
                 <div class="flex items-center">
                     <input type="checkbox" id="loadDefaults" onchange="toggleDefaultNames(this.checked)" 
-                           class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
-                    <label for="loadDefaults" class="ml-2 block text-sm font-medium text-gray-700 cursor-pointer select-none">Team 123</label>
+                           class="h-5 w-5 text-indigo-600 border-gray-400 rounded focus:ring-indigo-500 cursor-pointer">
+                    <label for="loadDefaults" class="ml-2 block text-base font-medium text-gray-700 cursor-pointer select-none">Use Default List</label>
                 </div>
             </div>
-            <textarea id="bulkInput" rows="5" placeholder="e.g.,
+            <textarea id="bulkInput" rows="6" placeholder="e.g.,
 Alice Johnson
 Bob Smith
-Charlie Brown
 ..."
-                class="w-full p-4 border-2 border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner resize-none text-gray-800"></textarea>
+                class="w-full p-4 border border-gray-300 rounded-lg input-focus transition duration-150 shadow-inner resize-none text-gray-800 text-base"></textarea>
 
             <div class="flex justify-between mt-4">
                 <button onclick="clearBulkInput()"
-                    class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 active:bg-gray-600">
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-lg shadow-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    Clear List
+                    Clear Input
                 </button>
                 <button onclick="loadNamesFromBulk(true)"
-                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 active:bg-indigo-700">
-                    Load/Refresh Selection List
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    Refresh Selection
                 </button>
             </div>
         </section>
 
         <section class="mb-8">
-            <label class="block text-lg font-semibold text-gray-700 mb-2">3. Names to Include (Check to select)</label>
+            <label class="block text-xl font-bold text-gray-700 mb-3">3. Names to Include (Check to select)</label>
             <div id="namesSelectionArea" 
-                 class="p-4 border border-gray-300 rounded-xl bg-gray-50 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-2">
+                 class="p-4 border border-gray-300 rounded-lg bg-gray-50 max-h-72 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-3 shadow-inner">
                  <p class="text-gray-500 text-sm col-span-full">Names will load here once entered above or retrieved from storage.</p>
             </div>
         </section>
 
 
-        <div class="flex justify-center mb-8">
+        <div class="flex justify-center mb-10">
             <button id="randomizeButton" onclick="randomizeNames()"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 active:bg-indigo-800 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-10 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-indigo-300 flex items-center text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.836 2.582l-5.582 5.582A2 2 0 0113.414 18H10a2 2 0 00-2 2v2M4 13V9a2 2 0 012-2h4l2-2h4l2 2h4a2 2 0 012 2v4a2 2 0 01-2 2h-4l-2 2v2" />
                 </svg>
-                Randomize & Number
+                RANDOMIZE ASSIGNMENTS
             </button>
         </div>
 
         <section>
-            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">4. Randomized List</label>
+            <label for="resultTextarea" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Assignment List</label>
             <div id="resultContainer" class="relative">
                 <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
-                    class="w-full p-4 h-80 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
+                    class="w-full p-4 h-80 border border-green-400 bg-green-50 rounded-lg shadow-md resize-none text-green-800 font-mono text-base"></textarea>
                 
                 <button id="copyButton" onclick="copyResult()" disabled
                     class="absolute top-4 right-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -112,7 +130,7 @@ Charlie Brown
                         <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
                         <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
                     </svg>
-                    Copy
+                    Copy Text
                 </button>
 
                 <div id="messageBox" class="absolute bottom-4 left-0 right-0 p-3 mx-4 rounded-lg text-center font-medium transition-opacity duration-300 opacity-0 pointer-events-none text-sm" style="display: none;"></div>
@@ -155,7 +173,7 @@ Vince April Pitogo`;
             const selector = document.getElementById('listSelector');
             const savedLists = getSavedLists();
             
-            selector.innerHTML = `<option value="">-- Load a Saved List --</option>`;
+            selector.innerHTML = `<option value="">-- Load or Create a List --</option>`;
             selector.disabled = Object.keys(savedLists).length === 0;
             document.getElementById('deleteListBtn').disabled = true;
 
@@ -169,7 +187,6 @@ Vince April Pitogo`;
             
             if (selectedListName) {
                  selector.value = selectedListName;
-                 // Note: Delete button remains disabled until loadSelectedList explicitly enables it.
             }
         }
         
@@ -230,6 +247,7 @@ Vince April Pitogo`;
             try {
                 localStorage.setItem(SAVED_LISTS_KEY, JSON.stringify(savedLists));
                 populateListSelector(listName);
+                document.getElementById('deleteListBtn').disabled = false; // Enable delete button after saving new list
                 showMessage(`List "${listName}" saved successfully!`);
             } catch (e) {
                 showMessage("Failed to save list to local storage.", true);
@@ -240,7 +258,7 @@ Vince April Pitogo`;
             const selector = document.getElementById('listSelector');
             const listName = selector.value;
             
-            document.getElementById('deleteListBtn').disabled = true; // Disable delete until a valid list is loaded
+            document.getElementById('deleteListBtn').disabled = true; // Disable delete by default
             
             if (!listName) {
                 return;
@@ -264,7 +282,7 @@ Vince April Pitogo`;
 
                 // FIX: Pass false to suppress the message box on load from selector.
                 window.loadNamesFromBulk(false); 
-                document.getElementById('deleteListBtn').disabled = false;
+                document.getElementById('deleteListBtn').disabled = false; // Enable delete button for the loaded list
                 showMessage(`List "${listName}" loaded.`);
             }
         }
@@ -282,7 +300,7 @@ Vince April Pitogo`;
                 try {
                     localStorage.setItem(SAVED_LISTS_KEY, JSON.stringify(savedLists));
                     
-                    // Clear the current bulk input if the deleted list was loaded
+                    // Clear the current bulk input if the deleted list was the currently loaded one
                     if (document.getElementById('bulkInput').value === savedLists[listName]) {
                         clearBulkInput();
                     }
@@ -299,6 +317,7 @@ Vince April Pitogo`;
             document.getElementById('bulkInput').value = "";
             document.getElementById('loadDefaults').checked = false;
             document.getElementById('listSelector').value = ""; // Reset selector on clear
+            document.getElementById('deleteListBtn').disabled = true; // Disable delete
             window.loadNamesFromBulk(false);
             showMessage("Input list cleared.");
         }
@@ -316,7 +335,8 @@ Vince April Pitogo`;
 
             namesArray.forEach((name, index) => {
                 const div = document.createElement('div');
-                div.className = 'flex items-center space-x-2 py-1 px-2 hover:bg-white rounded transition duration-100'; 
+                // Use a standard Tailwind hover effect
+                div.className = 'flex items-center space-x-2 py-1 px-2 rounded transition duration-100 hover:bg-indigo-50'; 
                 div.innerHTML = `
                     <input type="checkbox" id="name-${index}" name="selectedName" value="${name}" checked 
                            class="h-4 w-4 text-indigo-600 border-gray-400 rounded focus:ring-indigo-500 cursor-pointer flex-shrink-0">
@@ -360,6 +380,7 @@ Vince April Pitogo`;
             
             // FIX: Reset selector on toggle to prevent sync issues with saved lists.
             document.getElementById('listSelector').value = ""; 
+            document.getElementById('deleteListBtn').disabled = true;
 
             // Always call loadNamesFromBulk() after toggling, to refresh the selection area and save current state.
             window.loadNamesFromBulk(true); 
@@ -459,6 +480,7 @@ Vince April Pitogo`;
             bulkInput.addEventListener('input', () => {
                 // Reset selector on any manual typing
                 document.getElementById('listSelector').value = ""; 
+                document.getElementById('deleteListBtn').disabled = true; // Disable delete button on edit
                 
                 // Check if the bulk input content still matches the default list
                 const loadDefaultsCheckbox = document.getElementById('loadDefaults');
@@ -468,13 +490,9 @@ Vince April Pitogo`;
                     loadDefaultsCheckbox.checked = false;
                 }
 
+                // Debounce save to prevent constant localStorage writes
                 clearTimeout(window.saveTimeout);
                 window.saveTimeout = setTimeout(() => saveCurrentInput(bulkInput.value), 1000);
-            });
-            
-            // Event listener for toggle default
-            document.getElementById('loadDefaults').addEventListener('change', (e) => {
-                window.toggleDefaultNames(e.target.checked);
             });
         };
     </script>
