@@ -25,12 +25,36 @@
 
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-extrabold text-indigo-700">Area Randomizer</h1>
-            <p class="text-gray-600 mt-2">Your list is automatically saved. Select names and click 'Randomize'.</p>
+            <p class="text-gray-600 mt-2">Manage multiple lists using the section below.</p>
         </header>
+
+        <section class="mb-6 pb-6 border-b border-indigo-200">
+            <label class="block text-lg font-semibold text-gray-700 mb-3">1. Saved List Management</label>
+            <div class="flex flex-col sm:flex-row gap-3">
+                
+                <select id="listSelector" onchange="loadSelectedList()"
+                        class="flex-grow p-3 border-2 border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner text-gray-800">
+                    <option value="">-- Load a Saved List --</option>
+                </select>
+
+                <button id="saveListBtn" onclick="saveCurrentList()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-300 active:bg-green-700 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-6 4v4m0 0l-2-2m2 2l2-2" /></svg>
+                    Save Current
+                </button>
+
+                <button id="deleteListBtn" onclick="deleteSelectedList()" disabled
+                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 active:bg-red-700 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Delete Selected
+                </button>
+            </div>
+        </section>
+
 
         <section class="mb-6 border-b pb-6">
             <div class="flex justify-between items-center mb-2">
-                <label for="bulkInput" class="block text-lg font-semibold text-gray-700">1. Bulk Input (One Name Per Line)</label>
+                <label for="bulkInput" class="block text-lg font-semibold text-gray-700">2. Bulk Input (One Name Per Line)</label>
                 <div class="flex items-center">
                     <input type="checkbox" id="loadDefaults" onchange="toggleDefaultNames(this.checked)" 
                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
@@ -44,7 +68,12 @@ Charlie Brown
 ..."
                 class="w-full p-4 border-2 border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner resize-none text-gray-800"></textarea>
 
-            <div class="flex justify-end mt-4">
+            <div class="flex justify-between mt-4">
+                <button onclick="clearBulkInput()"
+                    class="bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 active:bg-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    Clear List
+                </button>
                 <button onclick="loadNamesFromBulk(true)"
                     class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-full shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 active:bg-indigo-700">
                     Load/Refresh Selection List
@@ -53,7 +82,7 @@ Charlie Brown
         </section>
 
         <section class="mb-8">
-            <label class="block text-lg font-semibold text-gray-700 mb-2">2. Names to Include (Check to select)</label>
+            <label class="block text-lg font-semibold text-gray-700 mb-2">3. Names to Include (Check to select)</label>
             <div id="namesSelectionArea" 
                  class="p-4 border border-gray-300 rounded-xl bg-gray-50 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-2">
                  <p class="text-gray-500 text-sm col-span-full">Names will load here once entered above or retrieved from storage.</p>
@@ -72,7 +101,7 @@ Charlie Brown
         </div>
 
         <section>
-            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">3. Randomized List</label>
+            <label for="resultTextarea" class="block text-lg font-semibold text-gray-700 mb-2">4. Randomized List</label>
             <div id="resultContainer" class="relative">
                 <textarea id="resultTextarea" readonly placeholder="The randomized list will appear here..."
                     class="w-full p-4 h-80 border-2 border-green-300 bg-green-50 rounded-xl shadow-md resize-none text-green-800 font-mono"></textarea>
@@ -95,7 +124,8 @@ Charlie Brown
     <script>
         
         // --- LOCAL STORAGE FUNCTIONS AND CONSTANTS ---
-        const STORAGE_KEY = 'areaRandomizerList';
+        const CURRENT_LIST_KEY = 'areaRandomizerCurrentList';
+        const SAVED_LISTS_KEY = 'areaRandomizerSavedLists';
         let saveTimeout;
 
         const DEFAULT_NAMES = `Lorens Christopher Ebrado
@@ -110,14 +140,132 @@ Serg Sembrano
 Negel Roloma
 Vince April Pitogo`;
 
-        function saveNamesToLocalStorage(names) {
-            localStorage.setItem(STORAGE_KEY, names);
+        // Utility to get all saved lists
+        function getSavedLists() {
+            try {
+                return JSON.parse(localStorage.getItem(SAVED_LISTS_KEY)) || {};
+            } catch (e) {
+                console.error("Error loading saved lists:", e);
+                return {};
+            }
+        }
+
+        // Utility to populate the list selector dropdown
+        function populateListSelector(selectedListName = "") {
+            const selector = document.getElementById('listSelector');
+            const savedLists = getSavedLists();
+            
+            selector.innerHTML = `<option value="">-- Load a Saved List --</option>`;
+            selector.disabled = Object.keys(savedLists).length === 0;
+            document.getElementById('deleteListBtn').disabled = true;
+
+            const listNames = Object.keys(savedLists).sort();
+            listNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                selector.appendChild(option);
+            });
+            
+            if (selectedListName) {
+                 selector.value = selectedListName;
+                 document.getElementById('deleteListBtn').disabled = false;
+            }
+        }
+        
+        // --- Core List Management Functions ---
+
+        window.saveCurrentList = function() {
+            const bulkInput = document.getElementById('bulkInput');
+            const currentContent = bulkInput.value;
+            
+            if (currentContent.trim().length === 0) {
+                showMessage("List is empty. Nothing to save.", true);
+                return;
+            }
+
+            let listName = prompt("Enter a name for this list:", "Team List " + (Object.keys(getSavedLists()).length + 1));
+            
+            if (!listName || listName.trim() === "") {
+                showMessage("Save cancelled.", false);
+                return;
+            }
+            listName = listName.trim();
+
+            const savedLists = getSavedLists();
+            savedLists[listName] = currentContent;
+
+            try {
+                localStorage.setItem(SAVED_LISTS_KEY, JSON.stringify(savedLists));
+                populateListSelector(listName);
+                showMessage(`List "${listName}" saved successfully!`);
+            } catch (e) {
+                showMessage("Failed to save list to local storage.", true);
+            }
+        }
+        
+        window.loadSelectedList = function() {
+            const selector = document.getElementById('listSelector');
+            const listName = selector.value;
+            
+            if (!listName) {
+                document.getElementById('deleteListBtn').disabled = true;
+                return;
+            }
+
+            const savedLists = getSavedLists();
+            const content = savedLists[listName];
+            
+            if (content) {
+                document.getElementById('bulkInput').value = content;
+                window.loadNamesFromBulk(true);
+                document.getElementById('deleteListBtn').disabled = false;
+                showMessage(`List "${listName}" loaded.`);
+            }
+        }
+        
+        window.deleteSelectedList = function() {
+            const selector = document.getElementById('listSelector');
+            const listName = selector.value;
+            
+            if (!listName) return;
+
+            if (confirm(`Are you sure you want to delete the list: "${listName}"?`)) {
+                const savedLists = getSavedLists();
+                delete savedLists[listName];
+                
+                try {
+                    localStorage.setItem(SAVED_LISTS_KEY, JSON.stringify(savedLists));
+                    
+                    // Clear the current bulk input if the deleted list was loaded
+                    if (document.getElementById('bulkInput').value === savedLists[listName]) {
+                        clearBulkInput();
+                    }
+                    
+                    populateListSelector("");
+                    showMessage(`List "${listName}" deleted.`);
+                } catch (e) {
+                    showMessage("Failed to delete list from local storage.", true);
+                }
+            }
+        }
+
+        window.clearBulkInput = function() {
+            document.getElementById('bulkInput').value = "";
+            window.loadNamesFromBulk(false);
+            showMessage("Input list cleared.");
+        }
+        
+        // --- Persistence and Utility Functions ---
+
+        function saveCurrentInput(names) {
+             localStorage.setItem(CURRENT_LIST_KEY, names);
         }
 
         function loadNamesFromLocalStorage() {
             const bulkInput = document.getElementById('bulkInput');
             const loadDefaultsCheckbox = document.getElementById('loadDefaults');
-            const savedNames = localStorage.getItem(STORAGE_KEY);
+            const savedNames = localStorage.getItem(CURRENT_LIST_KEY);
             
             if (savedNames !== null) {
                 bulkInput.value = savedNames;
@@ -140,7 +288,7 @@ Vince April Pitogo`;
             }
         }
         
-        // --- END LOCAL STORAGE FUNCTIONS ---
+        // --- Core Application Functions (Modified slightly for new persistence key) ---
         
         function renderNamesList(namesArray) {
             const selectionArea = document.getElementById('namesSelectionArea');
@@ -179,7 +327,7 @@ Vince April Pitogo`;
             renderNamesList(names);
             if (showMsg) showMessage(`Loaded ${names.length} names for selection.`);
             
-            saveNamesToLocalStorage(rawText);
+            saveCurrentInput(rawText);
         }
 
         window.toggleDefaultNames = function(isChecked) {
@@ -188,7 +336,6 @@ Vince April Pitogo`;
                 bulkInput.value = DEFAULT_NAMES;
                 window.loadNamesFromBulk(true); 
             } else {
-                // Only clear if the current content is exactly the default list
                 if (bulkInput.value.trim() === DEFAULT_NAMES.trim()) {
                     bulkInput.value = "";
                 }
@@ -196,7 +343,7 @@ Vince April Pitogo`;
                      renderNamesList([]);
                 }
             }
-            saveNamesToLocalStorage(bulkInput.value);
+            saveCurrentInput(bulkInput.value);
         }
 
         function showMessage(text, isError = false) {
@@ -284,12 +431,13 @@ Vince April Pitogo`;
         }
 
         window.onload = function() {
+            populateListSelector();
             loadNamesFromLocalStorage();
 
             const bulkInput = document.getElementById('bulkInput');
             bulkInput.addEventListener('input', () => {
                 clearTimeout(window.saveTimeout);
-                window.saveTimeout = setTimeout(() => saveNamesToLocalStorage(bulkInput.value), 1000);
+                window.saveTimeout = setTimeout(() => saveCurrentInput(bulkInput.value), 1000);
             });
         };
     </script>
