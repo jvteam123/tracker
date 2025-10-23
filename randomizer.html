@@ -17,21 +17,6 @@
         #resultTextarea::-webkit-scrollbar-track {
             background: #f3f4f6; /* gray-100 */
         }
-        
-        /* New CSS for the temporary element used by html2canvas */
-        .screenshot-target {
-            padding: 20px;
-            background-color: #f0fff4; /* bg-green-50 */
-            border-radius: 12px;
-            white-space: pre-wrap;
-            font-family: monospace;
-            color: #10b981; /* text-green-800 */
-            font-size: 14px;
-            max-width: 400px; /* Limit width for a cleaner screenshot image */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            position: absolute;
-            left: -9999px; /* Keep it off-screen */
-        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-8 font-sans antialiased">
@@ -100,29 +85,12 @@ Charlie Brown
                     </svg>
                     Copy
                 </button>
-                
-                <button id="copyScreenshotButton" onclick="copyScreenshot()" disabled
-                    class="absolute top-16 right-4 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.865-1.155A2 2 0 0111.977 4h2.046a2 2 0 011.664.89l.865 1.155c.334.445.92.89 1.664.89h.93a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Photo
-                </button>
 
                 <div id="messageBox" class="absolute bottom-4 left-0 right-0 p-3 mx-4 rounded-lg text-center font-medium transition-opacity duration-300 opacity-0 pointer-events-none text-sm" style="display: none;"></div>
             </div>
         </section>
 
     </div>
-
-    <script 
-        src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" 
-        integrity="sha512-BNaRQODhGkmP/zR0m3+fQ/P0d93/W9g+eN1G5QzD0s1R1M2tV1D1F5+x0B5/2T9A7C7K/v+5+y5+Q==" 
-        crossorigin="anonymous" 
-        referrerpolicy="no-referrer"
-        onerror="document.getElementById('copyScreenshotButton').setAttribute('disabled', 'true'); console.error('html2canvas failed to load from CDN. Check network/security policies.');"
-    ></script>
 
     <script>
         
@@ -148,13 +116,27 @@ Vince April Pitogo`;
 
         function loadNamesFromLocalStorage() {
             const bulkInput = document.getElementById('bulkInput');
+            const loadDefaultsCheckbox = document.getElementById('loadDefaults');
             const savedNames = localStorage.getItem(STORAGE_KEY);
             
-            if (savedNames) {
+            if (savedNames !== null) {
                 bulkInput.value = savedNames;
+                
+                // FIX: Check if the loaded content matches the default list to set the checkbox state
+                if (savedNames.trim() === DEFAULT_NAMES.trim()) {
+                    loadDefaultsCheckbox.checked = true;
+                } else {
+                    loadDefaultsCheckbox.checked = false;
+                }
+                
                 if (savedNames.trim().length > 0) {
                      window.loadNamesFromBulk(false); 
                 }
+            } else {
+                // Initial load: Set initial default preference
+                loadDefaultsCheckbox.checked = true;
+                bulkInput.value = DEFAULT_NAMES;
+                window.loadNamesFromBulk(false); 
             }
         }
         
@@ -206,6 +188,7 @@ Vince April Pitogo`;
                 bulkInput.value = DEFAULT_NAMES;
                 window.loadNamesFromBulk(true); 
             } else {
+                // Only clear if the current content is exactly the default list
                 if (bulkInput.value.trim() === DEFAULT_NAMES.trim()) {
                     bulkInput.value = "";
                 }
@@ -259,7 +242,6 @@ Vince April Pitogo`;
         window.randomizeNames = function() {
             const resultTextarea = document.getElementById('resultTextarea');
             const copyButton = document.getElementById('copyButton');
-            const copyScreenshotButton = document.getElementById('copyScreenshotButton'); 
             const checkboxes = document.querySelectorAll('#namesSelectionArea input[type="checkbox"]:checked');
             
             let names = Array.from(checkboxes).map(cb => cb.value);
@@ -267,7 +249,6 @@ Vince April Pitogo`;
             if (names.length === 0) {
                 resultTextarea.value = "No names were selected for randomization. Please load a list and check one or more boxes.";
                 copyButton.disabled = true;
-                copyScreenshotButton.disabled = true; 
                 showMessage("No names selected!", true);
                 return;
             }
@@ -280,8 +261,6 @@ Vince April Pitogo`;
 
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            // Enable the photo button only if the library is loaded
-            copyScreenshotButton.disabled = (typeof window.html2canvas === 'undefined'); 
             showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
 
@@ -303,73 +282,6 @@ Vince April Pitogo`;
                 showMessage("Copy failed. Please select and copy manually.", true);
             }
         }
-        
-        window.copyScreenshot = async function() {
-            const html2canvas_global = window.html2canvas;
-
-            if (typeof html2canvas_global === 'undefined') {
-                 showMessage("Screenshot library failed to load. Check your browser console for network errors or try refreshing.", true);
-                 return;
-            }
-
-            const resultTextarea = document.getElementById('resultTextarea');
-            const copyScreenshotButton = document.getElementById('copyScreenshotButton');
-            const copyButton = document.getElementById('copyButton');
-
-            if (resultTextarea.value.length === 0 || resultTextarea.value.includes("will appear here")) {
-                showMessage("Nothing to capture yet!", true);
-                return;
-            }
-
-            copyScreenshotButton.disabled = true;
-            copyButton.style.opacity = '0';
-            copyScreenshotButton.style.opacity = '0';
-            
-            showMessage("Capturing image...", false);
-
-            const tempDiv = document.createElement('div');
-            tempDiv.className = 'screenshot-target';
-            tempDiv.textContent = resultTextarea.value;
-            
-            document.body.appendChild(tempDiv);
-            
-            try {
-                const canvas = await html2canvas_global(tempDiv, {
-                    scale: 2, 
-                    backgroundColor: null, 
-                    logging: false
-                });
-                
-                canvas.toBlob(async (blob) => {
-                    if (!blob) {
-                        showMessage("Failed to generate image.", true);
-                        return;
-                    }
-                    
-                    try {
-                        if (typeof ClipboardItem === 'undefined') {
-                             throw new Error("ClipboardItem API not supported by this browser.");
-                        }
-
-                        const item = new ClipboardItem({'image/png': blob});
-                        await navigator.clipboard.write([item]);
-                        showMessage("Screenshot copied to clipboard!");
-                    } catch (err) {
-                        showMessage("Clipboard write failed. Ensure your browser allows image copy.", true);
-                        console.error('Clipboard write error:', err);
-                    }
-                }, 'image/png');
-
-            } catch(e) {
-                showMessage(`Screenshot failed: ${e.message}`, true);
-                console.error('html2canvas error:', e);
-            } finally {
-                document.body.removeChild(tempDiv);
-                copyScreenshotButton.disabled = false;
-                copyButton.style.opacity = '1';
-                copyScreenshotButton.style.opacity = '1';
-            }
-        }
 
         window.onload = function() {
             loadNamesFromLocalStorage();
@@ -379,12 +291,6 @@ Vince April Pitogo`;
                 clearTimeout(window.saveTimeout);
                 window.saveTimeout = setTimeout(() => saveNamesToLocalStorage(bulkInput.value), 1000);
             });
-            
-            // Check library load status on window load and disable button if necessary
-            const copyScreenshotButton = document.getElementById('copyScreenshotButton');
-            if (typeof window.html2canvas === 'undefined') {
-                copyScreenshotButton.disabled = true;
-            }
         };
     </script>
 </body>
