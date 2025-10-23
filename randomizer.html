@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Area Randomizer - Professional</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom Colors */
@@ -57,13 +58,13 @@
             font-family: monospace;
             color: #1f2937; /* Dark Gray text */
             font-size: 1rem;
-            /* FIX: Disable selection highlights */
+            /* Disable selection highlights */
             -webkit-user-select: none; 
             -moz-user-select: none; 
             user-select: none;
         }
         .drag-item:hover {
-            background-color: #e5e7eb; /* Light gray on hover */
+            background-color: transparent; /* No visible change on hover */
         }
         .drag-item.dragging {
             opacity: 0.4;
@@ -96,6 +97,7 @@
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-10 font-sans antialiased">
 
+    <!-- Main Container -->
     <div class="max-w-4xl mx-auto bg-white main-card rounded-xl p-8 md:p-12 border border-gray-200">
 
         <header class="text-center mb-10 border-b pb-4">
@@ -103,22 +105,27 @@
             <p class="text-gray-500 mt-2 text-lg">Manage, save, and randomize assignment lists with persistent storage.</p>
         </header>
 
+        <!-- List Management Area -->
         <section class="mb-8 pb-6 border-b border-gray-200">
             <label class="block text-xl font-bold text-gray-700 mb-4">1. Saved List Management</label>
             <div class="flex flex-col sm:flex-row gap-4">
                 
+                <!-- List Selector -->
                 <select id="listSelector" onchange="loadSelectedList()"
                         class="flex-grow p-3 border border-gray-300 rounded-lg input-focus transition duration-150 text-gray-700">
                     <option value="">-- Load or Create a List --</option>
                 </select>
 
+                <!-- Action Buttons Group -->
                 <div class="flex gap-4">
+                    <!-- Save Button -->
                     <button id="saveListBtn" onclick="saveCurrentList()"
                         class="bg-primary hover:bg-primary-dark text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-300 flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-6 4v4m0 0l-2-2m2 2l2-2" /></svg>
                         Save
                     </button>
 
+                    <!-- Delete Button -->
                     <button id="deleteListBtn" onclick="deleteSelectedList()" disabled
                         class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-4 focus:ring-red-300 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -129,6 +136,7 @@
         </section>
 
 
+        <!-- Input Area (Bulk Entry) -->
         <section class="mb-8 pb-6 border-b border-gray-200">
             <div class="flex justify-between items-center mb-4">
                 <label for="bulkInput" class="block text-xl font-bold text-gray-700">2. Input List (One Name Per Line)</label>
@@ -157,6 +165,7 @@ Bob Smith
             </div>
         </section>
 
+        <!-- Selection Area -->
         <section class="mb-8">
             <label class="block text-xl font-bold text-gray-700 mb-3">3. Names to Include (Check to select)</label>
             <div id="namesSelectionArea" 
@@ -166,6 +175,7 @@ Bob Smith
         </section>
 
 
+        <!-- Action Button -->
         <div class="flex justify-center mb-10">
             <button id="randomizeButton" onclick="randomizeNames()"
                 class="bg-primary hover:bg-primary-dark text-white font-bold py-4 px-10 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-indigo-300 flex items-center text-lg">
@@ -176,15 +186,18 @@ Bob Smith
             </button>
         </div>
 
+        <!-- Result Area -->
         <section>
             <label for="resultListContainer" class="block text-xl font-bold text-gray-700 mb-3">4. Randomized Assignment List (Drag to Rearrange)</label>
             <div id="resultContainer" class="relative">
                 
+                <!-- NEW LIST CONTAINER (Replaces Textarea) -->
                 <div id="resultListContainer" 
                     class="shadow-lg">
                     <p class="p-4 text-gray-500 text-base">Click "RANDOMIZE ASSIGNMENTS" to generate the list.</p>
                 </div>
                 
+                <!-- This is just a placeholder for the old button location, functionality is tied to the drag list -->
                 <button id="copyButton" onclick="copyResult()" disabled
                     class="absolute top-4 right-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -194,12 +207,14 @@ Bob Smith
                     Copy Text
                 </button>
 
+                <!-- Message Box for feedback -->
                 <div id="messageBox" class="absolute bottom-4 left-0 right-0 p-3 mx-4 rounded-lg text-center font-medium transition-opacity duration-300 opacity-0 pointer-events-none text-sm" style="display: none;"></div>
             </div>
         </section>
 
     </div>
 
+    <!-- Main JavaScript Logic -->
     <script>
         
         // --- LOCAL STORAGE FUNCTIONS AND CONSTANTS ---
