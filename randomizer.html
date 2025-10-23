@@ -52,11 +52,15 @@
             border-bottom: 1px solid transparent; /* No bottom border */
             display: flex;
             align-items: baseline;
-            cursor: default; /* CHANGED: Use default cursor to hide drag capability */
+            cursor: default; /* Use default cursor to hide drag capability */
             transition: background-color 0.15s, opacity 0.15s;
             font-family: monospace;
             color: #1f2937; /* Dark Gray text */
             font-size: 1rem;
+            /* FIX: Disable selection highlights */
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            user-select: none;
         }
         .drag-item:hover {
             background-color: #e5e7eb; /* Light gray on hover */
