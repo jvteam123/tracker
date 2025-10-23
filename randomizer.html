@@ -169,7 +169,39 @@ Vince April Pitogo`;
             
             if (selectedListName) {
                  selector.value = selectedListName;
-                 document.getElementById('deleteListBtn').disabled = false;
+                 document.getElementById('deleteListBtn').disabled = true; // Still true initially, loadSelectedList enables it
+            }
+        }
+        
+        // --- Persistence and Utility Functions ---
+
+        function saveCurrentInput(names) {
+             localStorage.setItem(CURRENT_LIST_KEY, names);
+        }
+
+        function loadNamesFromLocalStorage() {
+            const bulkInput = document.getElementById('bulkInput');
+            const loadDefaultsCheckbox = document.getElementById('loadDefaults');
+            const savedNames = localStorage.getItem(CURRENT_LIST_KEY);
+            
+            if (savedNames !== null) {
+                bulkInput.value = savedNames;
+                
+                // FIX: Check if the loaded content matches the default list to set the checkbox state
+                if (savedNames.trim() === DEFAULT_NAMES.trim()) {
+                    loadDefaultsCheckbox.checked = true;
+                } else {
+                    loadDefaultsCheckbox.checked = false;
+                }
+                
+                if (savedNames.trim().length > 0) {
+                     window.loadNamesFromBulk(false); 
+                }
+            } else {
+                // Initial load: Set initial default preference
+                loadDefaultsCheckbox.checked = true;
+                bulkInput.value = DEFAULT_NAMES;
+                window.loadNamesFromBulk(false); 
             }
         }
         
@@ -208,8 +240,9 @@ Vince April Pitogo`;
             const selector = document.getElementById('listSelector');
             const listName = selector.value;
             
+            document.getElementById('deleteListBtn').disabled = true; // Disable until a valid list is loaded
+            
             if (!listName) {
-                document.getElementById('deleteListBtn').disabled = true;
                 return;
             }
 
@@ -217,8 +250,19 @@ Vince April Pitogo`;
             const content = savedLists[listName];
             
             if (content) {
-                document.getElementById('bulkInput').value = content;
-                window.loadNamesFromBulk(true);
+                const bulkInput = document.getElementById('bulkInput');
+                const loadDefaultsCheckbox = document.getElementById('loadDefaults');
+                
+                bulkInput.value = content;
+                
+                // FIX: Update "Use Default List" checkbox based on loaded saved list content
+                if (content.trim() === DEFAULT_NAMES.trim()) {
+                    loadDefaultsCheckbox.checked = true;
+                } else {
+                    loadDefaultsCheckbox.checked = false;
+                }
+
+                window.loadNamesFromBulk(true); // This loads the list, saves to CURRENT_LIST_KEY, and updates selection area.
                 document.getElementById('deleteListBtn').disabled = false;
                 showMessage(`List "${listName}" loaded.`);
             }
@@ -252,43 +296,12 @@ Vince April Pitogo`;
 
         window.clearBulkInput = function() {
             document.getElementById('bulkInput').value = "";
+            document.getElementById('loadDefaults').checked = false;
             window.loadNamesFromBulk(false);
             showMessage("Input list cleared.");
         }
         
-        // --- Persistence and Utility Functions ---
-
-        function saveCurrentInput(names) {
-             localStorage.setItem(CURRENT_LIST_KEY, names);
-        }
-
-        function loadNamesFromLocalStorage() {
-            const bulkInput = document.getElementById('bulkInput');
-            const loadDefaultsCheckbox = document.getElementById('loadDefaults');
-            const savedNames = localStorage.getItem(CURRENT_LIST_KEY);
-            
-            if (savedNames !== null) {
-                bulkInput.value = savedNames;
-                
-                // FIX: Check if the loaded content matches the default list to set the checkbox state
-                if (savedNames.trim() === DEFAULT_NAMES.trim()) {
-                    loadDefaultsCheckbox.checked = true;
-                } else {
-                    loadDefaultsCheckbox.checked = false;
-                }
-                
-                if (savedNames.trim().length > 0) {
-                     window.loadNamesFromBulk(false); 
-                }
-            } else {
-                // Initial load: Set initial default preference
-                loadDefaultsCheckbox.checked = true;
-                bulkInput.value = DEFAULT_NAMES;
-                window.loadNamesFromBulk(false); 
-            }
-        }
-        
-        // --- Core Application Functions (Modified slightly for new persistence key) ---
+        // --- Core Application Functions ---
         
         function renderNamesList(namesArray) {
             const selectionArea = document.getElementById('namesSelectionArea');
@@ -332,18 +345,19 @@ Vince April Pitogo`;
 
         window.toggleDefaultNames = function(isChecked) {
             const bulkInput = document.getElementById('bulkInput');
+            
+            // 1. Update bulk input content
             if (isChecked) {
                 bulkInput.value = DEFAULT_NAMES;
-                window.loadNamesFromBulk(true); 
             } else {
+                // Clear if the content matches the default, otherwise leave user's custom content
                 if (bulkInput.value.trim() === DEFAULT_NAMES.trim()) {
                     bulkInput.value = "";
                 }
-                if (bulkInput.value.trim().length === 0) {
-                     renderNamesList([]);
-                }
             }
-            saveCurrentInput(bulkInput.value);
+            
+            // FIX: Always call loadNamesFromBulk() after toggling, to refresh the selection area and save current state.
+            window.loadNamesFromBulk(true); // Passing true shows the message
         }
 
         function showMessage(text, isError = false) {
