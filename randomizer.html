@@ -116,7 +116,13 @@ Charlie Brown
 
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQODhGkmP/zR0m3+fQ/P0d93/W9g+eN1G5QzD0s1R1M2tV1D1F5+x0B5/2T9A7C7K/v+5+y5+Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script 
+        src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" 
+        integrity="sha512-BNaRQODhGkmP/zR0m3+fQ/P0d93/W9g+eN1G5QzD0s1R1M2tV1D1F5+x0B5/2T9A7C7K/v+5+y5+Q==" 
+        crossorigin="anonymous" 
+        referrerpolicy="no-referrer"
+        onerror="document.getElementById('copyScreenshotButton').setAttribute('disabled', 'true'); console.error('html2canvas failed to load from CDN. Check network/security policies.');"
+    ></script>
 
     <script>
         
@@ -297,7 +303,8 @@ Vince April Pitogo`;
             // Display result
             resultTextarea.value = numberedList;
             copyButton.disabled = false;
-            copyScreenshotButton.disabled = false; 
+            // Only enable the photo button if the library is loaded (window.html2canvas exists)
+            copyScreenshotButton.disabled = (typeof window.html2canvas === 'undefined'); 
             showMessage(`Successfully randomized and numbered ${names.length} selected names!`);
         }
 
@@ -325,11 +332,11 @@ Vince April Pitogo`;
         
         // --- FUNCTION: Copy Screenshot (Fixed for global html2canvas) ---
         window.copyScreenshot = async function() {
-            // CRITICAL FIX: Use the global window object for html2canvas
             const html2canvas_global = window.html2canvas;
 
             if (typeof html2canvas_global === 'undefined') {
-                 showMessage("Screenshot library error. Please ensure the CDN is loaded.", true);
+                 // Check if the script failed to load (by checking the console error from the onerror attribute on the CDN script tag)
+                 showMessage("Screenshot library failed to load. Check your browser console for network errors or try refreshing.", true);
                  return;
             }
 
