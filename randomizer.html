@@ -44,50 +44,49 @@
             background-color: #e0e7ff; /* Lighter Indigo for subtle feedback */
         }
 
-        /* --- NEW DRAG-AND-DROP STYLES --- */
+        /* --- NEW DRAG-AND-DROP STYLES (MODIFIED) --- */
         .drag-item {
-            padding: 12px;
-            margin-bottom: 8px;
-            background-color: #f0fdf4; /* Light Green */
-            border: 1px solid #d1fae5; /* Green border */
-            border-radius: 6px;
+            padding: 4px 10px; /* Minimal padding */
+            background-color: transparent; /* No box color */
+            border-radius: 0; 
+            border-bottom: 1px solid transparent; /* No bottom border */
             display: flex;
-            align-items: center;
+            align-items: baseline;
             cursor: move; /* Indicate draggable */
             transition: background-color 0.15s, opacity 0.15s;
             font-family: monospace;
-            color: #065f46; /* Dark Green text */
+            color: #1f2937; /* Dark Gray text */
             font-size: 1rem;
         }
         .drag-item:hover {
-            background-color: #d1fae5;
+            background-color: #e5e7eb; /* Light gray on hover */
         }
         .drag-item.dragging {
             opacity: 0.4;
+        }
+        /* Style for showing the drop zone (now a simple line highlight) */
+        .drag-item.drag-over {
+            border-top: 2px solid #3730a3; /* Blue line above the drop target */
+            padding-top: 2px;
         }
         .drag-item .number {
             font-weight: bold;
             margin-right: 12px;
             width: 25px;
             text-align: right;
-            color: #34d399; /* Medium Green for number */
-        }
-        .drag-placeholder {
-            border: 2px dashed #93c5fd; /* Blue dashed border */
-            height: 50px;
-            background-color: #eff6ff; /* Light blue background */
-            border-radius: 6px;
-            margin-bottom: 8px;
+            color: #3730a3; /* Deep Indigo for number */
+            flex-shrink: 0;
         }
         /* New Container for Results (replaces textarea) */
         #resultListContainer {
             min-height: 20rem; 
             max-height: 20rem; 
             overflow-y: auto;
-            padding: 10px;
+            padding: 10px 0; /* Adjusted padding */
             border: 1px solid #d1fae5;
             background-color: #f7fee7; /* Very light green background */
             border-radius: 8px;
+            font-size: 1rem;
         }
     </style>
 </head>
@@ -495,10 +494,9 @@ Vince April Pitogo`;
         let dragSrcEl = null;
 
         function handleDragStart(e) {
-            this.style.opacity = '0.4';
+            this.classList.add('dragging');
             dragSrcEl = this;
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML);
             e.dataTransfer.setData('text/plain', this.textContent);
         }
 
@@ -523,7 +521,6 @@ Vince April Pitogo`;
             this.classList.remove('drag-over');
 
             if (dragSrcEl !== this) {
-                // Determine if we drop before or after the target
                 const rect = this.getBoundingClientRect();
                 const offsetY = e.clientY - rect.top;
                 const targetList = this.parentNode;
@@ -542,7 +539,7 @@ Vince April Pitogo`;
         }
 
         function handleDragEnd(e) {
-            this.style.opacity = '1';
+            this.classList.remove('dragging');
             // Remove all drag-over classes
             const listItems = document.querySelectorAll('.drag-item');
             listItems.forEach(item => item.classList.remove('drag-over'));
@@ -566,6 +563,8 @@ Vince April Pitogo`;
                  if (numberSpan) {
                      numberSpan.textContent = `${index + 1}.`;
                  }
+                 // Ensure the drag-over class is cleared on every re-number event
+                 item.classList.remove('drag-over'); 
              });
         }
         
