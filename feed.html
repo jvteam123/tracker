@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Updates Feed</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* BASE & LAYOUT */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background-color: #e9ebee; 
+            padding: 0; 
+            margin: 0;
+            display: flex; 
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styling (Same) */
+        #sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            position: fixed; 
+            height: 100%;
+            overflow-y: auto;
+            border-right: 1px solid #dcdde1;
+        }
+        #sidebar h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        #sidebar input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .filter-link {
+            display: block;
+            padding: 8px 0;
+            color: #34495e;
+            text-decoration: none;
+            border-bottom: 1px dashed #ecf0f1;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .filter-link:hover {
+            color: #3498db;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: 250px; 
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .feed-container { 
+            max-width: 700px; 
+            width: 100%; 
+            position: relative; 
+        }
+
+        h1 { 
+            color: #2c3e50; 
+            border-bottom: 2px solid #bdc3c7; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px; 
+            text-align: center;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 20px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #dcdde1;
+        }
+        
+        /* Auth Status Bar */
+        #userStatus {
+            background-color: #ffffff;
+            border: 1px solid #dcdde1;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .auth-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        #signInBtn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        #signInBtn:hover { background-color: #c0392b; }
+        #signOutBtn {
+            background-color: #95a5a6;
+            color: white;
+        }
+        #signOutBtn:hover { background-color: #7f8c8d; }
+
+        /* Action Icons (Settings & New Post) */
+        .action-icons {
+            position: absolute;
+            top: 20px;
+            right: 0;
+            display: flex;
+            gap: 15px;
+        }
+        .action-icon {
+            cursor: pointer;
+            color: #34495e;
+            font-size: 1.5em;
+            transition: color 0.2s;
+        }
+        .action-icon:hover { color: #c0392b; }
+        .post-icon:hover { color: #2ecc71; }
+
+        /* Scrollable Feed Area */
+        #feedOutputWrapper {
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        #feedOutputWrapper::-webkit-scrollbar { width: 8px; }
+        #feedOutputWrapper::-webkit-scrollbar-thumb { background-color: #bdc3c7; border-radius: 4px; }
+
+        /* Feed Post Styling */
+        .feed-post { 
+            background: #ffffff; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            padding: 15px; 
+            margin-bottom: 15px;
+            border-left: 5px solid #3498db;
+            position: relative;
+        }
+        .feed-post h3 { color: #2c3e50; margin-top: 0; margin-bottom: 5px; }
+        .feed-post p { white-space: pre-wrap; font-size: 0.95em; line-height: 1.4; color: #34495e; }
+        .feed-post small { color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 10px; }
+        
+        /* Like and Comment Styles (Same) */
+        .like-btn { background: none; border: none; color: #e74c3c; cursor: pointer; margin-left: 10px; font-size: 0.9em; font-weight: bold; transition: opacity 0.2s; }
+        .like-btn:hover { opacity: 0.7; }
+        .like-btn:disabled { cursor: not-allowed; color: #ccc; }
+        .like-count { color: #e74c3c; margin-left: 5px; font-weight: bold; }
+        .comment-toggle { display: block; margin-top: 10px; font-size: 0.85em; color: #3498db; cursor: pointer; text-align: right; border-top: 1px dashed #ecf0f1; padding-top: 5px; }
+        .comment-section { padding-top: 10px; border-top: 1px solid #dcdde1; margin-top: 10px; }
+        .comment-item { background-color: #f8f9fa; padding: 8px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9em; }
+        .comment-meta { font-weight: bold; color: #7f8c8d; font-size: 0.8em; margin-bottom: 3px; }
+        .comment-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 40px; margin-top: 5px; }
+        .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
+
+        /* Management Buttons (Same) */
+        .post-actions { position: absolute; top: 15px; right: 15px; }
+        .post-actions button { background: none; border: none; cursor: pointer; color: #95a5a6; margin-left: 5px; font-size: 1.1em; }
+        .post-actions button:hover { color: #2c3e50; }
+        .post-actions .delete-btn:hover { color: #e74c3c; }
+
+        /* Modal Styling (Refined) */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { 
+            background-color: #ffffff; 
+            margin: 5% auto; 
+            padding: 30px; /* Increased padding */
+            border: none;
+            width: 80%; 
+            max-width: 500px; 
+            border-radius: 10px; /* Softer corners */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23); 
+        }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.2s; }
+        .close-btn:hover { color: #333; }
+        
+        /* Modal Headings */
+        .modal-content h2 { 
+            color: #34495e; 
+            margin-top: 0; 
+            border-bottom: 1px solid #ecf0f1; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px;
+        }
+
+        /* Modal Form Inputs (New TL Announcement & Edit) */
+        .modal-form input[type="text"], 
+        .modal-form textarea,
+        #managementArea input[type="text"],
+        #managementArea textarea { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            border: 1px solid #dcdde1; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 1em;
+        }
+        .modal-form textarea { min-height: 100px; }
+        #managementArea textarea { min-height: 100px; }
+
+        /* Modal Buttons */
+        .modal-button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-button-group button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #27ae60;
+        }
+        .btn-secondary {
+            background-color: #ecf0f1;
+            color: #34495e;
+        }
+        .btn-secondary:hover {
+            background-color: #bdc3c7;
+        }
+        
+        /* Pin Modal Specifics */
+        .modal-pin-content { max-width: 400px; text-align: center; }
+        .modal-pin-content input[type="password"] { width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .modal-pin-content button { padding: 10px 20px; margin-top: 10px; cursor: pointer; border: none; border-radius: 4px; background-color: #3498db; color: white; transition: background-color 0.3s; }
+        .modal-pin-content button:hover { background-color: #2980b9; }
+
+    </style>
+</head>
+<body>
+    
+    <div id="sidebar">
+        <h3><i class="fas fa-history"></i> Announcement History</h3>
+        <input type="text" id="searchBar" placeholder="Search by Title or Content..." onkeyup="filterFeed()">
+        <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">Quick Filters:</p>
+        <a href="#" class="filter-link" onclick="filterFeed('')"><i class="fas fa-sync-alt"></i> Show All</a>
+        <a href="#" class="filter-link" onclick="filterFeed('critical')"><i class="fas fa-exclamation-triangle"></i> Critical (Search 'critical')</a>
+        <a href="#" class="filter-link" onclick="filterFeed('review')"><i class="fas fa-tasks"></i> Review Required (Search 'review')</a>
+        
+        <div style="margin-top: 25px;">
+            <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">By Type/Category (Titles):</p>
+            <div id="categoryLinks">
+                </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="feed-container">
+            <h1>Project Updates Feed</h1>
+            
+            <div class="action-icons">
+                <i class="fas fa-plus post-icon action-icon" id="postIcon" title="New TL Announcement"></i>
+                <i class="fas fa-cog settings-icon action-icon" id="settingsIcon" title="Management Access"></i>
+            </div>
+
+            <div id="userStatus">
+                <span id="authMessage">Loading user status...</span>
+                <button id="signInBtn" class="auth-btn" style="display:none;" onclick="googleSignIn()">
+                    <i class="fab fa-google"></i> Sign In
+                </button>
+                <button id="signOutBtn" class="auth-btn" style="display:none;" onclick="signOutUser()">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+
+            <h2>TL Announcements</h2>
+            
+            <div id="feedOutputWrapper">
+                <div id="feedOutput" class="status-message">
+                    <i class="fas fa-spinner fa-spin"></i> Initializing Firebase and fetching data...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="newPostModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('newPostModal')">&times;</span>
+        <h2><i class="fas fa-bullhorn"></i> New TL Announcement</h2>
+        <form id="newPostForm" class="modal-form">
+            <input type="text" id="postTitle" placeholder="Announcement Title" required>
+            <input type="hidden" id="postUser" value="Team Leader" required>
+            <textarea id="postContent" placeholder="Write your announcement details here..." required></textarea>
+            
+            <div class="modal-button-group">
+                <button type="button" class="btn-secondary" onclick="closeModal('newPostModal')">Cancel</button>
+                <button type="submit" id="postButton" class="btn-primary">
+                    <i class="fas fa-paper-plane"></i> Publish Announcement
+                </button>
+            </div>
+        </form>
+        <div id="postStatus" class="status-message" style="display:none; margin-top: 15px;"></div>
+      </div>
+    </div>
+
+    <div id="managementModal" class="modal">
+      <div class="modal-content modal-pin-content">
+        <span class="close-btn" onclick="closeModal('managementModal')">&times;</span>
+        <div id="pinEntry">
+            <h2><i class="fas fa-unlock-alt"></i> Management Access</h2>
+            <p>Enter PIN to access post management features:</p>
+            <input type="password" id="pinInput" placeholder="Enter PIN (2486)" maxlength="4">
+            <button onclick="checkPin()">Submit</button>
+            <p id="pinError" style="color: red; margin-top: 10px;"></p>
+        </div>
+
+        <div id="managementArea" style="display:none;">
+            <h2><i class="fas fa-edit"></i> Edit Announcement</h2>
+            <input type="hidden" id="editPostId">
+            <input type="text" id="editTitle" placeholder="Title">
+            <textarea id="editContent" placeholder="Content"></textarea>
+            
+            <div class="modal-button-group">
+                <button type="button" class="btn-secondary" onclick="closeModal('managementModal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button onclick="saveEdit()" class="btn-primary">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+
+            <p id="editStatus" style="color: green; margin-top: 10px;"></p>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // --- CONFIGURATION ---
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyA1rWP0ky1L-4TqCwtm0OZZSa76EuymP8o",
+            authDomain: "mysocial-3b3fc.firebaseapp.com",
+            projectId: "mysocial-3b3fc",
+            storageBucket: "mysocial-3b3fc.firebasestorage.app",
+            messagingSenderId: "126693884353",
+            appId: "1:126693884353:web:2c0af86f20a7e9c8142f40",
+        };
+        const ADMIN_PIN = "2486"; 
+
+        // --- STATE & INITIALIZATION ---
+        let isAdmin = false; 
+        let allPosts = []; 
+        const openCommentSections = new Set(); 
+        
+        // Initialize Firebase services
+        const app = firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.firestore();
+        const auth = firebase.auth(); 
+
+        // --- DOM ELEMENTS ---
+        const outputElement = document.getElementById('feedOutput');
+        const searchBar = document.getElementById('searchBar');
+        const newPostModal = document.getElementById('newPostModal');
+        const formElement = document.getElementById('newPostForm');
+        const postButton = document.getElementById('postButton');
+        const postStatusElement = document.getElementById('postStatus');
+        const managementModal = document.getElementById('managementModal');
+        const authMessage = document.getElementById('authMessage');
+        const signInBtn = document.getElementById('signInBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const pinInput = document.getElementById('pinInput');
+        const pinEntryArea = document.getElementById('pinEntry');
+        const pinError = document.getElementById('pinError');
+        const editPostId = document.getElementById('editPostId');
+        const editTitle = document.getElementById('editTitle');
+        const editContent = document.getElementById('editContent');
+        const editStatus = document.getElementById('editStatus');
+        const managementArea = document.getElementById('managementArea');
+        const settingsIcon = document.getElementById('settingsIcon');
+        const postIcon = document.getElementById('postIcon');
+
+
+        // --- HELPER FUNCTION ---
+        const escapeHTML = (str) => {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str; 
+            return div.innerHTML;
+        };
+        
+        // --- AUTHENTICATION FUNCTIONS ---
+
+        function setupAuthObserver() {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    authMessage.innerHTML = `<i class="fas fa-user-circle"></i> Signed in as: <b>${escapeHTML(user.displayName)}</b>`;
+                    signInBtn.style.display = 'none';
+                    signOutBtn.style.display = 'block';
+                } else {
+                    authMessage.innerHTML = '<i class="fas fa-user-times"></i> You must sign in to Like or Comment.';
+                    signInBtn.style.display = 'block';
+                    signOutBtn.style.display = 'none';
+                }
+            });
+        }
+
+        function googleSignIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(error => {
+                console.error("Google Sign-In Error:", error);
+                alert(`Sign-in failed: ${error.message}`);
+            });
+        }
+
+        function signOutUser() {
+            auth.signOut().catch(error => {
+                console.error("Sign-Out Error:", error);
+                alert(`Sign-out failed: ${error.message}`);
+            });
+        }
+
+
+        // --- MODAL & PIN MANAGEMENT ---
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function openNewPostModal() {
+            postStatusElement.style.display = 'none';
+            formElement.reset();
+            newPostModal.style.display = 'block';
+        }
+
+        function closeNewPostModal() {
+            closeModal('newPostModal');
+        }
+
+        function openPinModal() {
+            pinEntryArea.style.display = 'block';
+            managementArea.style.display = 'none';
+            pinInput.value = '';
+            pinError.textContent = '';
+            editStatus.textContent = '';
+            managementModal.style.display = 'block';
+        }
+
+        function checkPin() {
+            if (pinInput.value === ADMIN_PIN) {
+                isAdmin = true;
+                closeModal('managementModal');
+                filterFeed(); 
+            } else {
+                pinError.textContent = 'Incorrect PIN.';
+                pinInput.value = '';
+            }
+        }
+
+        function toggleComments(docId) {
+            const commentSection = document.getElementById(`comments-${docId}`);
+            if (!commentSection) return;
+
+            if (commentSection.style.display === 'block') {
+                commentSection.style.display = 'none';
+                openCommentSections.delete(docId);
+            } else {
+                commentSection.style.display = 'block';
+                openCommentSections.add(docId);
+                loadComments(docId);
+            }
+        }
+        
+        async function loadComments(docId) {
+            const commentList = document.getElementById(`comment-list-${docId}`);
+            if (!commentList) return;
+            
+            commentList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading comments...';
+
+            try {
+                const snapshot = await db.collection('feedItems').doc(docId).collection('comments').orderBy('timestamp', 'asc').get();
+                
+                if (snapshot.empty) {
+                    commentList.innerHTML = '<div class="comment-item">No comments yet.</div>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    const timestamp = comment.timestamp ? (comment.timestamp.toDate ? new Date(comment.timestamp.toDate()).toLocaleString() : new Date(comment.timestamp).toLocaleString()) : 'N/A';
+                    
+                    html += `
+                        <div class="comment-item">
+                            ${escapeHTML(comment.text)}
+                            <div class="comment-meta">
+                                <i class="fas fa-user-circle"></i> ${escapeHTML(comment.user)} - ${timestamp}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                commentList.innerHTML = html;
+
+            } catch (error) {
+                console.error("Error loading comments:", error);
+                commentList.innerHTML = '<div class="comment-item" style="color: #c0392b;">Failed to load comments.</div>';
+            }
+        }
+
+        // --- ADD COMMENT - Requires Auth ---
+        async function addComment(docId) {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Please sign in with Google to post a comment.");
+                return;
+            }
+
+            const textarea = document.getElementById(`comment-text-${docId}`);
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            textarea.disabled = true;
+            const submitButton = document.querySelector(`#comment-form-${docId} button`);
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                await db.collection('feedItems').doc(docId).collection('comments').add({
+                    text: text,
+                    user: user.displayName || user.email, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+
+                textarea.value = ''; 
+                loadComments(docId); 
+
+            } catch (error) {
+                console.error("Error adding comment:", error);
+                alert("Failed to post comment. Check Firebase Security Rules for sub-collection write access (allow create if request.auth != null).");
+            } finally {
+                textarea.disabled = false;
+                submitButton.innerHTML = 'Comment';
+            }
+        }
+
+        // --- LIKE POST - Requires Auth ---
+        async function likePost(docId) {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Please sign in with Google to like this announcement.");
+                return;
+            }
+
+            const likeButton = document.getElementById(`like-btn-${docId}`);
+            const likeCountElement = document.getElementById(`like-count-${docId}`);
+            
+            likeButton.disabled = true;
+
+            try {
+                // 1. Increment the main 'likes' counter
+                await db.collection('feedItems').doc(docId).update({
+                    likes: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                // 2. Record the liker's unique ID 
+                await db.collection('feedItems').doc(docId).collection('likers').doc(user.uid).set({
+                    user: user.displayName || user.email,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+
+
+                // Optimistic UI update: update the count immediately
+                let currentLikes = parseInt(likeCountElement.textContent) || 0;
+                likeCountElement.textContent = currentLikes + 1;
+
+            } catch (error) {
+                console.error("Error liking post:", error);
+                alert("Failed to like post. Check Firebase Security Rules (write/update access).");
+                likeButton.disabled = false; 
+            } finally {
+                setTimeout(() => { likeButton.disabled = false; }, 500);
+            }
+        }
+
+        // --- FIREBASE FETCH & RENDER FUNCTION ---
+
+        function renderFeed(postsToRender) {
+            outputElement.classList.remove('status-message');
+            outputElement.innerHTML = '';
+
+            if (postsToRender.length === 0) {
+                 outputElement.classList.add('status-message');
+                 outputElement.innerHTML = 'No announcements matched your search/filter criteria.';
+                 return;
+            }
+
+            const showManagementButtons = isAdmin;
+            let html = '';
+
+            postsToRender.forEach(post => {
+                const item = post.data;
+                const docId = post.id;
+                const timestamp = item.timestamp ? (item.timestamp.toDate ? new Date(item.timestamp.toDate()).toLocaleString() : new Date(item.timestamp).toLocaleString()) : 'N/A';
+                const likes = item.likes || 0;
+                
+                const managementButtons = showManagementButtons ? `
+                    <div class="post-actions">
+                        <button onclick="openEditModal('${docId}', '${escapeHTML(item.title)}', \`${escapeHTML(item.content)}\`)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="delete-btn" onclick="deletePost('${docId}')">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                ` : '';
+                
+                const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
+
+                html += `
+                    <div class="feed-post">
+                        ${managementButtons}
+                        <h3>${escapeHTML(item.title || 'Untitled Announcement')}</h3>
+                        <p>${escapeHTML(item.content || 'No content.')}</p>
+                        <small>
+                            <i class="fas fa-user-tag"></i> ${escapeHTML(item.user || 'System')} 
+                            &bull; <i class="fas fa-calendar-alt"></i> ${timestamp}
+                            
+                            <button id="like-btn-${docId}" class="like-btn" onclick="likePost('${docId}')">
+                                <i class="fas fa-thumbs-up"></i> Like
+                            </button>
+                            <span id="like-count-${docId}" class="like-count">${likes}</span>
+
+                        </small>
+
+                        <div class="comment-toggle" onclick="toggleComments('${docId}')">
+                            <i class="fas fa-comment"></i> View/Add Comment
+                        </div>
+
+                        <div id="comments-${docId}" class="comment-section" style="display: ${commentsDisplay};">
+                            <div id="comment-list-${docId}" style="margin-bottom: 15px;">
+                                <div class="comment-item">Comments loading...</div>
+                            </div>
+                            
+                            <form id="comment-form-${docId}" class="comment-form" onsubmit="event.preventDefault(); addComment('${docId}');">
+                                <textarea id="comment-text-${docId}" placeholder="Sign in to post a comment..."></textarea>
+                                <button type="submit">Comment</button>
+                                <div style="clear: both;"></div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            });
+
+            outputElement.innerHTML = html;
+            
+            openCommentSections.forEach(docId => loadComments(docId));
+        }
+
+        async function fetchFeed() {
+            try {
+                outputElement.classList.add('status-message');
+                outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
+
+                const snapshot = await db.collection('feedItems').orderBy('timestamp', 'desc').get();
+                
+                if (snapshot.empty) {
+                    outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
+                    allPosts = [];
+                    return;
+                }
+
+                allPosts = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                renderFeed(allPosts);
+
+            } catch (error) {
+                console.error("Firebase Fetch Error:", error);
+                outputElement.classList.add('status-message');
+                outputElement.style.color = '#c0392b';
+                outputElement.innerHTML = `
+                    <i class="fas fa-skull-crossbones"></i> **ERROR: Failed to fetch data.** <br> Check your browser console (F12). 
+                    <br> This may be due to:
+                    <ul>
+                        <li>Incorrect API Key/Project ID in the code.</li>
+                        <li>**Firebase Security Rules (read access is denied).**</li>
+                    </ul>
+                `;
+            }
+        }
+
+        // --- FEED FILTER/SEARCH FUNCTION (unchanged) ---
+        function filterFeed(searchTerm = '') {
+            let term = searchTerm.toLowerCase().trim();
+            
+            if (term === '') {
+                searchBar.value = '';
+            } else if (searchTerm) {
+                searchBar.value = searchTerm;
+            } else {
+                term = searchBar.value.toLowerCase().trim();
+            }
+
+            if (!term) {
+                renderFeed(allPosts);
+                return;
+            }
+
+            const filteredPosts = allPosts.filter(post => {
+                const title = (post.data.title || '').toLowerCase();
+                const content = (post.data.content || '').toLowerCase();
+                
+                return title.includes(term) || content.includes(term);
+            });
+
+            renderFeed(filteredPosts);
+        }
+        
+        // --- POST SUBMISSION & MANAGEMENT (unchanged) ---
+        async function addPost(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('postTitle').value.trim();
+            const user = document.getElementById('postUser').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+
+            if (!title || !user || !content) {
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#e67e22';
+                postStatusElement.innerHTML = 'Please fill in the title and content.';
+                return;
+            }
+
+            postButton.disabled = true;
+            postButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+            postStatusElement.style.display = 'none';
+
+            try {
+                await db.collection('feedItems').add({
+                    title: title,
+                    user: user, 
+                    content: content,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    likes: 0 
+                });
+
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#27ae60';
+                postStatusElement.innerHTML = '<i class="fas fa-check-circle"></i> Announcement published successfully!';
+                
+                formElement.reset(); 
+                
+                setTimeout(() => {
+                    closeNewPostModal();
+                    fetchFeed(); 
+                }, 800);
+
+            } catch (error) {
+                console.error("Firebase Post Error:", error);
+                
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#c0392b';
+                postStatusElement.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i> **Publishing Failed!** <br> 
+                    The most common cause is a **Firebase Security Rule** preventing write access.
+                `;
+            } finally {
+                postButton.disabled = false;
+                postButton.innerHTML = '<i class="fas fa-paper-plane"></i> Publish Announcement';
+            }
+        }
+
+        function openEditModal(id, title, content) {
+            if (!isAdmin) return;
+            pinEntryArea.style.display = 'none';
+            managementArea.style.display = 'block';
+            
+            editPostId.value = id;
+            editTitle.value = title;
+            editContent.value = content;
+            editStatus.textContent = '';
+            
+            managementModal.style.display = 'block';
+        }
+
+        async function saveEdit() {
+            const id = editPostId.value;
+            const newTitle = editTitle.value.trim();
+            const newContent = editContent.value.trim();
+            
+            if (!newTitle || !newContent) {
+                 editStatus.textContent = 'Title and content cannot be empty.';
+                 editStatus.style.color = '#e67e22';
+                 return;
+            }
+            
+            editStatus.textContent = 'Saving...';
+            editStatus.style.color = '#3498db';
+
+            try {
+                await db.collection('feedItems').doc(id).update({
+                    title: newTitle,
+                    content: newContent,
+                });
+
+                editStatus.textContent = 'Announcement updated successfully!';
+                editStatus.style.color = '#27ae60';
+                setTimeout(() => {
+                    closeModal('managementModal');
+                    fetchFeed(); 
+                }, 1000);
+
+            } catch (error) {
+                console.error("Firebase Edit Error:", error);
+                editStatus.textContent = 'Update Failed. Check Security Rules (write access)!';
+                editStatus.style.color = '#c0392b';
+            }
+        }
+        
+        async function deletePost(id) {
+            if (!isAdmin) {
+                alert("Access Denied. Please enter the PIN first.");
+                return;
+            }
+            
+            if (confirm("Are you sure you want to permanently delete this announcement?")) {
+                try {
+                    await db.collection('feedItems').doc(id).delete();
+                    alert("Announcement deleted successfully!");
+                    fetchFeed(); 
+                } catch (error) {
+                    console.error("Firebase Delete Error:", error);
+                    alert("Deletion Failed. Check Security Rules (delete access)!");
+                }
+            }
+        }
+
+        // --- FIX: Expose functions to the global scope BEFORE DOMContentLoaded ---
+        window.googleSignIn = googleSignIn;
+        window.signOutUser = signOutUser;
+        window.checkPin = checkPin;
+        window.openEditModal = openEditModal; 
+        window.saveEdit = saveEdit;
+        window.deletePost = deletePost;
+        window.closeModal = closeModal;
+        window.closeNewPostModal = closeNewPostModal;
+        window.filterFeed = filterFeed;
+        window.likePost = likePost;
+        window.toggleComments = toggleComments;
+        window.addComment = addComment;
+
+
+        // --- EVENT LISTENERS and INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchFeed();
+            setupAuthObserver(); 
+            
+            // Event listeners for the modals
+            document.getElementById('postIcon').addEventListener('click', openNewPostModal);
+            document.getElementById('newPostForm').addEventListener('submit', addPost);
+            document.getElementById('settingsIcon').addEventListener('click', openPinModal);
+
+            window.addEventListener('click', (event) => {
+                if (event.target === managementModal) {
+                    closeModal('managementModal');
+                } else if (event.target === newPostModal) {
+                    closeNewPostModal();
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
