@@ -20,12 +20,74 @@
             overflow-x: hidden; 
         }
         
-        /* Sidebar Styling (Same) */
-        #sidebar { width: 250px; background-color: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); padding: 20px; position: fixed; height: 100%; overflow-y: auto; border-right: 1px solid #dcdde1; }
-        #sidebar h3 { color: #2c3e50; margin-top: 0; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; margin-bottom: 15px; }
-        #sidebar input[type="text"] { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .filter-link { display: block; padding: 8px 0; color: #34495e; text-decoration: none; border-bottom: 1px dashed #ecf0f1; font-size: 0.9em; cursor: pointer; transition: color 0.2s; }
-        .filter-link:hover { color: #3498db; }
+        /* Sidebar Styling (Fixed height and overflow) */
+        #sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            position: fixed; 
+            height: 100%; 
+            overflow-y: auto;
+            border-right: 1px solid #dcdde1;
+        }
+        #sidebar h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        #sidebar input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .filter-link {
+            display: block;
+            padding: 8px 0;
+            color: #34495e;
+            text-decoration: none;
+            border-bottom: 1px dashed #ecf0f1;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .filter-link:hover {
+            color: #3498db;
+        }
+
+        /* --- NEW: Quick Jump Styling --- */
+        #quickJumpBox {
+            margin-top: 5px; /* Reduced margin */
+            padding: 10px;
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        .quick-jump-title {
+            display: block;
+            font-size: 0.85em;
+            padding: 5px 0;
+            color: #2c3e50;
+            cursor: pointer;
+            border-bottom: 1px dotted #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.1s;
+        }
+        .quick-jump-title:last-child {
+            border-bottom: none;
+        }
+        .quick-jump-title:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        /* ------------------------------- */
 
         /* Main Content Area (Same) */
         .main-content { margin-left: 250px; flex-grow: 1; padding: 20px; display: flex; justify-content: center; width: calc(100% - 250px); }
@@ -119,17 +181,15 @@
         
         <input type="text" id="searchBar" placeholder="Search by Title or Content...">
         
-        <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">Quick Filters:</p>
-        <a href="#" class="filter-link" onclick="filterFeed('')"><i class="fas fa-sync-alt"></i> Show All</a>
-        <a href="#" class="filter-link" onclick="filterFeed('critical')"><i class="fas fa-exclamation-triangle"></i> Critical (Search 'critical')</a>
-        <a href="#" class="filter-link" onclick="filterFeed('review')"><i class="fas fa-tasks"></i> Review Required (Search 'review')</a>
-        
         <div style="margin-top: 25px;">
-            <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">By Type/Category (Titles):</p>
-            <div id="categoryLinks">
+            <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">Quick Jump:</p>
+            <div id="quickJumpBox">
+                <div id="quickJumpList">
+                    <span style="display: block; font-size: 0.85em; color: #7f8c8d;">Loading titles...</span>
                 </div>
+            </div>
         </div>
-    </div>
+        </div>
     <div class="main-content">
         <div class="feed-container">
             <h1>Project Updates Feed</h1>
@@ -272,6 +332,8 @@
         const managementArea = document.getElementById('managementArea');
         const settingsIcon = document.getElementById('settingsIcon');
         const postIcon = document.getElementById('postIcon');
+        const quickJumpList = document.getElementById('quickJumpList'); // NEW DOM ELEMENT
+
 
         // --- HELPER FUNCTIONS ---
         // NEW: Check Like Status (Moved up for reliable calling)
@@ -355,6 +417,8 @@
                     signInBtn.style.display = 'block';
                     signOutBtn.style.display = 'none';
                 }
+                // Refresh feed to update like/comment buttons based on auth status
+                filterFeed(); 
             });
         }
 
@@ -574,20 +638,23 @@
             }
         }
 
-        // --- FIREBASE FETCH & RENDER FUNCTION (Modified Link Card) ---
+        // --- RENDER FEED (Modified to populate Quick Jump List) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
+            quickJumpList.innerHTML = ''; // Clear the quick jump list
 
             if (postsToRender.length === 0) {
                  outputElement.classList.add('status-message');
                  outputElement.innerHTML = 'No announcements matched your search/filter criteria.';
+                 quickJumpList.innerHTML = '<span style="display: block; font-size: 0.85em; color: #7f8c8d;">No titles found.</span>';
                  return;
             }
 
             const showManagementButtons = isAdmin;
             const user = auth.currentUser; 
             let html = '';
+            let jumpHtml = '';
 
             postsToRender.forEach(post => {
                 const item = post.data;
@@ -595,12 +662,13 @@
                 const timestamp = item.timestamp ? (item.timestamp.toDate ? new Date(item.timestamp.toDate()).toLocaleString() : new Date(item.timestamp).toLocaleString()) : 'N/A';
                 const likes = item.likes || 0;
                 const link = item.link || '';
+                const postTitle = escapeHTML(item.title || 'Untitled Announcement');
                 
                 const postContent = renderHTML(item.content || 'No content.');
 
                 const managementButtons = showManagementButtons ? `
                     <div class="post-actions">
-                        <button onclick="openEditModal('${docId}', '${escapeHTML(item.title)}', '${escapeHTML(link)}', \`${item.content || ''}\`)">
+                        <button onclick="openEditModal('${docId}', '${postTitle}', '${escapeHTML(link)}', \`${item.content || ''}\`)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         <button class="delete-btn" onclick="deletePost('${docId}')">
@@ -611,7 +679,12 @@
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
 
-                // --- NEW: Enhanced Link Preview Card HTML ---
+                // --- NEW: Populate Quick Jump List ---
+                // Escape single quote for use in onclick
+                const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
+                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
+
+                // --- Enhanced Link Preview Card HTML ---
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -645,7 +718,7 @@
                 html += `
                     <div class="feed-post">
                         ${managementButtons}
-                        <h3>${escapeHTML(item.title || 'Untitled Announcement')}</h3>
+                        <h3>${postTitle}</h3>
                         <div class="content-display">${postContent}</div>
                         ${mediaCard}
                         <small>
@@ -679,6 +752,7 @@
             });
 
             outputElement.innerHTML = html;
+            quickJumpList.innerHTML = jumpHtml; // Set the quick jump HTML
             
             // Re-check like status for all posts after rendering
             if (user) {
