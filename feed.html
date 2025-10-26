@@ -846,11 +846,18 @@
                 
                 const postContent = renderHTML(item.content || 'No content.');
 
-                // --- FIX: Corrected HTML for management buttons ---
-                // Removed all extraneous text/parameters from button HTML generation.
+                // --- FIX: Escape quotes in title and content for the JS function call ---
+                // The issue is that the content/title contains characters like single quotes (') or double quotes (")
+                // which terminate the string literal inside the onclick handler.
+                
+                // 1. Prepare strings: Escape single quotes, double quotes, and backticks.
+                const escapedTitle = (item.title || '').replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/"/g, '\\"').replace(/`/g, '\\`');
+                // We are using backticks (\`) to wrap the content parameter, but we need to ensure any backticks in the actual content are escaped.
+                const escapedContent = (item.content || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+                
                 const managementButtons = showManagementButtons ? `
                     <div class="post-actions">
-                        <button onclick="openEditModal('${docId}', '${postTitle}', '${escapeHTML(link)}', \`${item.content || ''}\`)">
+                        <button onclick="openEditModal('${docId}', '${escapedTitle}', '${escapeHTML(link)}', \`${escapedContent}\`)">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         <button class="delete-btn" onclick="deletePost('${docId}')">
