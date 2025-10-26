@@ -87,6 +87,22 @@
             color: #3498db;
             text-decoration: underline;
         }
+
+        /* NEW: Show All Link Style */
+        #showAllLink {
+            display: block;
+            font-size: 0.9em;
+            font-weight: bold;
+            padding: 5px 0 10px 0;
+            color: #3498db;
+            cursor: pointer;
+            text-align: center;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        #showAllLink:hover {
+            color: #2980b9;
+        }
         /* ------------------------------- */
 
         /* Main Content Area (Same) */
@@ -193,6 +209,9 @@
         <div style="margin-top: 25px;">
             <p style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">Quick Jump:</p>
             <div id="quickJumpBox">
+                <a href="#" id="showAllLink" onclick="filterFeed(''); return false;">
+                    <i class="fas fa-list"></i> Show All Announcements
+                </a>
                 <div id="quickJumpList">
                     <span style="display: block; font-size: 0.85em; color: #7f8c8d;">Loading titles...</span>
                 </div>
@@ -305,14 +324,14 @@
             appId: "1:126693884353:web:2c0af86f20a7e9c8142f40",
         };
         const ADMIN_PIN = "2486"; 
-        // NEW: Cooldown Constant (5 minutes)
+        // Cooldown Constant (5 minutes)
         const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; 
 
         // --- STATE & INITIALIZATION ---
         let isAdmin = false; 
         let allPosts = []; 
         const openCommentSections = new Set(); 
-        // NEW: Cooldown State
+        // Cooldown State
         let isCooldownActive = false;
         
         // Initialize Firebase services
@@ -347,12 +366,12 @@
         const settingsIcon = document.getElementById('settingsIcon');
         const postIcon = document.getElementById('postIcon');
         const quickJumpList = document.getElementById('quickJumpList'); 
-        // NEW: Refresh Icon
+        // Refresh Icon
         const refreshIcon = document.getElementById('refreshFeedIcon');
 
 
         // --- HELPER FUNCTIONS ---
-        // NEW: Check Like Status (Moved up for reliable calling)
+        // Check Like Status (Moved up for reliable calling)
         async function checkLikeStatus(docId, uid) {
             const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(uid);
             const likeButton = document.getElementById(`like-btn-${docId}`);
@@ -375,7 +394,7 @@
             }
         }
         
-        // NEW: Render HTML (Moved up)
+        // Render HTML (Moved up)
         const renderHTML = (html) => {
             if (!html) return '';
             const cleanHtml = DOMPurify.sanitize(html, {ALLOWED_TAGS: ['b', 'i', 'u', 's', 'p', 'br', 'a', 'strong', 'em', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'hr'], ADD_ATTR: ['target', 'href', 'style']});
@@ -410,7 +429,7 @@
             }
         }
 
-        // NEW: Debounce function for stable search input
+        // Debounce function for stable search input
         function debounce(func, delay = 300) {
             let timeoutId;
             return function(...args) {
@@ -456,26 +475,25 @@
         }
 
 
-        // --- MODAL & PIN MANAGEMENT (Modified) ---
+        // --- MODAL & PIN MANAGEMENT (Same) ---
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
         
         function openNewPostModal() {
-            // [START MODIFICATION] Restrict posting to signed-in users
+            // Restrict posting to signed-in users
             const user = auth.currentUser;
             if (!user) {
                 alert("You must be signed in to post an announcement.");
                 return;
             }
-            // [END MODIFICATION]
 
             postStatusElement.style.display = 'none';
             document.getElementById('newPostForm').reset();
             newPostEditor.setContents([]); 
             newPostModal.style.display = 'block';
 
-            // NEW: Set the hidden user input field with the signed-in user's name
+            // Set the hidden user input field with the signed-in user's name
             document.getElementById('postUser').value = user.displayName || user.email;
         }
 
@@ -645,7 +663,7 @@
                     
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
                     likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
 
                 } else {
                     await db.collection('feedItems').doc(docId).update({
@@ -717,7 +735,7 @@
                 const postTitle = escapeHTML(post.data.title || 'Untitled Announcement');
                 // Escape single quote for use in onclick
                 const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
-                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
+                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}'); return false;">${postTitle}</a>`;
             });
             
             quickJumpList.innerHTML = jumpHtml;
@@ -931,7 +949,7 @@
             }
         }
         
-        // --- ADD POST (Modified) ---
+        // --- ADD POST (Same) ---
         async function addPost(event) {
             event.preventDefault();
 
@@ -943,7 +961,7 @@
                  return;
             }
             
-            // [MODIFICATION] Use the signed-in user's name or email
+            // Use the signed-in user's name or email
             const posterName = user.displayName || user.email; 
 
             const title = document.getElementById('postTitle').value.trim();
@@ -967,7 +985,7 @@
                 await db.collection('feedItems').add({
                     title: title,
                     link: link,
-                    user: posterName, // [MODIFICATION] Use dynamic name
+                    user: posterName, // Use dynamic name
                     content: content, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     likes: 0 
@@ -1000,7 +1018,7 @@
             }
         }
         
-        // --- Other Management/Filter Functions (Same) ---
+        // --- Other Management/Filter Functions (Modified) ---
         async function deletePost(id) {
             if (!isAdmin) {
                 alert("Access Denied. Please enter the PIN first.");
@@ -1023,7 +1041,7 @@
             let term = searchTerm.toLowerCase().trim();
             
             if (term === '') {
-                searchBar.value = '';
+                searchBar.value = ''; // Clear search bar for "Show All" or if called with no argument
             } else if (searchTerm) {
                 searchBar.value = searchTerm;
             } else {
@@ -1061,12 +1079,12 @@
         window.addComment = addComment;
         window.deleteComment = deleteComment;
         window.getFileName = getFileName;
-        // NEW: Expose Refresh Handler
+        // Expose Refresh Handler
         window.handleRefreshClick = handleRefreshClick;
 
         document.addEventListener('DOMContentLoaded', async () => {
             
-            // NEW: Read Minimization Feature - Enable Firestore Persistence
+            // Read Minimization Feature - Enable Firestore Persistence
             try {
                 await db.enablePersistence();
                 console.log("Firestore persistence enabled. Reads will be minimized using local cache.");
@@ -1113,7 +1131,7 @@
             document.getElementById('postIcon').addEventListener('click', openNewPostModal);
             document.getElementById('newPostForm').addEventListener('submit', addPost);
             document.getElementById('settingsIcon').addEventListener('click', openPinModal);
-            // NEW: Refresh Icon Event Listener
+            // Refresh Icon Event Listener
             refreshIcon.addEventListener('click', handleRefreshClick);
 
             window.addEventListener('click', (event) => {
