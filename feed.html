@@ -146,6 +146,32 @@
         .feed-post .content-display { font-size: 0.95em; line-height: 1.4; color: #34495e; }
         .feed-post small { color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 10px; }
         
+        /* FIX: Management Buttons Positioning */
+        .post-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+        .post-actions button {
+            background: #ecf0f1;
+            border: 1px solid #dcdde1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .post-actions button:hover {
+            background: #bdc3c7;
+        }
+        .post-actions button.delete-btn {
+            color: #e74c3c;
+        }
+        /* END FIX */
+
         /* Like and Comment Styles (Same) */
         .like-btn { background: none; border: none; color: #e74c3c; cursor: pointer; margin-left: 10px; font-size: 0.9em; font-weight: bold; transition: opacity 0.2s; }
         .like-btn:hover { opacity: 0.7; }
@@ -301,8 +327,7 @@
             
             <div class="modal-button-group">
                 <button type="button" class="btn-secondary" onclick="closeModal('managementModal')">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
+                    <i class="fas fa-times"></i> Cancel</button>
                 <button onclick="saveEdit()" class="btn-primary">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
@@ -643,7 +668,7 @@
             }
         }
 
-        // --- LIKE POST (Unlike/Double-Liking Prevention) - Same ---
+        // --- LIKE POST (Unlike/Double-Liking Prevention) - Same) ---
         async function likePost(docId) {
             const user = auth.currentUser;
             if (!user) {
@@ -692,7 +717,7 @@
             }
         }
 
-        // === COOLDOWN LOGIC & BUTTON HANDLER ===
+        // === COOLDOWN LOGIC & BUTTON HANDLER (Same) ===
         function startCooldown() {
             isCooldownActive = true;
             
@@ -727,7 +752,7 @@
         }
         // ========================================
         
-        // === PIN FEATURE LOGIC ===
+        // === PIN FEATURE LOGIC (Same) ===
         async function togglePinStatus(docId) {
             if (!isAdmin) {
                 alert("Access Denied. Only an Admin can pin posts.");
@@ -769,7 +794,7 @@
         window.togglePinStatus = togglePinStatus;
         // =========================
 
-        // === QUICK JUMP LIST RENDER (Decoupled to fix previous bug) ===
+        // === QUICK JUMP LIST RENDER (Same) ===
         function renderQuickJumpList() {
             quickJumpList.innerHTML = ''; 
 
@@ -791,7 +816,7 @@
         }
         // =============================================================
 
-        // --- RENDER FEED (Refactored for Quick Jump) ---
+        // --- RENDER FEED (Fixed management button display) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -821,6 +846,7 @@
                 
                 const postContent = renderHTML(item.content || 'No content.');
 
+                // --- FIX: Corrected HTML for management buttons ---
                 const managementButtons = showManagementButtons ? `
                     <div class="post-actions">
                         <button onclick="openEditModal('${docId}', '${postTitle}', '${escapeHTML(link)}', \`${item.content || ''}\`)">
@@ -831,10 +857,11 @@
                         </button>
                     </div>
                 ` : '';
+                // --- END FIX ---
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
 
-                // NEW: Pinned Status Indicator
+                // Pinned Status Indicator
                 const isPinned = item.isPinned;
                 const pinnedBy = item.pinnedBy ? `(Pinned by ${escapeHTML(item.pinnedBy)})` : '';
                 const pinnedIndicator = isPinned ? `
@@ -926,16 +953,20 @@
                 outputElement.classList.add('status-message');
                 outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
 
-                // 1. Query Pinned Posts (isPinned: true) - Requires Composite Index
+                // 1. Query Pinned Posts (isPinned: true)
                 const pinnedSnapshot = await db.collection('feedItems')
                     .where('isPinned', '==', true)
                     .orderBy('timestamp', 'desc')
                     .get();
                 
-                // 2. Query Unpinned Posts (isPinned: false) - Requires Composite Index
-                // This is the most efficient way to query explicitly unpinned content.
+                // 2. Query Unpinned Posts (isPinned: false)
                 const unpinnedSnapshot = await db.collection('feedItems')
                     .where('isPinned', '==', false)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                // 3. Query All posts to find documents missing the 'isPinned' field (i.e., old posts).
+                const allPostsSnapshot = await db.collection('feedItems')
                     .orderBy('timestamp', 'desc')
                     .get();
                 
@@ -943,16 +974,11 @@
                 const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 const unpinnedPosts = unpinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
 
-                // 3. Find documents missing the 'isPinned' field (i.e., old posts).
-                // Query ALL documents and manually filter out those found in the first two steps.
-                const allPostsSnapshot = await db.collection('feedItems')
-                    .orderBy('timestamp', 'desc')
-                    .get();
-                
+                // Use a Set to track IDs we already have.
                 const postIds = new Set(pinnedPosts.map(p => p.id));
                 unpinnedPosts.forEach(p => postIds.add(p.id));
                 
-                // Posts with missing 'isPinned' field and posts with other unindexed fields
+                // Posts with missing 'isPinned' field (rely on Firestore to sort by timestamp for these)
                 const otherPosts = allPostsSnapshot.docs
                     .filter(doc => !postIds.has(doc.id)) 
                     .map(doc => ({ id: doc.id, data: doc.data() }));
@@ -1087,7 +1113,7 @@
                     content: content, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     likes: 0,
-                    isPinned: false, // NEW: Default to unpinned
+                    isPinned: false, // Default to unpinned
                     pinnedBy: '',
                 });
 
