@@ -847,6 +847,7 @@
                 const postContent = renderHTML(item.content || 'No content.');
 
                 // --- FIX: Corrected HTML for management buttons ---
+                // Removed all extraneous text/parameters from button HTML generation.
                 const managementButtons = showManagementButtons ? `
                     <div class="post-actions">
                         <button onclick="openEditModal('${docId}', '${postTitle}', '${escapeHTML(link)}', \`${item.content || ''}\`)">
