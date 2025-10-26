@@ -144,6 +144,19 @@
         .feed-post h3 { color: #2c3e50; margin-top: 0; margin-bottom: 5px; }
         .feed-post .content-display p { white-space: normal; } 
         .feed-post .content-display { font-size: 0.95em; line-height: 1.4; color: #34495e; }
+        
+        /* New/Unread indicator */
+        .feed-post .new-badge {
+            background-color: #e67e22;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
         .feed-post small { color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 10px; }
         
         /* FIX: Management Buttons Positioning */
@@ -185,28 +198,65 @@
         .comment-section { padding-top: 10px; border-top: 1px solid #dcdde1; margin-top: 10px; }
         .comment-item { background-color: #f8f9fa; padding: 8px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9em; position: relative; }
         .comment-meta { font-weight: bold; color: #7f8c8d; font-size: 0.8em; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center;}
+        
+        /* Comment Edit Mode Styles */
+        .comment-edit-input { 
+            width: calc(100% - 75px); 
+            padding: 4px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            margin-right: 5px;
+        }
+        .comment-edit-buttons { display: flex; justify-content: flex-end; margin-top: 5px; }
+        .comment-edit-buttons button { padding: 4px 8px; font-size: 0.8em; }
+
         .comment-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 40px; margin-top: 5px; }
         .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
-        .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
+        .delete-comment-btn, .edit-comment-btn { 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 0.9em; 
+            padding: 0; 
+            margin-left: 10px; 
+        }
+        .delete-comment-btn { color: #e74c3c; }
+        .edit-comment-btn { color: #3498db; }
 
-        /* Review/Media Card Styling (Same) */
-        .review-card { border: 1px solid #444; border-radius: 6px; overflow: hidden; margin-top: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); max-width: 400px; }
-        .review-card a { text-decoration: none; color: inherit; }
-        .review-card-header { background-color: #222; color: white; height: 150px; padding: 20px 15px; text-align: center; position: relative; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://via.placeholder.com/400x150/222/ffffff?text=EAGLEVIEW'); background-size: cover; background-position: center; }
-        .review-card-logo { position: absolute; top: 15px; left: 15px; font-size: 1.5em; color: #ccc; font-weight: bold; }
-        .review-card-header h4 { font-size: 1.8em; margin: 30px 0 5px 0; letter-spacing: 2px; }
-        .review-card-header p { font-size: 0.8em; margin: 0; color: #aaa; }
-        .review-card-preview { display: inline-flex; align-items: center; padding: 8px 18px; border: 1px solid white; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: 15px; }
-        .review-card-preview:hover { background-color: rgba(255, 255, 255, 0.2); }
-        .review-card-preview i { margin-right: 8px; }
+        /* Reaction Emojis */
+        .reaction-container {
+            display: inline-block;
+            margin-left: 15px;
+        }
+        .reaction-button {
+            background: none;
+            border: none;
+            font-size: 1.1em;
+            cursor: pointer;
+            padding: 0 4px;
+            transition: transform 0.1s;
+        }
+        .reaction-button:hover:not(:disabled) {
+            transform: scale(1.2);
+        }
+        .reaction-button.selected {
+            background-color: #e0e0e0;
+            border-radius: 50%;
+        }
+        .reaction-count-display {
+            font-size: 0.85em;
+            color: #34495e;
+            margin-left: 5px;
+        }
+        
+        /* Author Filter Style */
+        .author-link {
+            cursor: pointer;
+            font-weight: bold;
+            color: #34495e;
+            text-decoration: underline;
+        }
 
-        .review-card-body { padding: 10px 15px; background-color: #f7f7f7; display: flex; align-items: center; justify-content: space-between; }
-        .file-info { display: flex; align-items: center; flex-grow: 1; }
-        .file-info i { color: #e74c3c; font-size: 1.5em; margin-right: 8px; }
-        .file-details { display: flex; flex-direction: column; line-height: 1.3; }
-        .review-card-filename { font-size: 1em; font-weight: bold; color: #34495e; margin: 0; }
-        .file-access { font-size: 0.8em; color: #7f8c8d; }
-        .file-actions i { color: #555; cursor: pointer; font-size: 1.1em; margin-left: 10px; }
 
         /* Modal Styling (Same) */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
@@ -359,6 +409,14 @@
         const ADMIN_PIN = "2486"; 
         // Cooldown Constant (5 minutes)
         const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; 
+        
+        // NEW: Reactions Map
+        const REACTIONS = {
+            '👍': 'like', 
+            '❤️': 'love', 
+            '😂': 'haha', 
+            '😮': 'wow'
+        };
 
         // --- STATE & INITIALIZATION ---
         let isAdmin = false; 
@@ -404,26 +462,37 @@
 
 
         // --- HELPER FUNCTIONS ---
-        // Check Like Status (Moved up for reliable calling)
+        // Check Like Status (Now tracks general reactions)
         async function checkLikeStatus(docId, uid) {
-            const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(uid);
-            const likeButton = document.getElementById(`like-btn-${docId}`);
+            const reactionDocRef = db.collection('feedItems').doc(docId).collection('reactions').doc(uid);
+            const userReactionElement = document.getElementById(`user-reaction-${docId}`);
             
-            if (!likeButton) return;
+            if (!userReactionElement) return;
+            
+            userReactionElement.innerHTML = ''; // Clear previous state
 
             try {
-                // NOTE: With Firestore persistence enabled, this read operation 
-                // will primarily hit the local cache, drastically reducing billable reads.
-                const likerDoc = await likerDocRef.get();
-                if (likerDoc.exists) {
-                    likeButton.classList.add('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
+                const reactionDoc = await reactionDocRef.get();
+                if (reactionDoc.exists && reactionDoc.data().type) {
+                    const type = reactionDoc.data().type;
+                    const emoji = Object.keys(REACTIONS).find(key => REACTIONS[key] === type);
+                    
+                    if (emoji) {
+                        userReactionElement.innerHTML = `<button class="reaction-button selected" onclick="handleReactionClick('${docId}', 'none')" title="Click to remove reaction">${emoji}</button>`;
+                    } else {
+                        // Default to like button if no known reaction is found (legacy logic)
+                        userReactionElement.innerHTML = `<button class="like-btn selected" onclick="handleReactionClick('${docId}', 'none')"><i class="fas fa-thumbs-down"></i> Unlike</button>`;
+                    }
                 } else {
-                    likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
+                    // Display general reaction buttons if no reaction is set
+                    let buttonsHtml = '';
+                    for (const emoji in REACTIONS) {
+                        buttonsHtml += `<button class="reaction-button" onclick="handleReactionClick('${docId}', '${REACTIONS[emoji]}', '${emoji}')">${emoji}</button>`;
+                    }
+                    userReactionElement.innerHTML = buttonsHtml;
                 }
             } catch (error) {
-                console.error("Error checking like status:", error);
+                console.error("Error checking reaction status:", error);
             }
         }
         
@@ -482,6 +551,8 @@
                     authMessage.innerHTML = `<i class="fas fa-user-circle"></i> Signed in as: <b>${escapeHTML(user.displayName)}</b>`;
                     signInBtn.style.display = 'none';
                     signOutBtn.style.display = 'block';
+                    // Mark last visit on sign in
+                    localStorage.setItem('lastVisitTimestamp', Date.now());
                 } else {
                     authMessage.innerHTML = '<i class="fas fa-user-times"></i> You must sign in to Like or Comment.';
                     signInBtn.style.display = 'block';
@@ -575,7 +646,6 @@
             commentList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading comments...';
 
             try {
-                // NOTE: Persistence enabled below helps minimize reads here as well.
                 const snapshot = await db.collection('feedItems').doc(docId).collection('comments').orderBy('timestamp', 'asc').get();
                 
                 if (snapshot.empty) {
@@ -595,14 +665,23 @@
                             <i class="fas fa-trash-alt"></i> Delete
                         </button>` : '';
 
+                    // NEW: Edit Button and Display Logic
+                    const editButton = (user && user.uid === comment.uid) ? 
+                        `<button class="edit-comment-btn" onclick="openCommentEdit('${docId}', '${commentId}', \`${escapeHTML(comment.text)}\`)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>` : '';
+                    
                     const commentText = linkify(escapeHTML(comment.text)); 
 
                     html += `
-                        <div class="comment-item">
-                            ${commentText}
+                        <div class="comment-item" id="comment-item-${commentId}">
+                            <div class="comment-display-content">${commentText}</div>
                             <div class="comment-meta">
                                 <span><i class="fas fa-user-circle"></i> ${escapeHTML(comment.user)} - ${timestamp}</span>
-                                ${deleteButton}
+                                <span class="comment-actions">
+                                    ${editButton}
+                                    ${deleteButton}
+                                </span>
                             </div>
                         </div>
                     `;
@@ -613,6 +692,69 @@
             } catch (error) {
                 console.error("Error loading comments:", error);
                 commentList.innerHTML = '<div class="comment-item" style="color: #c0392b;">Failed to load comments.</div>';
+            }
+        }
+
+        async function openCommentEdit(postId, commentId, initialText) {
+            const commentItem = document.getElementById(`comment-item-${commentId}`);
+            const displayContent = commentItem.querySelector('.comment-display-content');
+            const commentMeta = commentItem.querySelector('.comment-meta');
+
+            if (!commentItem || !displayContent) return;
+
+            // Hide the display content and actions
+            displayContent.style.display = 'none';
+            commentMeta.style.display = 'none';
+
+            // Create edit form elements
+            commentItem.insertAdjacentHTML('afterbegin', `
+                <textarea id="edit-text-${commentId}" class="comment-edit-input">${initialText}</textarea>
+                <div class="comment-edit-buttons">
+                    <button class="btn-primary" onclick="saveCommentEdit('${postId}', '${commentId}')">Save</button>
+                    <button class="btn-secondary" onclick="cancelCommentEdit('${commentId}', \`${initialText}\`)">Cancel</button>
+                </div>
+            `);
+        }
+
+        function cancelCommentEdit(commentId, originalText) {
+            const commentItem = document.getElementById(`comment-item-${commentId}`);
+            if (!commentItem) return;
+
+            // Remove edit elements
+            commentItem.querySelector('.comment-edit-input').remove();
+            commentItem.querySelector('.comment-edit-buttons').remove();
+
+            // Show original elements
+            commentItem.querySelector('.comment-display-content').style.display = 'block';
+            commentItem.querySelector('.comment-meta').style.display = 'flex';
+        }
+
+        async function saveCommentEdit(postId, commentId) {
+            const textarea = document.getElementById(`edit-text-${commentId}`);
+            const newText = textarea.value.trim();
+            const commentItem = document.getElementById(`comment-item-${commentId}`);
+            
+            if (!newText) {
+                alert("Comment cannot be empty.");
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            try {
+                // Update Firestore
+                await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).update({
+                    text: newText,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Optional: update timestamp
+                });
+
+                // Refresh the comment section locally
+                loadComments(postId); 
+
+            } catch (error) {
+                console.error("Error saving comment edit:", error);
+                alert("Failed to save comment changes.");
             }
         }
 
@@ -669,55 +811,69 @@
                 submitButton.innerHTML = 'Comment';
             }
         }
-
-        // --- LIKE POST (Unlike/Double-Liking Prevention) - Same) ---
-        async function likePost(docId) {
+        
+        // NEW: Reaction Handler
+        async function handleReactionClick(docId, newType) {
             const user = auth.currentUser;
             if (!user) {
-                alert("Please sign in with Google to like this announcement.");
+                alert("Please sign in to react to this announcement.");
                 return;
             }
+            
+            const uid = user.uid;
+            const reactionDocRef = db.collection('feedItems').doc(docId).collection('reactions').doc(uid);
+            
+            // Get current reaction (for unreacting logic)
+            const currentReactionDoc = await reactionDocRef.get();
+            const currentType = currentReactionDoc.exists ? currentReactionDoc.data().type : 'none';
+            
+            const batch = db.batch();
+            
+            // Step 1: Decrement old reaction count (if one existed)
+            if (currentType !== 'none') {
+                batch.update(db.collection('feedItems').doc(docId), {
+                    [`reactions.${currentType}`]: firebase.firestore.FieldValue.increment(-1),
+                    totalReactions: firebase.firestore.FieldValue.increment(-1)
+                });
+            }
 
-            const likeButton = document.getElementById(`like-btn-${docId}`);
-            const likeCountElement = document.getElementById(`like-count-${docId}`);
-            likeButton.disabled = true;
-
-            const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(user.uid);
+            // Step 2: Set or Delete the user's reaction document
+            if (newType === 'none' || newType === currentType) {
+                // Delete reaction (Unreacting)
+                batch.delete(reactionDocRef);
+            } else {
+                // Set new reaction
+                batch.set(reactionDocRef, {
+                    type: newType,
+                    user: user.displayName || user.email,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+                
+                // Increment new reaction count
+                batch.update(db.collection('feedItems').doc(docId), {
+                    [`reactions.${newType}`]: firebase.firestore.FieldValue.increment(1),
+                    totalReactions: firebase.firestore.FieldValue.increment(1)
+                });
+            }
 
             try {
-                const likerDoc = await likerDocRef.get();
-                const isLiked = likerDoc.exists;
-
-                if (isLiked) {
-                    await db.collection('feedItems').doc(docId).update({
-                        likes: firebase.firestore.FieldValue.increment(-1)
-                    });
-                    await likerDocRef.delete();
-                    
-                    likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
-                    likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
-
-                } else {
-                    await db.collection('feedItems').doc(docId).update({
-                        likes: firebase.firestore.FieldValue.increment(1)
-                    });
-                    await likerDocRef.set({
-                        user: user.displayName || user.email,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    }, { merge: true });
-
-                    likeCountElement.textContent = parseInt(likeCountElement.textContent) + 1;
-                    likeButton.classList.add('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
-                }
+                await batch.commit();
+                // Re-render feed globally to update all counts and buttons
+                fetchFeed();
             } catch (error) {
-                console.error("Error processing like action:", error);
-                alert("Failed to complete action. Check Firebase Security Rules.");
-            } finally {
-                setTimeout(() => { likeButton.disabled = false; }, 500);
+                console.error("Error processing reaction:", error);
+                alert("Failed to process reaction. Please try again.");
             }
         }
+        window.handleReactionClick = handleReactionClick;
+
+
+        // --- LIKE POST (Deprecated, replaced by handleReactionClick) ---
+        async function likePost(docId) {
+            // Redirecting old likePost calls to the new generic handler
+            handleReactionClick(docId, 'like');
+        }
+
 
         // === COOLDOWN LOGIC & BUTTON HANDLER (Same) ===
         function startCooldown() {
@@ -818,19 +974,20 @@
         }
         // =============================================================
         
-        // NEW UTILITY FUNCTION for decoding content
+        // UTILITY FUNCTION for decoding content
         function decodeContent(content) {
             if (!content) return '';
             try {
-                // Decode the URI component and then replace escaped backticks if necessary
-                return decodeURIComponent(content.replace(/\\`/g, '`'));
+                // Decode the URI component
+                return decodeURIComponent(content);
             } catch (e) {
                 console.error("Error decoding content:", e);
                 return content; 
             }
         }
+        window.decodeContent = decodeContent; // Expose globally for openCommentEdit's cancel function
 
-        // --- RENDER FEED (Fixed management button display) ---
+        // --- RENDER FEED (Fixed management button display & added new features) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -848,23 +1005,46 @@
 
             const showManagementButtons = isAdmin;
             const user = auth.currentUser; 
+            const lastVisit = parseInt(localStorage.getItem('lastVisitTimestamp') || '0', 10);
             let html = '';
 
             postsToRender.forEach(post => {
                 const item = post.data;
                 const docId = post.id;
-                const timestamp = item.timestamp ? (item.timestamp.toDate ? new Date(item.timestamp.toDate()).toLocaleString() : new Date(item.timestamp).toLocaleString()) : 'N/A';
-                const likes = item.likes || 0;
-                const link = item.link || '';
-                const postTitle = escapeHTML(item.title || 'Untitled Announcement');
+                const postDate = item.timestamp ? (item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp)) : new Date(0);
+                const timestamp = postDate.toLocaleString();
                 
+                const postTitle = escapeHTML(item.title || 'Untitled Announcement');
                 const postContent = renderHTML(item.content || 'No content.');
 
-                // --- FIX: Escape and Encode Content for safe JS call ---
+                // Unread Post Indicator
+                const isNew = postDate.getTime() > lastVisit;
+                const newIndicator = isNew ? '<span class="new-badge">NEW</span>' : '';
+
+                // Reaction Counts
+                const reactions = item.reactions || {};
+                const totalReactions = item.totalReactions || 0;
                 
-                // 1. Prepare strings: Escape single quotes, double quotes, and backticks.
-                // We use encodeURIComponent to safely pass potentially messy HTML content through the URL/string parameter.
+                let reactionsHtml = `<span class="reaction-count-display">${totalReactions}</span>`;
+                
+                // Display top 3 reactions if total > 0
+                if (totalReactions > 0) {
+                    const topReactions = Object.entries(reactions)
+                        .filter(([, count]) => count > 0)
+                        .sort(([, countA], [, countB]) => countB - countA)
+                        .slice(0, 3);
+                    
+                    const topEmojis = topReactions.map(([type]) => {
+                        return Object.keys(REACTIONS).find(key => REACTIONS[key] === type) || '';
+                    }).join('');
+                    
+                    reactionsHtml = `${topEmojis} <span class="reaction-count-display">${totalReactions}</span>`;
+                }
+
+                // --- FIX: Escape and Encode Content for safe JS call ---
+                // We use encodeURIComponent to safely pass potentially messy HTML content through the string parameter.
                 const safeTitle = encodeURIComponent(item.title || '');
+                const link = item.link || '';
                 const safeLink = encodeURIComponent(link);
                 const safeContent = encodeURIComponent(item.content || '');
                 
@@ -890,8 +1070,10 @@
                         <i class="fas fa-thumbtack"></i> PINNED ${pinnedBy}
                     </div>
                 ` : '';
+                
+                const posterName = escapeHTML(item.user || 'System');
 
-                // --- Enhanced Link Preview Card HTML ---
+                // --- Enhanced Link Preview Card HTML (Same) ---
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -926,18 +1108,19 @@
                     <div class="feed-post" style="border-left: 5px solid ${isPinned ? '#2980b9' : '#3498db'};">
                         ${managementButtons}
                         ${pinnedIndicator}
-                        <h3>${postTitle}</h3>
+                        <h3>${newIndicator} ${postTitle}</h3>
                         <div class="content-display">${postContent}</div>
                         ${mediaCard}
                         <small>
-                            <i class="fas fa-user-tag"></i> ${escapeHTML(item.user || 'System')} 
+                            <i class="fas fa-user-tag"></i> 
+                            <a href="#" class="author-link" onclick="filterFeed('${posterName}'); return false;">${posterName}</a>
                             &bull; <i class="fas fa-calendar-alt"></i> ${timestamp}
                             
-                            <button id="like-btn-${docId}" class="like-btn" onclick="likePost('${docId}')">
-                                <i class="fas fa-thumbs-up"></i> Like
-                            </button>
-                            <span id="like-count-${docId}" class="like-count">${likes}</span>
-
+                            <span class="reaction-container">
+                                ${reactionsHtml}
+                                <span id="user-reaction-${docId}">
+                                    </span>
+                            </span>
                         </small>
 
                         <div class="comment-toggle" onclick="toggleComments('${docId}')">
@@ -961,12 +1144,17 @@
 
             outputElement.innerHTML = html;
             
-            // Re-check like status for all posts after rendering
+            // Re-check reaction status for all posts after rendering
             if (user) {
                 postsToRender.forEach(post => checkLikeStatus(post.id, user.uid));
             }
 
             openCommentSections.forEach(docId => loadComments(docId));
+            
+            // Update last visit timestamp AFTER rendering to mark all currently visible posts as read
+            if (user) {
+                localStorage.setItem('lastVisitTimestamp', Date.now());
+            }
         }
 
         async function fetchFeed() {
@@ -1231,6 +1419,9 @@
         window.toggleComments = toggleComments;
         window.addComment = addComment;
         window.deleteComment = deleteComment;
+        window.openCommentEdit = openCommentEdit; // NEW
+        window.saveCommentEdit = saveCommentEdit; // NEW
+        window.cancelCommentEdit = cancelCommentEdit; // NEW
         window.getFileName = getFileName;
         // Expose Refresh Handler
         window.handleRefreshClick = handleRefreshClick;
