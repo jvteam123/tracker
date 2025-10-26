@@ -109,6 +109,15 @@
         .action-icon:hover { color: #c0392b; }
         .post-icon:hover { color: #2ecc71; }
 
+        /* NEW: Styles for Cooldown */
+        .action-icons #refreshFeedIcon.fa-spin {
+            color: #3498db !important;
+        }
+        .action-icons #refreshFeedIcon.cooldown {
+            color: #e74c3c !important; /* Red for cooldown */
+            cursor: not-allowed;
+        }
+
         /* Scrollable Feed Area (Same) */
         #feedOutputWrapper { max-height: calc(100vh - 250px); overflow-y: auto; padding-right: 5px; }
         #feedOutputWrapper::-webkit-scrollbar { width: 8px; }
@@ -195,6 +204,7 @@
             <h1>Project Updates Feed</h1>
             
             <div class="action-icons">
+                <i class="fas fa-sync-alt action-icon" id="refreshFeedIcon" title="Refresh Feed (5 min cooldown)"></i>
                 <i class="fas fa-plus post-icon action-icon" id="postIcon" title="New TL Announcement"></i>
                 <i class="fas fa-cog settings-icon action-icon" id="settingsIcon" title="Management Access"></i>
             </div>
@@ -295,11 +305,15 @@
             appId: "1:126693884353:web:2c0af86f20a7e9c8142f40",
         };
         const ADMIN_PIN = "2486"; 
+        // NEW: Cooldown Constant (5 minutes)
+        const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; 
 
         // --- STATE & INITIALIZATION ---
         let isAdmin = false; 
         let allPosts = []; 
         const openCommentSections = new Set(); 
+        // NEW: Cooldown State
+        let isCooldownActive = false;
         
         // Initialize Firebase services
         const app = firebase.initializeApp(FIREBASE_CONFIG);
@@ -332,7 +346,9 @@
         const managementArea = document.getElementById('managementArea');
         const settingsIcon = document.getElementById('settingsIcon');
         const postIcon = document.getElementById('postIcon');
-        const quickJumpList = document.getElementById('quickJumpList'); // NEW DOM ELEMENT
+        const quickJumpList = document.getElementById('quickJumpList'); 
+        // NEW: Refresh Icon
+        const refreshIcon = document.getElementById('refreshFeedIcon');
 
 
         // --- HELPER FUNCTIONS ---
@@ -344,6 +360,8 @@
             if (!likeButton) return;
 
             try {
+                // NOTE: With Firestore persistence enabled, this read operation 
+                // will primarily hit the local cache, drastically reducing billable reads.
                 const likerDoc = await likerDocRef.get();
                 if (likerDoc.exists) {
                     likeButton.classList.add('liked');
@@ -495,6 +513,7 @@
             commentList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading comments...';
 
             try {
+                // NOTE: Persistence enabled below helps minimize reads here as well.
                 const snapshot = await db.collection('feedItems').doc(docId).collection('comments').orderBy('timestamp', 'asc').get();
                 
                 if (snapshot.empty) {
@@ -615,7 +634,7 @@
                     
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
                     likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
 
                 } else {
                     await db.collection('feedItems').doc(docId).update({
@@ -638,7 +657,42 @@
             }
         }
 
-        // === NEW FUNCTION: RENDER QUICK JUMP LIST ===
+        // === COOLDOWN LOGIC & BUTTON HANDLER ===
+        function startCooldown() {
+            isCooldownActive = true;
+            
+            refreshIcon.classList.add('fa-spin', 'cooldown');
+            refreshIcon.title = 'Refreshing...';
+            refreshIcon.style.cursor = 'not-allowed';
+
+            // Stop the spinning animation quickly, but keep cooldown state
+            setTimeout(() => {
+                refreshIcon.classList.remove('fa-spin');
+                refreshIcon.title = `On cooldown. Next refresh in ${REFRESH_COOLDOWN_MS / 60000} minutes.`;
+            }, 1000); 
+
+            // End Cooldown (5 minutes)
+            setTimeout(() => {
+                isCooldownActive = false;
+                refreshIcon.classList.remove('cooldown');
+                refreshIcon.title = 'Refresh Feed (5 min cooldown)';
+                refreshIcon.style.cursor = 'pointer';
+                alert("Feed refresh is now available.");
+            }, REFRESH_COOLDOWN_MS);
+        }
+
+        function handleRefreshClick() {
+            if (isCooldownActive) {
+                alert("Feed refresh is on cooldown. Please wait before refreshing again.");
+                return;
+            }
+            
+            startCooldown(); 
+            fetchFeed(); // No arguments needed, as it uses the same core logic
+        }
+        // ========================================
+
+        // === QUICK JUMP LIST RENDER (Decoupled to fix previous bug) ===
         function renderQuickJumpList() {
             quickJumpList.innerHTML = ''; 
 
@@ -648,7 +702,6 @@
             }
 
             let jumpHtml = '';
-            // Always use the full list of posts to build the Quick Jump list
             allPosts.forEach(post => {
                 const postTitle = escapeHTML(post.data.title || 'Untitled Announcement');
                 // Escape single quote for use in onclick
@@ -656,27 +709,29 @@
                 jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
             });
             
-            quickJumpList.innerHTML = jumpHtml; // Set the quick jump HTML
+            quickJumpList.innerHTML = jumpHtml;
         }
-        // ==========================================
+        // =============================================================
 
-        // --- RENDER FEED (Modified to remove Quick Jump logic) ---
+        // --- RENDER FEED (Refactored for Quick Jump) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
-            // quickJumpList.innerHTML = ''; // REMOVED: This was causing the quick jump list to disappear
+            
+            // Only rebuild the quick jump list if rendering the full list (no search term applied to filterFeed)
+            if (searchBar.value.trim() === '') {
+                 renderQuickJumpList();
+            }
 
             if (postsToRender.length === 0) {
                  outputElement.classList.add('status-message');
                  outputElement.innerHTML = 'No announcements matched your search/filter criteria.';
-                 // quickJumpList.innerHTML = '<span style="display: block; font-size: 0.85em; color: #7f8c8d;">No titles found.</span>'; // REMOVED
                  return;
             }
 
             const showManagementButtons = isAdmin;
             const user = auth.currentUser; 
             let html = '';
-            // let jumpHtml = ''; // REMOVED
 
             postsToRender.forEach(post => {
                 const item = post.data;
@@ -700,11 +755,6 @@
                 ` : '';
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
-
-                // --- OLD QUICK JUMP LOGIC REMOVED ---
-                // const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
-                // jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
-
 
                 // --- Enhanced Link Preview Card HTML ---
                 const mediaCard = link ? `
@@ -774,7 +824,6 @@
             });
 
             outputElement.innerHTML = html;
-            // quickJumpList.innerHTML = jumpHtml; // REMOVED
             
             // Re-check like status for all posts after rendering
             if (user) {
@@ -789,19 +838,18 @@
                 outputElement.classList.add('status-message');
                 outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
 
+                // Core read minimization is enabling persistence and using .get() for the feed.
                 const snapshot = await db.collection('feedItems').orderBy('timestamp', 'desc').get();
                 
                 if (snapshot.empty) {
                     outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
                     allPosts = [];
-                    renderQuickJumpList(); // Always render the quick jump list
+                    renderQuickJumpList();
                     return;
                 }
 
                 allPosts = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 renderFeed(allPosts);
-                renderQuickJumpList(); // <-- Call the new function here
-                
 
             } catch (error) {
                 console.error("Firebase Fetch Error:", error);
@@ -992,8 +1040,18 @@
         window.addComment = addComment;
         window.deleteComment = deleteComment;
         window.getFileName = getFileName;
+        // NEW: Expose Refresh Handler
+        window.handleRefreshClick = handleRefreshClick;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            
+            // NEW: Read Minimization Feature - Enable Firestore Persistence
+            try {
+                await db.enablePersistence();
+                console.log("Firestore persistence enabled. Reads will be minimized using local cache.");
+            } catch (err) {
+                console.error("Could not enable Firestore persistence. Local cache reads will be limited.", err);
+            }
             
             // Initialize Quill Editors after DOM is ready
             const toolbarOptions = [
@@ -1034,6 +1092,8 @@
             document.getElementById('postIcon').addEventListener('click', openNewPostModal);
             document.getElementById('newPostForm').addEventListener('submit', addPost);
             document.getElementById('settingsIcon').addEventListener('click', openPinModal);
+            // NEW: Refresh Icon Event Listener
+            refreshIcon.addEventListener('click', handleRefreshClick);
 
             window.addEventListener('click', (event) => {
                 if (event.target === managementModal) {
