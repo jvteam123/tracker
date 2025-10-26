@@ -481,7 +481,7 @@
         }
 
 
-        // --- MODAL & PIN MANAGEMENT (Modified) ---
+        // --- MODAL & PIN MANAGEMENT (Same) ---
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
@@ -761,7 +761,7 @@
                 fetchFeed(); // Refresh the feed with the new sort order
             } catch (error) {
                 console.error("Error toggling pin status:", error);
-                alert("Failed to toggle pin status. Check Firebase Security Rules.");
+                alert("Failed to toggle pin status. Check Firebase Security Rules or ensure you created the composite index!");
             } finally {
                 pinToggleButton.disabled = false;
             }
@@ -926,41 +926,40 @@
                 outputElement.classList.add('status-message');
                 outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
 
-                // 1. Query Pinned Posts (isPinned: true)
+                // 1. Query Pinned Posts (isPinned: true) - Requires Composite Index
                 const pinnedSnapshot = await db.collection('feedItems')
                     .where('isPinned', '==', true)
                     .orderBy('timestamp', 'desc')
                     .get();
-                    
-                // 2. Query Unpinned Posts (isPinned: false OR doesn't exist)
-                // Note: Firestore does not support '!=' queries on non-indexed fields. 
-                // We use a query for 'isPinned: false' and rely on the next query 
-                // implicitly handling documents with no 'isPinned' field (which would be 
-                // caught by the initial 'get()' if we weren't splitting the query). 
-                // To safely catch *all* unpinned posts, we'll try to explicitly query for both:
                 
-                const unpinnedFalseSnapshot = await db.collection('feedItems')
+                // 2. Query Unpinned Posts (isPinned: false) - Requires Composite Index
+                // This is the most efficient way to query explicitly unpinned content.
+                const unpinnedSnapshot = await db.collection('feedItems')
                     .where('isPinned', '==', false)
                     .orderBy('timestamp', 'desc')
                     .get();
-
-                // To ensure posts without the 'isPinned' field are included (standard pre-existing posts), 
-                // we perform a final broad query and manually filter, or rely on a union query 
-                // if available, but for simplicity and common use case: let's combine and filter unique.
-                const allSnapshot = await db.collection('feedItems')
-                    .orderBy('timestamp', 'desc')
-                    .get(); // Re-fetch all to find those missing the 'isPinned' field
-
-                // 3. Merge Pinned posts (at top) with Unpinned/All other posts
-                const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 
-                // Use a Set to ensure unique post IDs, prioritizing the Pinned list.
+                // --- Merge Logic ---
+                const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                const unpinnedPosts = unpinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+
+                // 3. Find documents missing the 'isPinned' field (i.e., old posts).
+                // Query ALL documents and manually filter out those found in the first two steps.
+                const allPostsSnapshot = await db.collection('feedItems')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
                 const postIds = new Set(pinnedPosts.map(p => p.id));
-                const allPostsData = allSnapshot.docs
-                    .filter(doc => !postIds.has(doc.id)) // Filter out already pinned posts
+                unpinnedPosts.forEach(p => postIds.add(p.id));
+                
+                // Posts with missing 'isPinned' field and posts with other unindexed fields
+                const otherPosts = allPostsSnapshot.docs
+                    .filter(doc => !postIds.has(doc.id)) 
                     .map(doc => ({ id: doc.id, data: doc.data() }));
 
-                allPosts = pinnedPosts.concat(allPostsData);
+                // Combine: Pinned posts, followed by explicitly unpinned posts, followed by old/other posts.
+                allPosts = pinnedPosts.concat(unpinnedPosts).concat(otherPosts);
+                // --- End Merge Logic ---
                 
                 if (allPosts.length === 0) {
                     outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
@@ -976,13 +975,10 @@
                 outputElement.classList.add('status-message');
                 outputElement.style.color = '#c0392b';
                 outputElement.innerHTML = `
-                    <i class="fas fa-skull-crossbones"></i> **ERROR: Failed to fetch data.** <br> Check your browser console (F12). 
-                    <br> This may be due to:
-                    <ul>
-                        <li>Incorrect API Key/Project ID in the code.</li>
-                        <li>**Firebase Security Rules (read access is denied).**</li>
-                        <li>**Missing Index for 'isPinned' field (check Firestore Console).**</li>
-                    </ul>
+                    <i class="fas fa-skull-crossbones"></i> **ERROR: Failed to fetch data.** <br> 
+                    1. Check your browser console (F12) for a link to **create the missing composite index on isPinned and timestamp**.<br>
+                    2. Check that your **Firebase Security Rules** allow read access for everyone.<br>
+                    3. If the error persists after creating the index, manually **ensure all old posts have the field isPinned: false** in the Firestore console.
                 `;
             }
         }
@@ -1090,7 +1086,9 @@
                     user: posterName, // Use dynamic name
                     content: content, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    likes: 0 
+                    likes: 0,
+                    isPinned: false, // NEW: Default to unpinned
+                    pinnedBy: '',
                 });
 
                 postStatusElement.style.display = 'block';
@@ -1120,7 +1118,7 @@
             }
         }
         
-        // --- Other Management/Filter Functions (Modified) ---
+        // --- Other Management/Filter Functions (Same) ---
         async function deletePost(id) {
             if (!isAdmin) {
                 alert("Access Denied. Please enter the PIN first.");
