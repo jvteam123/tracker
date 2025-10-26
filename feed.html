@@ -638,23 +638,45 @@
             }
         }
 
-        // --- RENDER FEED (Modified to populate Quick Jump List) ---
+        // === NEW FUNCTION: RENDER QUICK JUMP LIST ===
+        function renderQuickJumpList() {
+            quickJumpList.innerHTML = ''; 
+
+            if (allPosts.length === 0) {
+                 quickJumpList.innerHTML = '<span style="display: block; font-size: 0.85em; color: #7f8c8d;">No titles found.</span>';
+                 return;
+            }
+
+            let jumpHtml = '';
+            // Always use the full list of posts to build the Quick Jump list
+            allPosts.forEach(post => {
+                const postTitle = escapeHTML(post.data.title || 'Untitled Announcement');
+                // Escape single quote for use in onclick
+                const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
+                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
+            });
+            
+            quickJumpList.innerHTML = jumpHtml; // Set the quick jump HTML
+        }
+        // ==========================================
+
+        // --- RENDER FEED (Modified to remove Quick Jump logic) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
-            quickJumpList.innerHTML = ''; // Clear the quick jump list
+            // quickJumpList.innerHTML = ''; // REMOVED: This was causing the quick jump list to disappear
 
             if (postsToRender.length === 0) {
                  outputElement.classList.add('status-message');
                  outputElement.innerHTML = 'No announcements matched your search/filter criteria.';
-                 quickJumpList.innerHTML = '<span style="display: block; font-size: 0.85em; color: #7f8c8d;">No titles found.</span>';
+                 // quickJumpList.innerHTML = '<span style="display: block; font-size: 0.85em; color: #7f8c8d;">No titles found.</span>'; // REMOVED
                  return;
             }
 
             const showManagementButtons = isAdmin;
             const user = auth.currentUser; 
             let html = '';
-            let jumpHtml = '';
+            // let jumpHtml = ''; // REMOVED
 
             postsToRender.forEach(post => {
                 const item = post.data;
@@ -679,10 +701,10 @@
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
 
-                // --- NEW: Populate Quick Jump List ---
-                // Escape single quote for use in onclick
-                const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
-                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
+                // --- OLD QUICK JUMP LOGIC REMOVED ---
+                // const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
+                // jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}')">${postTitle}</a>`;
+
 
                 // --- Enhanced Link Preview Card HTML ---
                 const mediaCard = link ? `
@@ -752,7 +774,7 @@
             });
 
             outputElement.innerHTML = html;
-            quickJumpList.innerHTML = jumpHtml; // Set the quick jump HTML
+            // quickJumpList.innerHTML = jumpHtml; // REMOVED
             
             // Re-check like status for all posts after rendering
             if (user) {
@@ -772,11 +794,14 @@
                 if (snapshot.empty) {
                     outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
                     allPosts = [];
+                    renderQuickJumpList(); // Always render the quick jump list
                     return;
                 }
 
                 allPosts = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 renderFeed(allPosts);
+                renderQuickJumpList(); // <-- Call the new function here
+                
 
             } catch (error) {
                 console.error("Firebase Fetch Error:", error);
