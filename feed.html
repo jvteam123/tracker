@@ -139,7 +139,7 @@
         #feedOutputWrapper::-webkit-scrollbar { width: 8px; }
         #feedOutputWrapper::-webkit-scrollbar-thumb { background-color: #bdc3c7; border-radius: 4px; }
 
-        /* Feed Post Styling (Same) */
+        /* Feed Post Styling (Modified for Pin) */
         .feed-post { background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 15px; border-left: 5px solid #3498db; position: relative; }
         .feed-post h3 { color: #2c3e50; margin-top: 0; margin-bottom: 5px; }
         .feed-post .content-display p { white-space: normal; } 
@@ -291,6 +291,12 @@
             
             <div class="quill-editor-container">
                 <div id="editPostEditor"></div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                 <button type="button" id="pinToggleButton" class="btn btn-secondary" onclick="togglePinStatus(document.getElementById('editPostId').value)">
+                    <i class="fas fa-thumbtack"></i> Pin/Unpin
+                </button>
             </div>
             
             <div class="modal-button-group">
@@ -475,7 +481,7 @@
         }
 
 
-        // --- MODAL & PIN MANAGEMENT (Same) ---
+        // --- MODAL & PIN MANAGEMENT (Modified) ---
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
@@ -720,6 +726,48 @@
             fetchFeed(); // No arguments needed, as it uses the same core logic
         }
         // ========================================
+        
+        // === PIN FEATURE LOGIC ===
+        async function togglePinStatus(docId) {
+            if (!isAdmin) {
+                alert("Access Denied. Only an Admin can pin posts.");
+                return;
+            }
+            const user = auth.currentUser;
+            if (!user) return; 
+
+            const post = allPosts.find(p => p.id === docId);
+            if (!post) return;
+
+            const isCurrentlyPinned = post.data.isPinned;
+            const newStatus = !isCurrentlyPinned;
+            const pinnedBy = newStatus ? (user.displayName || user.email) : '';
+            
+            const pinToggleButton = document.getElementById('pinToggleButton');
+            pinToggleButton.disabled = true;
+
+            try {
+                await db.collection('feedItems').doc(docId).update({
+                    isPinned: newStatus,
+                    pinnedBy: pinnedBy,
+                });
+
+                // Update in-memory state
+                post.data.isPinned = newStatus;
+                post.data.pinnedBy = pinnedBy;
+
+                alert(`Announcement ${newStatus ? 'pinned' : 'unpinned'} successfully!`);
+                closeModal('managementModal');
+                fetchFeed(); // Refresh the feed with the new sort order
+            } catch (error) {
+                console.error("Error toggling pin status:", error);
+                alert("Failed to toggle pin status. Check Firebase Security Rules.");
+            } finally {
+                pinToggleButton.disabled = false;
+            }
+        }
+        window.togglePinStatus = togglePinStatus;
+        // =========================
 
         // === QUICK JUMP LIST RENDER (Decoupled to fix previous bug) ===
         function renderQuickJumpList() {
@@ -735,7 +783,8 @@
                 const postTitle = escapeHTML(post.data.title || 'Untitled Announcement');
                 // Escape single quote for use in onclick
                 const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
-                jumpHtml += `<a href="#" class="quick-jump-title" onclick="filterFeed('${sanitizedTitle}'); return false;">${postTitle}</a>`;
+                // Set the search bar value before calling filterFeed to keep it visually updated
+                jumpHtml += `<a href="#" class="quick-jump-title" onclick="document.getElementById('searchBar').value = '${sanitizedTitle}'; filterFeed('${sanitizedTitle}'); return false;">${postTitle}</a>`;
             });
             
             quickJumpList.innerHTML = jumpHtml;
@@ -785,6 +834,15 @@
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
 
+                // NEW: Pinned Status Indicator
+                const isPinned = item.isPinned;
+                const pinnedBy = item.pinnedBy ? `(Pinned by ${escapeHTML(item.pinnedBy)})` : '';
+                const pinnedIndicator = isPinned ? `
+                    <div style="font-size: 0.9em; color: #2980b9; font-weight: bold; margin-bottom: 5px;">
+                        <i class="fas fa-thumbtack"></i> PINNED ${pinnedBy}
+                    </div>
+                ` : '';
+
                 // --- Enhanced Link Preview Card HTML ---
                 const mediaCard = link ? `
                     <div class="review-card">
@@ -817,8 +875,9 @@
 
 
                 html += `
-                    <div class="feed-post">
+                    <div class="feed-post" style="border-left: 5px solid ${isPinned ? '#2980b9' : '#3498db'};">
                         ${managementButtons}
+                        ${pinnedIndicator}
                         <h3>${postTitle}</h3>
                         <div class="content-display">${postContent}</div>
                         ${mediaCard}
@@ -867,17 +926,49 @@
                 outputElement.classList.add('status-message');
                 outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
 
-                // Core read minimization is enabling persistence and using .get() for the feed.
-                const snapshot = await db.collection('feedItems').orderBy('timestamp', 'desc').get();
+                // 1. Query Pinned Posts (isPinned: true)
+                const pinnedSnapshot = await db.collection('feedItems')
+                    .where('isPinned', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                    
+                // 2. Query Unpinned Posts (isPinned: false OR doesn't exist)
+                // Note: Firestore does not support '!=' queries on non-indexed fields. 
+                // We use a query for 'isPinned: false' and rely on the next query 
+                // implicitly handling documents with no 'isPinned' field (which would be 
+                // caught by the initial 'get()' if we weren't splitting the query). 
+                // To safely catch *all* unpinned posts, we'll try to explicitly query for both:
                 
-                if (snapshot.empty) {
+                const unpinnedFalseSnapshot = await db.collection('feedItems')
+                    .where('isPinned', '==', false)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+
+                // To ensure posts without the 'isPinned' field are included (standard pre-existing posts), 
+                // we perform a final broad query and manually filter, or rely on a union query 
+                // if available, but for simplicity and common use case: let's combine and filter unique.
+                const allSnapshot = await db.collection('feedItems')
+                    .orderBy('timestamp', 'desc')
+                    .get(); // Re-fetch all to find those missing the 'isPinned' field
+
+                // 3. Merge Pinned posts (at top) with Unpinned/All other posts
+                const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                
+                // Use a Set to ensure unique post IDs, prioritizing the Pinned list.
+                const postIds = new Set(pinnedPosts.map(p => p.id));
+                const allPostsData = allSnapshot.docs
+                    .filter(doc => !postIds.has(doc.id)) // Filter out already pinned posts
+                    .map(doc => ({ id: doc.id, data: doc.data() }));
+
+                allPosts = pinnedPosts.concat(allPostsData);
+                
+                if (allPosts.length === 0) {
                     outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
                     allPosts = [];
                     renderQuickJumpList();
                     return;
                 }
 
-                allPosts = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
                 renderFeed(allPosts);
 
             } catch (error) {
@@ -890,17 +981,28 @@
                     <ul>
                         <li>Incorrect API Key/Project ID in the code.</li>
                         <li>**Firebase Security Rules (read access is denied).**</li>
+                        <li>**Missing Index for 'isPinned' field (check Firestore Console).**</li>
                     </ul>
                 `;
             }
         }
         
-        // --- OPEN EDIT MODAL (Same) ---
+        // --- OPEN EDIT MODAL (Modified for Pin State) ---
         function openEditModal(id, title, link, content) {
             if (!isAdmin) return;
             pinEntryArea.style.display = 'none';
             managementArea.style.display = 'block';
             
+            // Find the post to check its pinned status
+            const post = allPosts.find(p => p.id === id);
+            const isPinned = post && post.data.isPinned;
+
+            const pinToggleButton = document.getElementById('pinToggleButton');
+            pinToggleButton.innerHTML = isPinned ? 
+                '<i class="fas fa-thumbtack"></i> Unpin Post' : 
+                '<i class="fas fa-thumbtack"></i> Pin to Top';
+            pinToggleButton.className = isPinned ? 'btn btn-danger' : 'btn btn-primary';
+
             editPostId.value = id;
             editTitle.value = title;
             editLink.value = link; 
