@@ -163,6 +163,8 @@
             font-size: 0.85em;
             cursor: pointer;
             transition: background 0.1s;
+            /* Ensure the content is only the text/icon */
+            white-space: nowrap; 
         }
         .post-actions button:hover {
             background: #bdc3c7;
@@ -815,6 +817,18 @@
             quickJumpList.innerHTML = jumpHtml;
         }
         // =============================================================
+        
+        // NEW UTILITY FUNCTION for decoding content
+        function decodeContent(content) {
+            if (!content) return '';
+            try {
+                // Decode the URI component and then replace escaped backticks if necessary
+                return decodeURIComponent(content.replace(/\\`/g, '`'));
+            } catch (e) {
+                console.error("Error decoding content:", e);
+                return content; 
+            }
+        }
 
         // --- RENDER FEED (Fixed management button display) ---
         function renderFeed(postsToRender) {
@@ -846,18 +860,17 @@
                 
                 const postContent = renderHTML(item.content || 'No content.');
 
-                // --- FIX: Escape quotes in title and content for the JS function call ---
-                // The issue is that the content/title contains characters like single quotes (') or double quotes (")
-                // which terminate the string literal inside the onclick handler.
+                // --- FIX: Escape and Encode Content for safe JS call ---
                 
                 // 1. Prepare strings: Escape single quotes, double quotes, and backticks.
-                const escapedTitle = (item.title || '').replace(/\\/g, '\\\\').replace(/'/g, '\\\'').replace(/"/g, '\\"').replace(/`/g, '\\`');
-                // We are using backticks (\`) to wrap the content parameter, but we need to ensure any backticks in the actual content are escaped.
-                const escapedContent = (item.content || '').replace(/\\/g, '\\\\').replace(/`/g, '\\`');
+                // We use encodeURIComponent to safely pass potentially messy HTML content through the URL/string parameter.
+                const safeTitle = encodeURIComponent(item.title || '');
+                const safeLink = encodeURIComponent(link);
+                const safeContent = encodeURIComponent(item.content || '');
                 
                 const managementButtons = showManagementButtons ? `
                     <div class="post-actions">
-                        <button onclick="openEditModal('${docId}', '${escapedTitle}', '${escapeHTML(link)}', \`${escapedContent}\`)">
+                        <button onclick="openEditModal('${docId}', '${safeTitle}', '${safeLink}', '${safeContent}')">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         <button class="delete-btn" onclick="deletePost('${docId}')">
@@ -1017,11 +1030,16 @@
             }
         }
         
-        // --- OPEN EDIT MODAL (Modified for Pin State) ---
-        function openEditModal(id, title, link, content) {
+        // --- OPEN EDIT MODAL (Modified to decode content) ---
+        function openEditModal(id, encodedTitle, encodedLink, encodedContent) {
             if (!isAdmin) return;
             pinEntryArea.style.display = 'none';
             managementArea.style.display = 'block';
+            
+            // DECODE the parameters received from the onclick attribute
+            const title = decodeContent(encodedTitle);
+            const link = decodeContent(encodedLink);
+            const content = decodeContent(encodedContent);
             
             // Find the post to check its pinned status
             const post = allPosts.find(p => p.id === id);
@@ -1037,6 +1055,7 @@
             editTitle.value = title;
             editLink.value = link; 
             
+            // Set the editor content
             editPostEditor.root.innerHTML = content;
 
             managementModal.style.display = 'block';
@@ -1133,7 +1152,7 @@
                 newPostEditor.setContents([]); 
 
                 setTimeout(() => {
-                    closeNewPostModal();
+                    closeModal('newPostModal');
                     fetchFeed(); 
                 }, 800);
 
