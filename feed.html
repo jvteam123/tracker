@@ -236,7 +236,7 @@
         <form id="newPostForm" class="modal-form">
             <input type="text" id="postTitle" placeholder="Announcement Title (e.g., Quick Update)" required>
             <input type="text" id="postLink" placeholder="Optional: Link to PDF/Media for Review (e.g., https://example.com/file.pdf)">
-            <input type="hidden" id="postUser" value="Team Leader" required>
+            <input type="hidden" id="postUser" required> 
             
             <div class="quill-editor-container">
                 <div id="newPostEditor"></div>
@@ -456,16 +456,27 @@
         }
 
 
-        // --- MODAL & PIN MANAGEMENT (Same) ---
+        // --- MODAL & PIN MANAGEMENT (Modified) ---
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
         
         function openNewPostModal() {
+            // [START MODIFICATION] Restrict posting to signed-in users
+            const user = auth.currentUser;
+            if (!user) {
+                alert("You must be signed in to post an announcement.");
+                return;
+            }
+            // [END MODIFICATION]
+
             postStatusElement.style.display = 'none';
             document.getElementById('newPostForm').reset();
             newPostEditor.setContents([]); 
             newPostModal.style.display = 'block';
+
+            // NEW: Set the hidden user input field with the signed-in user's name
+            document.getElementById('postUser').value = user.displayName || user.email;
         }
 
         function closeNewPostModal() {
@@ -634,7 +645,7 @@
                     
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
                     likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
 
                 } else {
                     await db.collection('feedItems').doc(docId).update({
@@ -920,18 +931,28 @@
             }
         }
         
-        // --- ADD POST (Same) ---
+        // --- ADD POST (Modified) ---
         async function addPost(event) {
             event.preventDefault();
 
+            const user = auth.currentUser;
+            if (!user) {
+                 postStatusElement.style.display = 'block';
+                 postStatusElement.style.color = '#c0392b';
+                 postStatusElement.innerHTML = 'Posting failed. You must be signed in to post an announcement.';
+                 return;
+            }
+            
+            // [MODIFICATION] Use the signed-in user's name or email
+            const posterName = user.displayName || user.email; 
+
             const title = document.getElementById('postTitle').value.trim();
             const link = document.getElementById('postLink').value.trim();
-            const user = document.getElementById('postUser').value.trim();
             
             const content = newPostEditor.root.innerHTML.trim();
             const hasText = newPostEditor.getText().trim().length > 0;
 
-            if (!title || !user || !hasText) {
+            if (!title || !hasText) {
                 postStatusElement.style.display = 'block';
                 postStatusElement.style.color = '#e67e22';
                 postStatusElement.innerHTML = 'Please fill in the title and content.';
@@ -946,7 +967,7 @@
                 await db.collection('feedItems').add({
                     title: title,
                     link: link,
-                    user: user, 
+                    user: posterName, // [MODIFICATION] Use dynamic name
                     content: content, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     likes: 0 
