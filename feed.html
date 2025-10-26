@@ -463,7 +463,7 @@
 
         // --- HELPER FUNCTIONS ---
         // Check Like Status (Now tracks general reactions)
-        async function checkLikeStatus(docId, uid) {
+        async function checkReactionStatus(docId, uid) {
             const reactionDocRef = db.collection('feedItems').doc(docId).collection('reactions').doc(uid);
             const userReactionElement = document.getElementById(`user-reaction-${docId}`);
             
@@ -478,16 +478,21 @@
                     const emoji = Object.keys(REACTIONS).find(key => REACTIONS[key] === type);
                     
                     if (emoji) {
+                        // User has reacted: show only the current reaction as a toggle to remove it
                         userReactionElement.innerHTML = `<button class="reaction-button selected" onclick="handleReactionClick('${docId}', 'none')" title="Click to remove reaction">${emoji}</button>`;
                     } else {
-                        // Default to like button if no known reaction is found (legacy logic)
-                        userReactionElement.innerHTML = `<button class="like-btn selected" onclick="handleReactionClick('${docId}', 'none')"><i class="fas fa-thumbs-down"></i> Unlike</button>`;
+                        // Display default reaction buttons if unknown type or no known reaction is found (defaulting to full set)
+                        let buttonsHtml = '';
+                        for (const emoji in REACTIONS) {
+                            buttonsHtml += `<button class="reaction-button" onclick="handleReactionClick('${docId}', '${REACTIONS[emoji]}')">${emoji}</button>`;
+                        }
+                        userReactionElement.innerHTML = buttonsHtml;
                     }
                 } else {
-                    // Display general reaction buttons if no reaction is set
+                    // User has NOT reacted: display full reaction palette
                     let buttonsHtml = '';
                     for (const emoji in REACTIONS) {
-                        buttonsHtml += `<button class="reaction-button" onclick="handleReactionClick('${docId}', '${REACTIONS[emoji]}', '${emoji}')">${emoji}</button>`;
+                        buttonsHtml += `<button class="reaction-button" onclick="handleReactionClick('${docId}', '${REACTIONS[emoji]}')">${emoji}</button>`;
                     }
                     userReactionElement.innerHTML = buttonsHtml;
                 }
@@ -666,12 +671,13 @@
                         </button>` : '';
 
                     // NEW: Edit Button and Display Logic
+                    const escapedCommentText = escapeHTML(comment.text);
                     const editButton = (user && user.uid === comment.uid) ? 
-                        `<button class="edit-comment-btn" onclick="openCommentEdit('${docId}', '${commentId}', \`${escapeHTML(comment.text)}\`)">
+                        `<button class="edit-comment-btn" onclick="openCommentEdit('${docId}', '${commentId}', \`${escapedCommentText}\`)">
                             <i class="fas fa-edit"></i> Edit
                         </button>` : '';
                     
-                    const commentText = linkify(escapeHTML(comment.text)); 
+                    const commentText = linkify(escapedCommentText); 
 
                     html += `
                         <div class="comment-item" id="comment-item-${commentId}">
@@ -702,31 +708,31 @@
 
             if (!commentItem || !displayContent) return;
 
+            // Save the original HTML structure for easy cancellation
+            commentItem.dataset.originalHtml = commentItem.innerHTML;
+
             // Hide the display content and actions
             displayContent.style.display = 'none';
             commentMeta.style.display = 'none';
 
             // Create edit form elements
-            commentItem.insertAdjacentHTML('afterbegin', `
+            commentItem.innerHTML = `
                 <textarea id="edit-text-${commentId}" class="comment-edit-input">${initialText}</textarea>
                 <div class="comment-edit-buttons">
                     <button class="btn-primary" onclick="saveCommentEdit('${postId}', '${commentId}')">Save</button>
-                    <button class="btn-secondary" onclick="cancelCommentEdit('${commentId}', \`${initialText}\`)">Cancel</button>
+                    <button class="btn-secondary" onclick="cancelCommentEdit('${commentId}')">Cancel</button>
                 </div>
-            `);
+            `;
         }
 
-        function cancelCommentEdit(commentId, originalText) {
+        function cancelCommentEdit(commentId) {
             const commentItem = document.getElementById(`comment-item-${commentId}`);
             if (!commentItem) return;
 
-            // Remove edit elements
-            commentItem.querySelector('.comment-edit-input').remove();
-            commentItem.querySelector('.comment-edit-buttons').remove();
-
-            // Show original elements
-            commentItem.querySelector('.comment-display-content').style.display = 'block';
-            commentItem.querySelector('.comment-meta').style.display = 'flex';
+            // Restore the original HTML from the data attribute
+            if (commentItem.dataset.originalHtml) {
+                 commentItem.innerHTML = commentItem.dataset.originalHtml;
+            }
         }
 
         async function saveCommentEdit(postId, commentId) {
@@ -746,7 +752,7 @@
                 // Update Firestore
                 await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).update({
                     text: newText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Optional: update timestamp
+                    // Note: Firestore Security Rules should ensure this update is only allowed by the comment author
                 });
 
                 // Refresh the comment section locally
@@ -754,7 +760,7 @@
 
             } catch (error) {
                 console.error("Error saving comment edit:", error);
-                alert("Failed to save comment changes.");
+                alert("Failed to save comment changes. Check security rules.");
             }
         }
 
@@ -811,8 +817,8 @@
                 submitButton.innerHTML = 'Comment';
             }
         }
-        
-        // NEW: Reaction Handler
+
+        // NEW: Reaction Handler (Updated to use REACTIONS map)
         async function handleReactionClick(docId, newType) {
             const user = auth.currentUser;
             if (!user) {
@@ -823,7 +829,6 @@
             const uid = user.uid;
             const reactionDocRef = db.collection('feedItems').doc(docId).collection('reactions').doc(uid);
             
-            // Get current reaction (for unreacting logic)
             const currentReactionDoc = await reactionDocRef.get();
             const currentType = currentReactionDoc.exists ? currentReactionDoc.data().type : 'none';
             
@@ -985,7 +990,7 @@
                 return content; 
             }
         }
-        window.decodeContent = decodeContent; // Expose globally for openCommentEdit's cancel function
+        window.decodeContent = decodeContent;
 
         // --- RENDER FEED (Fixed management button display & added new features) ---
         function renderFeed(postsToRender) {
@@ -1025,7 +1030,7 @@
                 const reactions = item.reactions || {};
                 const totalReactions = item.totalReactions || 0;
                 
-                let reactionsHtml = `<span class="reaction-count-display">${totalReactions}</span>`;
+                let reactionsHtml = ``;
                 
                 // Display top 3 reactions if total > 0
                 if (totalReactions > 0) {
@@ -1042,7 +1047,6 @@
                 }
 
                 // --- FIX: Escape and Encode Content for safe JS call ---
-                // We use encodeURIComponent to safely pass potentially messy HTML content through the string parameter.
                 const safeTitle = encodeURIComponent(item.title || '');
                 const link = item.link || '';
                 const safeLink = encodeURIComponent(link);
@@ -1146,7 +1150,7 @@
             
             // Re-check reaction status for all posts after rendering
             if (user) {
-                postsToRender.forEach(post => checkLikeStatus(post.id, user.uid));
+                postsToRender.forEach(post => checkReactionStatus(post.id, user.uid));
             }
 
             openCommentSections.forEach(docId => loadComments(docId));
