@@ -536,7 +536,7 @@
             if (!text) return '';
             const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
             
-            const tempText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const tempText = text.replace(/</g, '&lt;').replace(/</g, '&gt;');
 
             return tempText.replace(urlRegex, (url) => {
                 return `<a href="${url}" target="_blank" style="color: #3498db; text-decoration: underline;">${url}</a>`;
@@ -688,24 +688,14 @@
                             <i class="fas fa-trash-alt"></i> Delete
                         </button>` : '';
 
-                    // NEW: Edit Button and Display Logic
-                    const escapedCommentText = escapeHTML(comment.text);
-                    const editButton = (user && user.uid === comment.uid) ? 
-                        `<button class="edit-comment-btn" onclick="openCommentEdit('${docId}', '${commentId}', \`${escapedCommentText}\`)">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>` : '';
-                    
-                    const commentText = linkify(escapedCommentText); 
+                    const commentText = linkify(escapeHTML(comment.text)); 
 
                     html += `
-                        <div class="comment-item" id="comment-item-${commentId}">
-                            <div class="comment-display-content">${commentText}</div>
+                        <div class="comment-item">
+                            ${commentText}
                             <div class="comment-meta">
                                 <span><i class="fas fa-user-circle"></i> ${escapeHTML(comment.user)} - ${timestamp}</span>
-                                <span class="comment-actions">
-                                    ${editButton}
-                                    ${deleteButton}
-                                </span>
+                                ${deleteButton}
                             </div>
                         </div>
                     `;
@@ -716,69 +706,6 @@
             } catch (error) {
                 console.error("Error loading comments:", error);
                 commentList.innerHTML = '<div class="comment-item" style="color: #c0392b;">Failed to load comments.</div>';
-            }
-        }
-
-        async function openCommentEdit(postId, commentId, initialText) {
-            const commentItem = document.getElementById(`comment-item-${commentId}`);
-            const displayContent = commentItem.querySelector('.comment-display-content');
-            const commentMeta = commentItem.querySelector('.comment-meta');
-
-            if (!commentItem || !displayContent) return;
-
-            // Save the original HTML structure for easy cancellation
-            commentItem.dataset.originalHtml = commentItem.innerHTML;
-
-            // Hide the display content and actions
-            displayContent.style.display = 'none';
-            commentMeta.style.display = 'none';
-
-            // Create edit form elements
-            commentItem.innerHTML = `
-                <textarea id="edit-text-${commentId}" class="comment-edit-input">${initialText}</textarea>
-                <div class="comment-edit-buttons">
-                    <button class="btn-primary" onclick="saveCommentEdit('${postId}', '${commentId}')">Save</button>
-                    <button class="btn-secondary" onclick="cancelCommentEdit('${commentId}')">Cancel</button>
-                </div>
-            `;
-        }
-
-        function cancelCommentEdit(commentId) {
-            const commentItem = document.getElementById(`comment-item-${commentId}`);
-            if (!commentItem) return;
-
-            // Restore the original HTML from the data attribute
-            if (commentItem.dataset.originalHtml) {
-                 commentItem.innerHTML = commentItem.dataset.originalHtml;
-            }
-        }
-
-        async function saveCommentEdit(postId, commentId) {
-            const textarea = document.getElementById(`edit-text-${commentId}`);
-            const newText = textarea.value.trim();
-            const commentItem = document.getElementById(`comment-item-${commentId}`);
-            
-            if (!newText) {
-                alert("Comment cannot be empty.");
-                return;
-            }
-
-            const user = auth.currentUser;
-            if (!user) return;
-
-            try {
-                // Update Firestore
-                await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).update({
-                    text: newText,
-                    // Note: Firestore Security Rules should ensure this update is only allowed by the comment author
-                });
-
-                // Refresh the comment section locally
-                loadComments(postId); 
-
-            } catch (error) {
-                console.error("Error saving comment edit:", error);
-                alert("Failed to save comment changes. Check security rules.");
             }
         }
 
@@ -836,67 +763,54 @@
             }
         }
 
-        // NEW: Reaction Handler (Updated to use REACTIONS map)
-        async function handleReactionClick(docId, newType) {
+        // --- LIKE POST (Unlike/Double-Liking Prevention) - Same) ---
+        async function likePost(docId) {
             const user = auth.currentUser;
             if (!user) {
-                alert("Please sign in to react to this announcement.");
+                alert("Please sign in with Google to like this announcement.");
                 return;
             }
-            
-            const uid = user.uid;
-            const reactionDocRef = db.collection('feedItems').doc(docId).collection('reactions').doc(uid);
-            
-            const currentReactionDoc = await reactionDocRef.get();
-            const currentType = currentReactionDoc.exists ? currentReactionDoc.data().type : 'none';
-            
-            const batch = db.batch();
-            
-            // Step 1: Decrement old reaction count (if one existed)
-            if (currentType !== 'none') {
-                batch.update(db.collection('feedItems').doc(docId), {
-                    [`reactions.${currentType}`]: firebase.firestore.FieldValue.increment(-1),
-                    totalReactions: firebase.firestore.FieldValue.increment(-1)
-                });
-            }
 
-            // Step 2: Set or Delete the user's reaction document
-            if (newType === 'none' || newType === currentType) {
-                // Delete reaction (Unreacting)
-                batch.delete(reactionDocRef);
-            } else {
-                // Set new reaction
-                batch.set(reactionDocRef, {
-                    type: newType,
-                    user: user.displayName || user.email,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true });
-                
-                // Increment new reaction count
-                batch.update(db.collection('feedItems').doc(docId), {
-                    [`reactions.${newType}`]: firebase.firestore.FieldValue.increment(1),
-                    totalReactions: firebase.firestore.FieldValue.increment(1)
-                });
-            }
+            const likeButton = document.getElementById(`like-btn-${docId}`);
+            const likeCountElement = document.getElementById(`like-count-${docId}`);
+            likeButton.disabled = true;
+
+            const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(user.uid);
 
             try {
-                await batch.commit();
-                // Re-render feed globally to update all counts and buttons
-                fetchFeed();
+                const likerDoc = await likerDocRef.get();
+                const isLiked = likerDoc.exists;
+
+                if (isLiked) {
+                    await db.collection('feedItems').doc(docId).update({
+                        likes: firebase.firestore.FieldValue.increment(-1)
+                    });
+                    await likerDocRef.delete();
+                    
+                    likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
+                    likeButton.classList.remove('liked');
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
+
+                } else {
+                    await db.collection('feedItems').doc(docId).update({
+                        likes: firebase.firestore.FieldValue.increment(1)
+                    });
+                    await likerDocRef.set({
+                        user: user.displayName || user.email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+
+                    likeCountElement.textContent = parseInt(likeCountElement.textContent) + 1;
+                    likeButton.classList.add('liked');
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
+                }
             } catch (error) {
-                console.error("Error processing reaction:", error);
-                alert("Failed to process reaction. Please try again.");
+                console.error("Error processing like action:", error);
+                alert("Failed to complete action. Check Firebase Security Rules.");
+            } finally {
+                setTimeout(() => { likeButton.disabled = false; }, 500);
             }
         }
-        window.handleReactionClick = handleReactionClick;
-
-
-        // --- LIKE POST (Deprecated, replaced by handleReactionClick) ---
-        async function likePost(docId) {
-            // Redirecting old likePost calls to the new generic handler
-            handleReactionClick(docId, 'like');
-        }
-
 
         // === COOLDOWN LOGIC & BUTTON HANDLER (Same) ===
         function startCooldown() {
@@ -1010,7 +924,7 @@
         }
         window.decodeContent = decodeContent;
 
-        // --- RENDER FEED (Fixed management button display & added new features) ---
+        // --- RENDER FEED (Fixed management button display) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -1065,8 +979,6 @@
                 }
 
                 // --- FIX: Escape and Encode Content for safe JS call ---
-                // This guarantees that any quotes or special characters in the title/content
-                // are safely passed as parameters to the JS function without breaking the HTML attribute string.
                 const safeTitle = encodeURIComponent(item.title || '');
                 const link = item.link || '';
                 const safeLink = encodeURIComponent(link);
@@ -1098,17 +1010,17 @@
                 const posterName = escapeHTML(item.user || 'System');
 
                 // --- Enhanced Link Preview Card HTML ---
-                // The structure for this card is local HTML/CSS, not dynamic scraping.
+                // NOTE: The inline style opacity:0.9 is added to ensure dark text is visible over the dark card header.
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
                             <div class="review-card-header">
-                                <span class="review-card-logo">EAGLEVIEW</span>
-                                <h4>QUICK UPDATE</h4>
-                                <div class="review-card-preview">
+                                <span class="review-card-logo" style="opacity:0.9;">EAGLEVIEW</span>
+                                <h4 style="opacity:0.9;">QUICK UPDATE</h4>
+                                <div class="review-card-preview" style="opacity:0.9;">
                                     <i class="fas fa-play"></i> Preview
                                 </div>
-                                <p style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">October 2025</p>
+                                <p style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); opacity:0.9;">October 2025</p>
                             </div>
                         </a>
                             <div class="review-card-body">
@@ -1171,7 +1083,6 @@
             
             // Re-check reaction status for all posts after rendering
             if (user) {
-                // FIX: Ensure checkReactionStatus runs for ALL posts
                 postsToRender.forEach(post => checkReactionStatus(post.id, user.uid));
             }
 
