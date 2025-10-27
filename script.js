@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             cacheDuration: 5 * 60 * 1000, // 5 minutes in milliseconds
-            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications" },
+            sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications", BACKUP: "Backup" }, // Added BACKUP
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
             USER_HEADER_MAP: { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
@@ -172,9 +172,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!projectSheet) throw new Error(`Sheet "${this.config.sheetNames.PROJECTS}" not found.`);
                 this.state.projectSheetId = projectSheet.properties.sheetId;
 
+                const ranges = [
+                    this.config.sheetNames.PROJECTS, 
+                    this.config.sheetNames.USERS, 
+                    this.config.sheetNames.DISPUTES, 
+                    this.config.sheetNames.EXTRAS, 
+                    this.config.sheetNames.NOTIFICATIONS, 
+                    this.config.sheetNames.ARCHIVE
+                ];
+                
                 const response = await gapi.client.sheets.spreadsheets.values.batchGet({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
-                    ranges: [this.config.sheetNames.PROJECTS, this.config.sheetNames.USERS, this.config.sheetNames.DISPUTES, this.config.sheetNames.EXTRAS, this.config.sheetNames.NOTIFICATIONS, this.config.sheetNames.ARCHIVE],
+                    ranges: ranges,
                 });
                 
                 const valueRanges = response.result.valueRanges;
@@ -225,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else headerMap = this.config.HEADER_MAP;
                 
                 const values = [headers.map(header => {
+                    // Search for the key in the reverse map (value to key)
                     const propName = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
                     return propName ? (dataObject[headerMap[propName]] !== undefined ? dataObject[headerMap[propName]] : "") : "";
                 })];
@@ -268,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!sheet) throw new Error(`Sheet "${sheetName}" not found.`);
                 const sheetId = sheet.properties.sheetId;
 
+                // Sort rows in descending order to avoid index shifting problems during batch delete
                 const sortedRows = rowsToDelete.sort((a, b) => b - a);
                 const requests = sortedRows.map(rowIndex => ({
                     deleteDimension: {
@@ -765,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
+                // Update local state before refresh
                 this.state.projects = this.state.projects.filter(p => !(p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete));
                 
                 this.renderProjectSettings();
@@ -789,6 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tasksToDelete.length > 0) {
                     const rowNumbersToDelete = tasksToDelete.map(p => p._row);
                     await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
+                    // Update local state before refresh
                     this.state.projects = this.state.projects.filter(p => p.baseProjectName !== baseProjectName);
                 }
         
@@ -828,13 +841,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 let lastFix = null;
                 let currentRowIndex = 1;
                 sortedProjects.forEach(project => {
-                    currentRowIndex++;
-                    if ( (lastProject !== null && project.baseProjectName !== lastProject) || (lastFix !== null && project.fixCategory !== lastFix) ) {
+                    // Check for Project separator
+                    if ( (lastProject !== null && project.baseProjectName !== lastProject) ) {
                          newSheetData.push(new Array(headers.length).fill(""));
                          currentRowIndex++;
+                         lastFix = null; // Reset Fix separator check after project break
                     }
+                    // Check for Fix separator
+                    if ( (lastFix !== null && project.fixCategory !== lastFix) ) {
+                        // Only add an extra separator if it's not immediately following a project separator (which adds one row)
+                        if (lastProject === project.baseProjectName) {
+                            newSheetData.push(new Array(headers.length).fill(""));
+                            currentRowIndex++;
+                        }
+                    }
+                    
                     const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
                     newSheetData.push(row);
+                    currentRowIndex++;
+
                     const color = this.config.FIX_COLORS[project.fixCategory];
                     if (color) {
                         formattingRequests.push({
@@ -849,6 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastFix = project.fixCategory;
                 });
 
+                // Clear existing content and formatting
                 await gapi.client.sheets.spreadsheets.values.clear({ spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2:Z`, });
                 const clearFormattingRequest = {
                     repeatCell: {
@@ -862,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     resource: { requests: [clearFormattingRequest] }
                 });
 
-
+                // Write the new data and apply formatting
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.PROJECTS}!A2`,
                     valueInputOption: 'USER_ENTERED', resource: { values: newSheetData }
@@ -1232,8 +1258,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0];
                 const newRow = [headers.map(h => {
-                    const propName = this.config.USER_HEADER_MAP[Object.keys(this.config.USER_HEADER_MAP).find(k => k.toLowerCase() === h.toLowerCase())];
-                    return user[propName] || "";
+                    // Find the sheet header corresponding to the property name in the user object
+                    const propName = Object.keys(this.config.USER_HEADER_MAP).find(k => k.toLowerCase() === h.toLowerCase());
+                    return user[this.config.USER_HEADER_MAP[propName]] || "";
                 })];
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
             }
@@ -1384,6 +1411,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selector = target.dataset.clipboardTarget;
                 const elementToCopy = document.querySelector(selector);
                 if (elementToCopy) {
+                    // Use textContent for span elements but try to use innerText or a more reliable method if possible
                     navigator.clipboard.writeText(elementToCopy.textContent.trim()).then(() => {
                         target.classList.add('copied');
                         setTimeout(() => target.classList.remove('copied'), 1500);
@@ -1460,10 +1488,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="settings-card" style="margin-top: 20px;">
-                        <h3><i class="fas fa-archive icon"></i> Archiving</h3>
-                        <p>Archive completed projects from the 21st of last month to the 20th of this month.</p>
+                        <h3><i class="fas fa-archive icon"></i> Archiving & Backup</h3>
+                        <p>Archive completed projects or create a full backup snapshot.</p>
                         <div class="btn-group">
                             <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Completed Projects</button>
+                            <button class="btn btn-primary" onclick="ProjectTrackerApp.handleBackupProjects()">Backup Projects (Snapshot)</button>
                             <button class="btn btn-secondary" onclick="ProjectTrackerApp.renderArchiveModal()">View Archive</button>
                         </div>
                     </div>
@@ -1506,7 +1535,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     { name: this.config.sheetNames.DISPUTES, map: this.config.DISPUTE_HEADER_MAP },
                     { name: this.config.sheetNames.EXTRAS, map: this.config.EXTRAS_HEADER_MAP },
                     { name: this.config.sheetNames.NOTIFICATIONS, map: this.config.NOTIFICATIONS_HEADER_MAP },
-                    { name: this.config.sheetNames.ARCHIVE, map: this.config.HEADER_MAP }
+                    { name: this.config.sheetNames.ARCHIVE, map: this.config.HEADER_MAP },
+                    { name: this.config.sheetNames.BACKUP, map: this.config.HEADER_MAP } // Added BACKUP sheet
                 ];
 
                 for (const config of sheetConfigs) {
@@ -1551,8 +1581,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm("This will scan for errors and orphaned rows. Continue?")) return;
             alert("Placeholder: Clean DB logic would run here.");
         },
-        // ... in script.js
-
         async handleArchiveProjects() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
             if (code !== "248617") { 
@@ -1592,7 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0];
         
-                // --- FIX 1: Sort projects before archiving for grouping/readability in the archive sheet ---
+                // FIX 1: Sort projects before archiving for grouping/readability in the archive sheet
                 const sortedProjectsToArchive = [...projectsToArchive].sort((a, b) => {
                     // Sort primarily by Project Name
                     if (a.baseProjectName < b.baseProjectName) return -1;
@@ -1609,20 +1637,69 @@ document.addEventListener('DOMContentLoaded', () => {
         
                 await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
                 
-                // --- FIX 2: Delete rows from Projects sheet and update local state ---
+                // FIX 2: Delete rows from Projects sheet and update local state
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
                 // Manually remove projects from the local state array for immediate dashboard consistency
                 const archivedIds = new Set(projectsToArchive.map(p => p.id));
                 this.state.projects = this.state.projects.filter(p => !archivedIds.has(p.id));
-
+        
                 await this.loadDataFromSheets(true);
                 alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
         
             } catch (error) {
                 alert("Error archiving projects: " + error.message);
                 await this.loadDataFromSheets(true);
+            } finally {
+                this.hideLoading();
+            }
+        },
+        async handleBackupProjects() {
+            const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
+            if (code !== "248617") { 
+                alert("Incorrect code. Operation cancelled."); 
+                return; 
+            }
+        
+            if (!confirm(`This will append a snapshot of ALL current projects to the "${this.config.sheetNames.BACKUP}" sheet. This is for recovery purposes only. Continue?`)) return;
+        
+            this.showLoading("Creating project backup...");
+            try {
+                if (this.state.projects.length === 0) {
+                    alert(`No active projects to back up.`);
+                    return;
+                }
+        
+                const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.google.SPREADSHEET_ID,
+                    range: `${this.config.sheetNames.PROJECTS}!1:1`,
+                });
+                const headers = getHeaders.result.values[0];
+                
+                // Add a timestamp header row to the backup
+                const backupTimestampRow = new Array(headers.length).fill("");
+                if (headers.includes('id')) {
+                    const idIndex = headers.indexOf('id');
+                    backupTimestampRow[idIndex] = `BACKUP SNAPSHOT: ${new Date().toLocaleString()}`;
+                } else {
+                    backupTimestampRow[0] = `BACKUP SNAPSHOT: ${new Date().toLocaleString()}`;
+                }
+                const rowsToAppend = [backupTimestampRow, headers]; // Write timestamp, then headers
+                
+                // Prepare project data rows
+                this.state.projects.forEach(project => {
+                    const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                    rowsToAppend.push(row);
+                });
+        
+                await this.appendRowsToSheet(this.config.sheetNames.BACKUP, rowsToAppend);
+        
+                alert(`Successfully backed up ${this.state.projects.length} projects to the "${this.config.sheetNames.BACKUP}" sheet.`);
+        
+            } catch (error) {
+                alert("Error creating backup: " + error.message);
+                console.error("Backup Error:", error);
             } finally {
                 this.hideLoading();
             }
@@ -1812,6 +1889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 "Extras": Object.keys(this.config.EXTRAS_HEADER_MAP),
                 "Archive": Object.keys(this.config.HEADER_MAP),
                 "Notifications": Object.keys(this.config.NOTIFICATIONS_HEADER_MAP),
+                "Backup": Object.keys(this.config.HEADER_MAP), // Added Backup
             };
 
             let content = '';
