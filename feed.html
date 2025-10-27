@@ -9,7 +9,7 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     
     <style>
-        /* BASE & LAYOUT (Modified to accommodate right panel) */
+        /* BASE & LAYOUT (Same) */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
             background-color: #e9ebee; 
@@ -20,7 +20,7 @@
             overflow-x: hidden; 
         }
         
-        /* Sidebar Styling (Left Sidebar - Width fixed) */
+        /* Sidebar Styling (Fixed height and overflow) */
         #sidebar {
             width: 250px;
             background-color: #ffffff;
@@ -30,7 +30,6 @@
             height: 100%; 
             overflow-y: auto;
             border-right: 1px solid #dcdde1;
-            z-index: 10; /* Ensure sidebar is above main content */
         }
         #sidebar h3 {
             color: #2c3e50;
@@ -47,73 +46,23 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-
-        /* --- Right Side Panel for PCS Tools --- */
-        #rightPanel {
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 280px; /* Wider than the quick jump box */
-            height: 100%;
-            background-color: #f8f9fa; /* Slightly darker than main body */
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-            padding: 20px 15px;
-            overflow-y: auto;
-            z-index: 5;
-        }
-        #rightPanel h3 {
-             color: #2c3e50;
-             margin-top: 0;
-             border-bottom: 2px solid #bdc3c7;
-             padding-bottom: 10px;
-             margin-bottom: 15px;
-             font-size: 1.1em;
-             font-weight: bold;
-        }
-        .tool-link {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #ffffff;
-            border-radius: 6px;
-            text-decoration: none;
+        .filter-link {
+            display: block;
+            padding: 8px 0;
             color: #34495e;
-            font-size: 0.95em;
-            transition: background-color 0.2s, color 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            border-left: 3px solid #2ecc71;
+            text-decoration: none;
+            border-bottom: 1px dashed #ecf0f1;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: color 0.2s;
         }
-        .tool-link:hover {
-            background-color: #e8f5e9; /* Light green hover */
-            color: #27ae60;
+        .filter-link:hover {
+            color: #3498db;
         }
-        .tool-link i {
-            margin-right: 12px;
-            color: #2ecc71; /* Green for download/external link */
-            font-size: 1.2em;
-        }
-        /* ------------------------------- */
-        
-        /* Main Content Area (CORRECTED MARGINS) */
-        .main-content { 
-            margin-left: 250px; /* Clear space for left sidebar */
-            margin-right: 280px; /* Clear space for right panel */
-            flex-grow: 1; 
-            padding: 20px; 
-            display: flex; 
-            justify-content: center; 
-            width: calc(100% - 530px); /* 100% minus 250px left and 280px right */
-        }
-        .feed-container { max-width: 700px; width: 100%; position: relative; }
-        h1 { color: #2c3e50; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
-        h2 { color: #2c3e50; margin-top: 20px; padding-bottom: 5px; border-bottom: 1px solid #dcdde1; }
-        
-        /* --- Quick Jump & Status Styles (Rest of styles remain largely the same) --- */
 
         /* --- NEW: Quick Jump Styling --- */
         #quickJumpBox {
-            margin-top: 5px; 
+            margin-top: 5px; /* Reduced margin */
             padding: 10px;
             border: 1px solid #dcdde1;
             border-radius: 6px;
@@ -155,6 +104,12 @@
             color: #2980b9;
         }
         /* ------------------------------- */
+
+        /* Main Content Area (Same) */
+        .main-content { margin-left: 250px; flex-grow: 1; padding: 20px; display: flex; justify-content: center; width: calc(100% - 250px); }
+        .feed-container { max-width: 700px; width: 100%; position: relative; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
+        h2 { color: #2c3e50; margin-top: 20px; padding-bottom: 5px; border-bottom: 1px solid #dcdde1; }
         
         /* Auth Status Bar (Same) */
         #userStatus { background-color: #ffffff; border: 1px solid #dcdde1; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; }
@@ -239,10 +194,10 @@
         .comment-meta { font-weight: bold; color: #7f8c8d; font-size: 0.8em; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;}
         .comment-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 40px; margin-top: 5px; }
         .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
-        .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 5px; } /* Reduced margin */
+        .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
         .comment-actions button { margin-left: 5px; } /* Space out actions */
         
-        /* --- TEAMS/SHAREPOINT STYLE CARD --- */
+        /* --- NEW: TEAMS/SHAREPOINT STYLE CARD --- */
         .media-card-container {
             margin-top: 15px; 
             max-width: 400px; 
@@ -372,7 +327,7 @@
             display: block; 
         }
         
-        /* Modal Styling (Updated to include PCS Manager tab) */
+        /* Modal Styling (Same) */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
         .modal-content { background-color: #ffffff; margin: 5% auto; padding: 30px; border: none; width: 80%; max-width: 700px; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23); }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.2s; }
@@ -389,67 +344,6 @@
         #managementArea input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #dcdde1; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
         .quill-editor-container { margin-bottom: 15px; }
         .quill-editor-container .ql-editor { min-height: 150px; }
-
-        /* Tabs for Management Modal */
-        .modal-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #dcdde1;
-        }
-        .modal-tab-button {
-            padding: 10px 15px;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            font-weight: bold;
-            color: #7f8c8d;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
-        .modal-tab-button.active {
-            color: #3498db;
-            border-bottom: 3px solid #3498db;
-        }
-
-        /* PCS Tools Manager specific styles */
-        #pcsToolsList {
-            margin-top: 15px;
-        }
-        .pcs-tool-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px dotted #ccc;
-        }
-        .pcs-tool-item:hover {
-            background-color: #f8f8f8;
-        }
-        .pcs-tool-item span {
-            font-size: 0.9em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 70%;
-        }
-        .pcs-tool-actions button {
-            background: #ecf0f1;
-            border: 1px solid #dcdde1;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-        .pcs-tool-actions button:hover {
-            background: #bdc3c7;
-        }
-        .pcs-tool-actions button.delete-btn {
-            color: #e74c3c;
-        }
-        
-        .modal-content.wide { max-width: 900px; }
-
     </style>
 </head>
 <body>
@@ -470,18 +364,7 @@
                 </div>
             </div>
         </div>
-        
-    </div>
-    
-    <div id="rightPanel">
-        <h3><i class="fas fa-toolbox"></i> PCS Tools & Downloads</h3>
-        <div id="pcsToolsOutput">
-            <p style="font-size: 0.8em; color: #7f8c8d;">Loading tools...</p>
-            </div>
-        <p style="font-size: 0.75em; color: #7f8c8d; margin-top: 15px;">
-            *Links open Google Drive. Access may be restricted.
-        </p>
-    </div>
+        </div>
     <div class="main-content">
         <div class="feed-container">
             <h1>Project Updates Feed</h1>
@@ -538,73 +421,41 @@
     </div>
 
     <div id="managementModal" class="modal">
-      <div class="modal-content wide">
+      <div class="modal-content modal-pin-content">
         <span class="close-btn" onclick="closeModal('managementModal')">&times;</span>
         <div id="pinEntry">
             <h2><i class="fas fa-unlock-alt"></i> Management Access</h2>
-            <p>Enter PIN to access management features (includes post editing AND tool management):</p>
+            <p>Enter PIN to access post management features:</p>
             <input type="password" id="pinInput" placeholder="Enter PIN (2486)" maxlength="4">
             <button onclick="checkPin()">Submit</button>
             <p id="pinError" style="color: red; margin-top: 10px;"></p>
         </div>
 
         <div id="managementArea" style="display:none;">
+            <h2><i class="fas fa-edit"></i> Edit Announcement</h2>
+            <input type="hidden" id="editPostId">
+            <input type="text" id="editTitle" placeholder="Title">
+            <input type="text" id="editLink" placeholder="Link to PDF/Media">
             
-            <div class="modal-tabs">
-                <button class="modal-tab-button active" onclick="switchManagementTab('postEditTab')">
-                    <i class="fas fa-edit"></i> Edit Announcement
-                </button>
-                <button class="modal-tab-button" onclick="switchManagementTab('pcsToolsTab')">
-                    <i class="fas fa-tools"></i> Manage PCS Tools
+            <div class="quill-editor-container">
+                <div id="editPostEditor"></div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                 <button type="button" id="pinToggleButton" class="btn btn-secondary" onclick="togglePinStatus(document.getElementById('editPostId').value)">
+                    <i class="fas fa-thumbtack"></i> Pin/Unpin
                 </button>
             </div>
             
-            <div id="postEditTab">
-                <h2>Edit Announcement</h2>
-                <input type="hidden" id="editPostId">
-                <input type="text" id="editTitle" placeholder="Title">
-                <input type="text" id="editLink" placeholder="Link to PDF/Media">
-                
-                <div class="quill-editor-container">
-                    <div id="editPostEditor"></div>
-                </div>
-                
-                <div style="text-align: center; margin-bottom: 15px;">
-                     <button type="button" id="pinToggleButton" class="btn btn-secondary" onclick="togglePinStatus(document.getElementById('editPostId').value)">
-                        <i class="fas fa-thumbtack"></i> Pin/Unpin
-                    </button>
-                </div>
-                
-                <div class="modal-button-group">
-                    <button type="button" class="btn-secondary" onclick="closeModal('managementModal')">
-                        <i class="fas fa-times"></i> Cancel</button>
-                    <button onclick="saveEdit()" class="btn-primary">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                </div>
-
-                <p id="editStatus" style="color: green; margin-top: 10px;"></p>
+            <div class="modal-button-group">
+                <button type="button" class="btn-secondary" onclick="closeModal('managementModal')">
+                    <i class="fas fa-times"></i> Cancel</button>
+                <button onclick="saveEdit()" class="btn-primary">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
             </div>
 
-            <div id="pcsToolsTab" style="display: none;">
-                <h2>Manage PCS Tool Links</h2>
-                
-                <form id="newPcsToolForm" onsubmit="event.preventDefault(); savePcsTool();">
-                    <input type="hidden" id="toolId">
-                    <input type="text" id="toolTitle" placeholder="Tool Name (e.g., Batch Processor Script)" required>
-                    <input type="text" id="toolLink" placeholder="Google Drive Share Link (https://drive.google.com/...)" required>
-                    <div class="modal-button-group" style="margin-top: 10px; justify-content: flex-start;">
-                        <button type="submit" id="pcsToolSubmitBtn" class="btn-primary" style="padding: 8px 15px;">
-                            <i class="fas fa-plus"></i> Add New Tool
-                        </button>
-                    </div>
-                </form>
-
-                <h3 style="margin-top: 30px;"><i class="fas fa-list"></i> Current Tool Links</h3>
-                <div id="pcsToolsList">
-                    <p>Loading tools for management...</p>
-                </div>
-            </div>
+            <p id="editStatus" style="color: green; margin-top: 10px;"></p>
         </div>
       </div>
     </div>
@@ -632,8 +483,8 @@
         // --- STATE & INITIALIZATION ---
         let isAdmin = false; 
         let allPosts = []; 
-        let allPcsTools = []; // New state array for tools
         const openCommentSections = new Set(); 
+        // Cooldown State
         let isCooldownActive = false;
         
         // Initialize Firebase services
@@ -649,32 +500,42 @@
         const outputElement = document.getElementById('feedOutput');
         const searchBar = document.getElementById('searchBar');
         const newPostModal = document.getElementById('newPostModal');
+        const formElement = document.getElementById('newPostForm');
+        const postButton = document.getElementById('postButton');
+        const postStatusElement = document.getElementById('postStatus');
         const managementModal = document.getElementById('managementModal');
         const authMessage = document.getElementById('authMessage');
         const signInBtn = document.getElementById('signInBtn');
         const signOutBtn = document.getElementById('signOutBtn');
         const pinInput = document.getElementById('pinInput');
         const pinEntryArea = document.getElementById('pinEntry');
+        const pinError = document.getElementById('pinError');
+        const editPostId = document.getElementById('editPostId');
+        const editTitle = document.getElementById('editTitle');
+        const editLink = document.getElementById('editLink');
+        const editContent = document.getElementById('editContent');
+        const editStatus = document.getElementById('editStatus');
         const managementArea = document.getElementById('managementArea');
+        const settingsIcon = document.getElementById('settingsIcon');
+        const postIcon = document.getElementById('postIcon');
+        const quickJumpList = document.getElementById('quickJumpList'); 
+        // Refresh Icon
         const refreshIcon = document.getElementById('refreshFeedIcon');
+        // Notification Bell
         const notificationBell = document.getElementById('notificationBell');
-        
-        // PCS Tool specific elements
-        const pcsToolsOutput = document.getElementById('pcsToolsOutput');
-        const pcsToolsList = document.getElementById('pcsToolsList');
-        const newPcsToolForm = document.getElementById('newPcsToolForm');
-        const toolIdInput = document.getElementById('toolId');
-        const toolTitleInput = document.getElementById('toolTitle');
-        const toolLinkInput = document.getElementById('toolLink');
-        const pcsToolSubmitBtn = document.getElementById('pcsToolSubmitBtn');
 
 
         // --- HELPER FUNCTIONS ---
+        // Check Like Status (Moved up for reliable calling)
         async function checkLikeStatus(docId, uid) {
             const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(uid);
             const likeButton = document.getElementById(`like-btn-${docId}`);
+            
             if (!likeButton) return;
+
             try {
+                // NOTE: With Firestore persistence enabled, this read operation 
+                // will primarily hit the local cache, drastically reducing billable reads.
                 const likerDoc = await likerDocRef.get();
                 if (likerDoc.exists) {
                     likeButton.classList.add('liked');
@@ -688,6 +549,7 @@
             }
         }
         
+        // --- LIKER HOVER LOGIC ---
         async function showLikers(docId, element) {
             const likersRef = db.collection('feedItems').doc(docId).collection('likers');
             try {
@@ -699,6 +561,7 @@
                         likerNames.push(escapeHTML(data.user));
                     }
                 });
+
                 if (likerNames.length === 0) {
                     element.title = "No likes yet. Be the first!";
                 } else {
@@ -711,6 +574,7 @@
         }
         window.showLikers = showLikers; 
         
+        // Render HTML (Moved up)
         const renderHTML = (html) => {
             if (!html) return '';
             const cleanHtml = DOMPurify.sanitize(html, {ALLOWED_TAGS: ['b', 'i', 'u', 's', 'p', 'br', 'a', 'strong', 'em', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'hr'], ADD_ATTR: ['target', 'href', 'style']});
@@ -727,7 +591,9 @@
         const linkify = (text) => {
             if (!text) return '';
             const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+            
             const tempText = text.replace(/</g, '&lt;').replace(/&gt;/g, '&gt;');
+
             return tempText.replace(urlRegex, (url) => {
                 return `<a href="${url}" target="_blank" style="color: #3498db; text-decoration: underline;">${url}</a>`;
             }).replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -743,6 +609,7 @@
             }
         }
 
+        // --- NEW: LINK TYPE UTILITY FOR MEDIA CARDS ---
         function getLinkType(url) {
             if (!url) return null;
             if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
@@ -751,6 +618,7 @@
             return 'generic';
         }
 
+        // Debounce function for stable search input
         function debounce(func, delay = 300) {
             let timeoutId;
             return function(...args) {
@@ -763,235 +631,29 @@
             };
         }
         
-        // --- AUTHENTICATION FUNCTIONS (FIXED SHOW/HIDE LOGIC) ---
+        // --- AUTHENTICATION FUNCTIONS (Modified for Notifications) ---
         function setupAuthObserver() {
             auth.onAuthStateChanged(user => {
                 if (user) {
-                    // Update last login
+                    authMessage.innerHTML = `<i class="fas fa-user-circle"></i> Signed in as: <b>${escapeHTML(user.displayName)}</b>`;
+                    signInBtn.style.display = 'none';
+                    signOutBtn.style.display = 'block';
+                    
+                    // Log last login/activity for notification tracking
                     db.collection('users').doc(user.uid).set({
                         displayName: user.displayName || user.email,
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
                     }, { merge: true });
 
-                    authMessage.innerHTML = `<i class="fas fa-user-circle"></i> Signed in as: <b>${escapeHTML(user.displayName)}</b>`;
-                    signInBtn.style.display = 'none';
-                    signOutBtn.style.display = 'block';
                 } else {
                     authMessage.innerHTML = '<i class="fas fa-user-times"></i> You must sign in to Like or Comment.';
-                    // FIX: Ensure Sign In button is shown when signed out
-                    signInBtn.style.display = 'block'; 
+                    signInBtn.style.display = 'block';
                     signOutBtn.style.display = 'none';
                 }
+                // Refresh feed to update like/comment buttons/notifications based on auth status
                 filterFeed(); 
             });
         }
-        
-        // --- MODAL & PIN MANAGEMENT ---
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        function openNewPostModal() {
-            const user = auth.currentUser;
-            if (!user) {
-                alert("You must be signed in to post an announcement.");
-                return;
-            }
-
-            document.getElementById('postStatus').style.display = 'none';
-            document.getElementById('newPostForm').reset();
-            newPostEditor.setContents([]); 
-            document.getElementById('newPostModal').style.display = 'block';
-            document.getElementById('postUser').value = user.displayName || user.email;
-        }
-
-        function openPinModal() {
-            pinEntryArea.style.display = 'block';
-            managementArea.style.display = 'none';
-            pinInput.value = '';
-            document.getElementById('pinError').textContent = '';
-            document.getElementById('managementModal').style.display = 'block';
-            
-            switchManagementTab('postEditTab');
-            document.getElementById('postEditTab').style.display = 'none';
-            document.getElementById('pcsToolsTab').style.display = 'none';
-        }
-
-        function checkPin() {
-            if (pinInput.value === ADMIN_PIN) {
-                isAdmin = true;
-                pinEntryArea.style.display = 'none';
-                managementArea.style.display = 'block';
-                
-                switchManagementTab('postEditTab'); 
-                loadPcsToolsListForManager();
-
-                filterFeed(); 
-            } else {
-                document.getElementById('pinError').textContent = 'Incorrect PIN.';
-                pinInput.value = '';
-            }
-        }
-        
-        function switchManagementTab(tabId) {
-            if (!isAdmin) return;
-
-            const tabs = ['postEditTab', 'pcsToolsTab'];
-            
-            tabs.forEach(id => {
-                document.getElementById(id).style.display = 'none';
-            });
-            document.querySelectorAll('.modal-tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            document.getElementById(tabId).style.display = 'block';
-            document.querySelector(`.modal-tab-button[onclick="switchManagementTab('${tabId}')"]`).classList.add('active');
-
-            if (tabId === 'pcsToolsTab') {
-                resetPcsToolForm();
-                loadPcsToolsListForManager();
-            }
-        }
-        window.switchManagementTab = switchManagementTab;
-        
-        // --- PCS TOOLS LOGIC ---
-        
-        async function renderPcsTools() {
-            pcsToolsOutput.innerHTML = '<p style="font-size: 0.8em; color: #7f8c8d;"><i class="fas fa-spinner fa-spin"></i> Loading tools...</p>';
-
-            try {
-                const snapshot = await db.collection('pcsTools').orderBy('title', 'asc').get();
-                allPcsTools = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-
-                if (allPcsTools.length === 0) {
-                    pcsToolsOutput.innerHTML = '<p style="font-size: 0.8em; color: #7f8c8d;">No tools links available yet.</p>';
-                    return;
-                }
-
-                let html = '';
-                allPcsTools.forEach(tool => {
-                    const iconClass = tool.data.link.includes('drive.google.com') ? 'fab fa-google-drive' : 'fas fa-external-link-alt';
-                    html += `
-                        <a href="${escapeHTML(tool.data.link)}" class="tool-link" target="_blank">
-                            <i class="${iconClass}"></i> ${escapeHTML(tool.data.title)}
-                        </a>
-                    `;
-                });
-                pcsToolsOutput.innerHTML = html;
-
-            } catch (error) {
-                console.error("Error fetching PCS tools:", error);
-                pcsToolsOutput.innerHTML = '<p style="font-size: 0.8em; color: #c0392b;">Failed to load tools. Check Firebase Security Rules for "pcsTools" collection.</p>';
-            }
-        }
-
-        function loadPcsToolsListForManager() {
-            pcsToolsList.innerHTML = '';
-            
-            if (allPcsTools.length === 0) {
-                 pcsToolsList.innerHTML = '<p style="font-size: 0.8em; color: #7f8c8d;">No tools defined. Add one above.</p>';
-                 return;
-            }
-
-            let html = '';
-            allPcsTools.forEach(tool => {
-                const docId = tool.id;
-                const toolTitle = escapeHTML(tool.data.title);
-                const toolLink = escapeHTML(tool.data.link);
-                
-                const safeTitle = toolTitle.replace(/'/g, "\\'"); 
-                const safeLink = toolLink.replace(/'/g, "\\'"); 
-
-                html += `
-                    <div class="pcs-tool-item">
-                        <span>${toolTitle}</span>
-                        <div class="pcs-tool-actions">
-                            <button onclick="openEditPcsTool('${docId}', '${safeTitle}', '${safeLink}')">Edit</button>
-                            <button class="delete-btn" onclick="deletePcsTool('${docId}')">Delete</button>
-                        </div>
-                    </div>
-                `;
-            });
-            pcsToolsList.innerHTML = html;
-        }
-
-        async function savePcsTool() {
-            if (!isAdmin) return;
-            
-            const id = toolIdInput.value;
-            const title = toolTitleInput.value.trim();
-            const link = toolLinkInput.value.trim();
-            
-            if (!title || !link) return;
-
-            pcsToolSubmitBtn.disabled = true;
-            pcsToolSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-            try {
-                if (id) {
-                    await db.collection('pcsTools').doc(id).update({ title, link });
-                } else {
-                    await db.collection('pcsTools').add({ title, link });
-                }
-                
-                alert(`Tool ${id ? 'updated' : 'added'} successfully!`);
-                resetPcsToolForm();
-                await fetchFeedAndTools(); 
-                loadPcsToolsListForManager();
-
-            } catch (error) {
-                console.error("Error saving PCS tool:", error);
-                alert("Failed to save tool. Check Firebase Security Rules for 'pcsTools' collection.");
-            } finally {
-                pcsToolSubmitBtn.disabled = false;
-                pcsToolSubmitBtn.innerHTML = id ? '<i class="fas fa-save"></i> Save Changes' : '<i class="fas fa-plus"></i> Add New Tool';
-            }
-        }
-        window.savePcsTool = savePcsTool;
-
-        function openEditPcsTool(id, title, link) {
-            toolIdInput.value = id;
-            toolTitleInput.value = title;
-            toolLinkInput.value = link;
-            pcsToolSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-        }
-        window.openEditPcsTool = openEditPcsTool;
-        
-        function resetPcsToolForm() {
-            newPcsToolForm.reset();
-            toolIdInput.value = '';
-            pcsToolSubmitBtn.innerHTML = '<i class="fas fa-plus"></i> Add New Tool';
-        }
-        window.resetPcsToolForm = resetPcsToolForm;
-
-        async function deletePcsTool(id) {
-            if (!isAdmin) return;
-            if (!confirm("Are you sure you want to delete this tool link?")) return;
-
-            try {
-                await db.collection('pcsTools').doc(id).delete();
-                alert("Tool link deleted successfully!");
-                
-                await fetchFeedAndTools();
-                loadPcsToolsListForManager();
-
-            } catch (error) {
-                console.error("Error deleting PCS tool:", error);
-                alert("Failed to delete tool. Check Firebase Security Rules for 'pcsTools' collection.");
-            }
-        }
-        window.deletePcsTool = deletePcsTool;
-
-        // --- FETCH ALL DATA (Combined) ---
-        async function fetchFeedAndTools() {
-            await Promise.all([
-                fetchFeed(),
-                renderPcsTools()
-            ]);
-        }
-        
-        // --- Core Functions (included for completeness) ---
 
         function googleSignIn() {
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -1000,7 +662,6 @@
                 alert(`Sign-in failed: ${error.message}`);
             });
         }
-        window.googleSignIn = googleSignIn;
 
         function signOutUser() {
             auth.signOut().catch(error => {
@@ -1008,8 +669,54 @@
                 alert(`Sign-out failed: ${error.message}`);
             });
         }
-        window.signOutUser = signOutUser;
+
+
+        // --- MODAL & PIN MANAGEMENT (Same) ---
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
         
+        function openNewPostModal() {
+            // Restrict posting to signed-in users
+            const user = auth.currentUser;
+            if (!user) {
+                alert("You must be signed in to post an announcement.");
+                return;
+            }
+
+            postStatusElement.style.display = 'none';
+            document.getElementById('newPostForm').reset();
+            newPostEditor.setContents([]); 
+            newPostModal.style.display = 'block';
+
+            // Set the hidden user input field with the signed-in user's name
+            document.getElementById('postUser').value = user.displayName || user.email;
+        }
+
+        function closeNewPostModal() {
+            closeModal('newPostModal');
+        }
+
+        function openPinModal() {
+            pinEntryArea.style.display = 'block';
+            managementArea.style.display = 'none';
+            pinInput.value = '';
+            pinError.textContent = '';
+            editStatus.textContent = '';
+            managementModal.style.display = 'block';
+        }
+
+        function checkPin() {
+            if (pinInput.value === ADMIN_PIN) {
+                isAdmin = true;
+                closeModal('managementModal');
+                filterFeed(); 
+            } else {
+                pinError.textContent = 'Incorrect PIN.';
+                pinInput.value = '';
+            }
+        }
+
         function toggleComments(docId) {
             const commentSection = document.getElementById(`comments-${docId}`);
             if (!commentSection) return;
@@ -1031,6 +738,7 @@
             commentList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading comments...';
 
             try {
+                // NOTE: Persistence enabled below helps minimize reads here as well.
                 const snapshot = await db.collection('feedItems').doc(docId).collection('comments').orderBy('timestamp', 'asc').get();
                 
                 if (snapshot.empty) {
@@ -1060,6 +768,7 @@
                     const editedLabel = comment.edited ? ' (Edited)' : '';
                     const commentText = linkify(escapeHTML(comment.text)); 
                     
+                    // Add an ID to the comment-item for easy access
                     html += `
                         <div class="comment-item" id="comment-item-${commentId}">
                             <div id="comment-display-${commentId}">${commentText}</div>
@@ -1090,10 +799,15 @@
             }
         }
         
+        // --- COMMENT EDITING LOGIC ---
         function openCommentEditor(postId, commentId) {
+            // Ensure the textarea is populated with the current text
             const currentTextElement = document.getElementById(`comment-display-${commentId}`);
             const editTextArea = document.getElementById(`edit-text-${commentId}`);
+
+            // Set the value from the content (unescaped)
             editTextArea.value = currentTextElement.textContent; 
+
             currentTextElement.style.display = 'none';
             document.getElementById(`comment-edit-form-${commentId}`).style.display = 'block';
         }
@@ -1109,17 +823,23 @@
                 alert("Comment text cannot be empty.");
                 return;
             }
+
             try {
                 await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).update({
                     text: newText,
                     edited: true,
                 });
+                
+                // Reload comments to show the updated text and close the editor
                 loadComments(postId); 
             } catch (error) {
                 console.error("Error saving comment edit:", error);
                 alert("Failed to update comment. Check Firebase Security Rules.");
             }
         }
+        window.openCommentEditor = openCommentEditor;
+        window.closeCommentEditor = closeCommentEditor;
+        window.saveCommentEdit = saveCommentEdit;
 
         async function deleteComment(postId, commentId) {
             if (!confirm("Are you sure you want to delete your comment?")) return;
@@ -1128,6 +848,7 @@
                  alert("You must be signed in to delete a comment.");
                  return;
             }
+
             try {
                 await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).delete();
                 loadComments(postId); 
@@ -1136,30 +857,81 @@
                 alert("Failed to delete comment. Check Firebase Security Rules.");
             }
         }
-        
+
+
+        // --- ADD COMMENT - Requires Auth (Same) ---
+        async function addComment(docId) {
+            const user = auth.currentUser;
+            if (!user) {
+                alert("Please sign in with Google to post a comment.");
+                return;
+            }
+
+            const textarea = document.getElementById(`comment-text-${docId}`);
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            textarea.disabled = true;
+            const submitButton = document.querySelector(`#comment-form-${docId} button`);
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                await db.collection('feedItems').doc(docId).collection('comments').add({
+                    text: text,
+                    user: user.displayName || user.email, 
+                    uid: user.uid, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+
+                textarea.value = ''; 
+                loadComments(docId); 
+
+            } catch (error) {
+                console.error("Error adding comment:", error);
+                alert("Failed to post comment. Check Firebase Security Rules for sub-collection write access (allow create if request.auth != null).");
+            } finally {
+                textarea.disabled = false;
+                submitButton.innerHTML = 'Comment';
+            }
+        }
+
+        // --- LIKE POST (Unlike/Double-Liking Prevention) - Same) ---
         async function likePost(docId) {
             const user = auth.currentUser;
             if (!user) {
                 alert("Please sign in with Google to like this announcement.");
                 return;
             }
+
             const likeButton = document.getElementById(`like-btn-${docId}`);
             const likeCountElement = document.getElementById(`like-count-${docId}`);
             likeButton.disabled = true;
+
             const likerDocRef = db.collection('feedItems').doc(docId).collection('likers').doc(user.uid);
+
             try {
                 const likerDoc = await likerDocRef.get();
                 const isLiked = likerDoc.exists;
 
                 if (isLiked) {
-                    await db.collection('feedItems').doc(docId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
+                    await db.collection('feedItems').doc(docId).update({
+                        likes: firebase.firestore.FieldValue.increment(-1)
+                    });
                     await likerDocRef.delete();
+                    
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
                     likeButton.classList.remove('liked');
                     likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
+
                 } else {
-                    await db.collection('feedItems').doc(docId).update({ likes: firebase.firestore.FieldValue.increment(1) });
-                    await likerDocRef.set({ user: user.displayName || user.email, timestamp: firebase.firestore.FieldValue.serverTimestamp(), }, { merge: true });
+                    await db.collection('feedItems').doc(docId).update({
+                        likes: firebase.firestore.FieldValue.increment(1)
+                    });
+                    await likerDocRef.set({
+                        user: user.displayName || user.email,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) + 1;
                     likeButton.classList.add('liked');
                     likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
@@ -1171,74 +943,85 @@
                 setTimeout(() => { likeButton.disabled = false; }, 500);
             }
         }
-        
+
+        // === COOLDOWN LOGIC & BUTTON HANDLER (Same) ===
+        function startCooldown() {
+            isCooldownActive = true;
+            
+            refreshIcon.classList.add('fa-spin', 'cooldown');
+            refreshIcon.title = 'Refreshing...';
+            refreshIcon.style.cursor = 'not-allowed';
+
+            // Stop the spinning animation quickly, but keep cooldown state
+            setTimeout(() => {
+                refreshIcon.classList.remove('fa-spin');
+                refreshIcon.title = `On cooldown. Next refresh in ${REFRESH_COOLDOWN_MS / 60000} minutes.`;
+            }, 1000); 
+
+            // End Cooldown (5 minutes)
+            setTimeout(() => {
+                isCooldownActive = false;
+                refreshIcon.classList.remove('cooldown');
+                refreshIcon.title = 'Refresh Feed (5 min cooldown)';
+                refreshIcon.style.cursor = 'pointer';
+                alert("Feed refresh is now available.");
+            }, REFRESH_COOLDOWN_MS);
+        }
+
         function handleRefreshClick() {
             if (isCooldownActive) {
                 alert("Feed refresh is on cooldown. Please wait before refreshing again.");
                 return;
             }
+            
             startCooldown(); 
-            fetchFeedAndTools();
+            fetchFeed(); // No arguments needed, as it uses the same core logic
         }
-
-        async function fetchFeed() {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    outputElement.classList.add('status-message');
-                    outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
-
-                    const pinnedSnapshot = await db.collection('feedItems')
-                        .where('isPinned', '==', true)
-                        .orderBy('timestamp', 'desc')
-                        .get();
-                    
-                    const unpinnedSnapshot = await db.collection('feedItems')
-                        .where('isPinned', '==', false)
-                        .orderBy('timestamp', 'desc')
-                        .get();
-                    
-                    const allPostsSnapshot = await db.collection('feedItems')
-                        .orderBy('timestamp', 'desc')
-                        .get();
-                    
-                    const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-                    const unpinnedPosts = unpinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-
-                    const postIds = new Set(pinnedPosts.map(p => p.id));
-                    unpinnedPosts.forEach(p => postIds.add(p.id));
-                    
-                    const otherPosts = allPostsSnapshot.docs
-                        .filter(doc => !postIds.has(doc.id)) 
-                        .map(doc => ({ id: doc.id, data: doc.data() }));
-
-                    allPosts = pinnedPosts.concat(unpinnedPosts).concat(otherPosts);
-                    
-                    if (allPosts.length === 0) {
-                        outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
-                        allPosts = [];
-                        renderQuickJumpList();
-                        checkNewPosts();
-                        resolve();
-                        return;
-                    }
-
-                    renderFeed(allPosts);
-                    resolve();
-
-                } catch (error) {
-                    console.error("Firebase Fetch Error:", error);
-                    outputElement.classList.add('status-message');
-                    outputElement.style.color = '#c0392b';
-                    outputElement.innerHTML = `
-                        <i class="fas fa-skull-crossbones"></i> **ERROR: Failed to fetch data.** <br> 
-                        Check Firebase Security Rules.
-                    `;
-                    checkNewPosts();
-                    reject(error);
-                }
-            });
-        }
+        // ========================================
         
+        // === PIN FEATURE LOGIC (Same) ===
+        async function togglePinStatus(docId) {
+            if (!isAdmin) {
+                alert("Access Denied. Only an Admin can pin posts.");
+                return;
+            }
+            const user = auth.currentUser;
+            if (!user) return; 
+
+            const post = allPosts.find(p => p.id === docId);
+            if (!post) return;
+
+            const isCurrentlyPinned = post.data.isPinned;
+            const newStatus = !isCurrentlyPinned;
+            const pinnedBy = newStatus ? (user.displayName || user.email) : '';
+            
+            const pinToggleButton = document.getElementById('pinToggleButton');
+            pinToggleButton.disabled = true;
+
+            try {
+                await db.collection('feedItems').doc(docId).update({
+                    isPinned: newStatus,
+                    pinnedBy: pinnedBy,
+                });
+
+                // Update in-memory state
+                post.data.isPinned = newStatus;
+                post.data.pinnedBy = pinnedBy;
+
+                alert(`Announcement ${newStatus ? 'pinned' : 'unpinned'} successfully!`);
+                closeModal('managementModal');
+                fetchFeed(); // Refresh the feed with the new sort order
+            } catch (error) {
+                console.error("Error toggling pin status:", error);
+                alert("Failed to toggle pin status. Check Firebase Security Rules or ensure you created the composite index!");
+            } finally {
+                pinToggleButton.disabled = false;
+            }
+        }
+        window.togglePinStatus = togglePinStatus;
+        // =========================
+
+        // === QUICK JUMP LIST RENDER (Same) ===
         function renderQuickJumpList() {
             quickJumpList.innerHTML = ''; 
 
@@ -1250,184 +1033,34 @@
             let jumpHtml = '';
             allPosts.forEach(post => {
                 const postTitle = escapeHTML(post.data.title || 'Untitled Announcement');
+                // Escape single quote for use in onclick
                 const sanitizedTitle = postTitle.replace(/'/g, "\\'"); 
+                // Set the search bar value before calling filterFeed to keep it visually updated
                 jumpHtml += `<a href="#" class="quick-jump-title" onclick="document.getElementById('searchBar').value = '${sanitizedTitle}'; filterFeed('${sanitizedTitle}'); return false;">${postTitle}</a>`;
             });
             
             quickJumpList.innerHTML = jumpHtml;
         }
-
-        async function saveEdit() {
-            const id = document.getElementById('editPostId').value;
-            const newTitle = document.getElementById('editTitle').value.trim();
-            const newLink = document.getElementById('editLink').value.trim();
-            
-            const newContent = editPostEditor.root.innerHTML.trim();
-            const hasText = editPostEditor.getText().trim().length > 0;
-            
-            const editStatusElement = document.getElementById('editStatus');
-            
-            if (!newTitle || !hasText) {
-                 editStatusElement.textContent = 'Title and content cannot be empty.';
-                 editStatusElement.style.color = '#e67e22';
-                 return;
-            }
-            
-            editStatusElement.textContent = 'Saving...';
-            editStatusElement.style.color = '#3498db';
-
-            try {
-                await db.collection('feedItems').doc(id).update({
-                    title: newTitle,
-                    link: newLink, 
-                    content: newContent, 
-                });
-
-                editStatusElement.textContent = 'Announcement updated successfully!';
-                editStatusElement.style.color = '#27ae60';
-                setTimeout(() => {
-                    closeModal('managementModal');
-                    fetchFeedAndTools(); 
-                }, 1000);
-
-            } catch (error) {
-                console.error("Firebase Edit Error:", error);
-                editStatusElement.textContent = 'Update Failed. Check Security Rules (write access)!';
-                editStatusElement.style.color = '#c0392b';
-            }
-        }
+        // =============================================================
         
-        async function deletePost(id) {
-            if (!isAdmin) {
-                alert("Access Denied. Please enter the PIN first.");
-                return;
-            }
-            
-            if (confirm("Are you sure you want to permanently delete this announcement?")) {
-                try {
-                    await db.collection('feedItems').doc(id).delete();
-                    alert("Announcement deleted successfully!");
-                    fetchFeedAndTools(); 
-                } catch (error) {
-                    console.error("Firebase Delete Error:", error);
-                    alert("Deletion Failed. Check Security Rules (delete access)!");
-                }
-            }
-        }
-        
-        async function addPost(event) {
-            event.preventDefault();
-
-            const user = auth.currentUser;
-            const postStatusElement = document.getElementById('postStatus');
-            const postButton = document.getElementById('postButton');
-            
-            if (!user) {
-                 postStatusElement.style.display = 'block';
-                 postStatusElement.style.color = '#c0392b';
-                 postStatusElement.innerHTML = 'Posting failed. You must be signed in to post an announcement.';
-                 return;
-            }
-            
-            const posterName = user.displayName || user.email; 
-
-            const title = document.getElementById('postTitle').value.trim();
-            const link = document.getElementById('postLink').value.trim();
-            
-            const content = newPostEditor.root.innerHTML.trim();
-            const hasText = newPostEditor.getText().trim().length > 0;
-
-            if (!title || !hasText) {
-                postStatusElement.style.display = 'block';
-                postStatusElement.style.color = '#e67e22';
-                postStatusElement.innerHTML = 'Please fill in the title and content.';
-                return;
-            }
-
-            postButton.disabled = true;
-            postButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-            postStatusElement.style.display = 'none';
-
+        // NEW UTILITY FUNCTION for decoding content
+        function decodeContent(content) {
+            if (!content) return '';
             try {
-                await db.collection('feedItems').add({
-                    title: title,
-                    link: link,
-                    user: posterName, 
-                    content: content, 
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    likes: 0,
-                    isPinned: false, 
-                    pinnedBy: '',
-                });
-
-                postStatusElement.style.display = 'block';
-                postStatusElement.style.color = '#27ae60';
-                postStatusElement.innerHTML = '<i class="fas fa-check-circle"></i> Announcement published successfully!';
-                
-                document.getElementById('newPostForm').reset(); 
-                newPostEditor.setContents([]); 
-
-                setTimeout(() => {
-                    closeModal('newPostModal');
-                    fetchFeedAndTools(); 
-                }, 800);
-
-            } catch (error) {
-                console.error("Firebase Post Error:", error);
-                
-                postStatusElement.style.display = 'block';
-                postStatusElement.style.color = '#c0392b';
-                postStatusElement.innerHTML = `
-                    <i class="fas fa-exclamation-triangle"></i> **Publishing Failed!** <br> 
-                    The most common cause is a **Firebase Security Rule** preventing write access.
-                `;
-            } finally {
-                postButton.disabled = false;
-                postButton.innerHTML = '<i class="fas fa-paper-plane"></i> Publish Announcement';
+                // Decode the URI component and then replace escaped backticks if necessary
+                return decodeURIComponent(content.replace(/\\`/g, '`'));
+            } catch (e) {
+                console.error("Error decoding content:", e);
+                return content; 
             }
         }
 
-
-        function checkNewPosts() {
-            const user = auth.currentUser;
-            if (!user) {
-                notificationBell.classList.remove('active');
-                notificationBell.title = 'Sign in to track new announcements.';
-                return;
-            }
-
-            try {
-                const userDoc = db.collection('users').doc(user.uid).get();
-                userDoc.then(doc => {
-                    const lastVisit = doc.exists && doc.data().lastLogin ? doc.data().lastLogin.toDate() : new Date(0);
-                    let newPostsCount = 0;
-                    
-                    allPosts.forEach(post => {
-                        const postTime = post.data.timestamp ? (post.data.timestamp.toDate ? post.data.timestamp.toDate() : new Date(post.data.timestamp)) : new Date(0);
-                        if (postTime > lastVisit) {
-                            newPostsCount++;
-                        }
-                    });
-
-                    if (newPostsCount > 0) {
-                        notificationBell.classList.add('active'); 
-                        notificationBell.title = `${newPostsCount} NEW Announcements since your last visit!`;
-                    } else {
-                        notificationBell.classList.remove('active');
-                        notificationBell.title = 'No New Announcements';
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error checking new posts:", error);
-                notificationBell.title = 'Error checking status.';
-            }
-        }
-
+        // --- RENDER FEED (Fixed management button display & dynamic media cards) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
             
+            // Only rebuild the quick jump list if rendering the full list (no search term applied to filterFeed)
             if (searchBar.value.trim() === '') {
                  renderQuickJumpList();
             }
@@ -1452,6 +1085,10 @@
                 
                 const postContent = renderHTML(item.content || 'No content.');
 
+                // --- FIX: Escape and Encode Content for safe JS call ---
+                
+                // 1. Prepare strings: Escape single quotes, double quotes, and backticks.
+                // We use encodeURIComponent to safely pass potentially messy HTML content through the URL/string parameter.
                 const safeTitle = encodeURIComponent(item.title || '');
                 const safeLink = encodeURIComponent(link);
                 const safeContent = encodeURIComponent(item.content || '');
@@ -1466,9 +1103,11 @@
                         </button>
                     </div>
                 ` : '';
+                // --- END FIX ---
                 
                 const commentsDisplay = openCommentSections.has(docId) ? 'block' : 'none';
 
+                // Pinned Status Indicator
                 const isPinned = item.isPinned;
                 const pinnedBy = item.pinnedBy ? `(Pinned by ${escapeHTML(item.pinnedBy)})` : '';
                 const pinnedIndicator = isPinned ? `
@@ -1477,10 +1116,12 @@
                     </div>
                 ` : '';
 
+                // --- Enhanced Link Preview Card HTML (DYNAMIC & TEAMS STYLE) ---
                 const linkType = getLinkType(link);
                 let mediaCard = '';
 
                 if (link && linkType === 'youtube') {
+                    // Simple YouTube Embed (Kept separate as it uses an iframe)
                     const videoId = link.match(/(?<=v=|youtu\.be\/)[\w-]+/)?.[0];
                     if (videoId) {
                         mediaCard = `
@@ -1506,7 +1147,10 @@
                         `;
                     }
                 } else if (link) { 
+                    // Use the Teams-style template for PDF, Generic, and Image links
+                    
                     const fileIcon = linkType === 'pdf' ? 'fas fa-file-pdf' : (linkType === 'image' ? 'fas fa-image' : 'fas fa-file');
+                    // Placeholder for file path/access info
                     const filePath = `MNL-Accuplus > Accuplus GEO Cen...`; 
                     const fileIconColor = linkType === 'pdf' ? '#e74c3c' : (linkType === 'image' ? '#3498db' : '#95a5a6');
 
@@ -1594,37 +1238,306 @@
 
             outputElement.innerHTML = html;
             
+            // Re-check like status for all posts after rendering
             if (user) {
                 postsToRender.forEach(post => checkLikeStatus(post.id, user.uid));
             }
 
             openCommentSections.forEach(docId => loadComments(docId));
+            
+            // Run notification check after rendering feed
             checkNewPosts();
         }
 
-        function startCooldown() {
-            isCooldownActive = true;
-            
-            refreshIcon.classList.add('fa-spin', 'cooldown');
-            refreshIcon.title = 'Refreshing...';
-            refreshIcon.style.cursor = 'not-allowed';
+        async function fetchFeed() {
+            try {
+                outputElement.classList.add('status-message');
+                outputElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching announcements...';
 
-            setTimeout(() => {
-                refreshIcon.classList.remove('fa-spin');
-                refreshIcon.title = `On cooldown. Next refresh in ${REFRESH_COOLDOWN_MS / 60000} minutes.`;
-            }, 1000); 
+                // 1. Query Pinned Posts (isPinned: true)
+                const pinnedSnapshot = await db.collection('feedItems')
+                    .where('isPinned', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                // 2. Query Unpinned Posts (isPinned: false)
+                const unpinnedSnapshot = await db.collection('feedItems')
+                    .where('isPinned', '==', false)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                // 3. Query All posts to find documents missing the 'isPinned' field (i.e., old posts).
+                const allPostsSnapshot = await db.collection('feedItems')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                // --- Merge Logic ---
+                const pinnedPosts = pinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+                const unpinnedPosts = unpinnedSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
 
-            setTimeout(() => {
-                isCooldownActive = false;
-                refreshIcon.classList.remove('cooldown');
-                refreshIcon.title = 'Refresh Feed (5 min cooldown)';
-                refreshIcon.style.cursor = 'pointer';
-                alert("Feed refresh is now available.");
-            }, REFRESH_COOLDOWN_MS);
+                // Use a Set to track IDs we already have.
+                const postIds = new Set(pinnedPosts.map(p => p.id));
+                unpinnedPosts.forEach(p => postIds.add(p.id));
+                
+                // Posts with missing 'isPinned' field (rely on Firestore to sort by timestamp for these)
+                const otherPosts = allPostsSnapshot.docs
+                    .filter(doc => !postIds.has(doc.id)) 
+                    .map(doc => ({ id: doc.id, data: doc.data() }));
+
+                // Combine: Pinned posts, followed by explicitly unpinned posts, followed by old/other posts.
+                allPosts = pinnedPosts.concat(unpinnedPosts).concat(otherPosts);
+                // --- End Merge Logic ---
+                
+                if (allPosts.length === 0) {
+                    outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
+                    allPosts = [];
+                    renderQuickJumpList();
+                    checkNewPosts(); // Check notifications even if feed is empty
+                    return;
+                }
+
+                renderFeed(allPosts);
+
+            } catch (error) {
+                console.error("Firebase Fetch Error:", error);
+                outputElement.classList.add('status-message');
+                outputElement.style.color = '#c0392b';
+                outputElement.innerHTML = `
+                    <i class="fas fa-skull-crossbones"></i> **ERROR: Failed to fetch data.** <br> 
+                    1. Check your browser console (F12) for a link to **create the missing composite index on isPinned and timestamp**.<br>
+                    2. Check that your **Firebase Security Rules** allow read access for everyone.<br>
+                    3. If the error persists after creating the index, manually **ensure all old posts have the field isPinned: false** in the Firestore console.
+                `;
+                checkNewPosts(); // Still run for cleanup
+            }
+        }
+        
+        // --- NEW: NOTIFICATION CHECK ---
+        async function checkNewPosts() {
+            const user = auth.currentUser;
+            if (!user) {
+                notificationBell.classList.remove('active');
+                notificationBell.title = 'Sign in to track new announcements.';
+                return;
+            }
+
+            try {
+                // Get the user's last login timestamp
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const lastVisit = userDoc.exists && userDoc.data().lastLogin ? userDoc.data().lastLogin.toDate() : new Date(0);
+
+                let newPostsCount = 0;
+                
+                // Iterate through the already fetched posts (allPosts)
+                allPosts.forEach(post => {
+                    const postTime = post.data.timestamp ? (post.data.timestamp.toDate ? post.data.timestamp.toDate() : new Date(post.data.timestamp)) : new Date(0);
+                    
+                    if (postTime > lastVisit) {
+                         newPostsCount++;
+                    }
+                });
+
+                if (newPostsCount > 0) {
+                    notificationBell.classList.add('active'); 
+                    notificationBell.title = `${newPostsCount} NEW Announcements since your last visit!`;
+                } else {
+                    notificationBell.classList.remove('active');
+                    notificationBell.title = 'No New Announcements';
+                }
+            } catch (error) {
+                console.error("Error checking new posts:", error);
+                notificationBell.title = 'Error checking status.';
+            }
         }
 
+        // --- OPEN EDIT MODAL (Modified to decode content) ---
+        function openEditModal(id, encodedTitle, encodedLink, encodedContent) {
+            if (!isAdmin) return;
+            pinEntryArea.style.display = 'none';
+            managementArea.style.display = 'block';
+            
+            // DECODE the parameters received from the onclick attribute
+            const title = decodeContent(encodedTitle);
+            const link = decodeContent(encodedLink);
+            const content = decodeContent(encodedContent);
+            
+            // Find the post to check its pinned status
+            const post = allPosts.find(p => p.id === id);
+            const isPinned = post && post.data.isPinned;
+
+            const pinToggleButton = document.getElementById('pinToggleButton');
+            pinToggleButton.innerHTML = isPinned ? 
+                '<i class="fas fa-thumbtack"></i> Unpin Post' : 
+                '<i class="fas fa-thumbtack"></i> Pin to Top';
+            pinToggleButton.className = isPinned ? 'btn btn-secondary' : 'btn btn-primary';
+
+            editPostId.value = id;
+            editTitle.value = title;
+            editLink.value = link; 
+            
+            // Set the editor content
+            editPostEditor.root.innerHTML = content;
+
+            managementModal.style.display = 'block';
+        }
+
+        // --- SAVE EDIT (Same) ---
+        async function saveEdit() {
+            const id = editPostId.value;
+            const newTitle = editTitle.value.trim();
+            const newLink = editLink.value.trim();
+            
+            const newContent = editPostEditor.root.innerHTML.trim();
+            const hasText = editPostEditor.getText().trim().length > 0;
+            
+            if (!newTitle || !hasText) {
+                 editStatus.textContent = 'Title and content cannot be empty.';
+                 editStatus.style.color = '#e67e22';
+                 return;
+            }
+            
+            editStatus.textContent = 'Saving...';
+            editStatus.style.color = '#3498db';
+
+            try {
+                await db.collection('feedItems').doc(id).update({
+                    title: newTitle,
+                    link: newLink, 
+                    content: newContent, 
+                });
+
+                editStatus.textContent = 'Announcement updated successfully!';
+                editStatus.style.color = '#27ae60';
+                setTimeout(() => {
+                    closeModal('managementModal');
+                    fetchFeed(); 
+                }, 1000);
+
+            } catch (error) {
+                console.error("Firebase Edit Error:", error);
+                editStatus.textContent = 'Update Failed. Check Security Rules (write access)!';
+                editStatus.style.color = '#c0392b';
+            }
+        }
         
-        // --- Expose Global Functions ---
+        // --- ADD POST (Same) ---
+        async function addPost(event) {
+            event.preventDefault();
+
+            const user = auth.currentUser;
+            if (!user) {
+                 postStatusElement.style.display = 'block';
+                 postStatusElement.style.color = '#c0392b';
+                 postStatusElement.innerHTML = 'Posting failed. You must be signed in to post an announcement.';
+                 return;
+            }
+            
+            // Use the signed-in user's name or email
+            const posterName = user.displayName || user.email; 
+
+            const title = document.getElementById('postTitle').value.trim();
+            const link = document.getElementById('postLink').value.trim();
+            
+            const content = newPostEditor.root.innerHTML.trim();
+            const hasText = newPostEditor.getText().trim().length > 0;
+
+            if (!title || !hasText) {
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#e67e22';
+                postStatusElement.innerHTML = 'Please fill in the title and content.';
+                return;
+            }
+
+            postButton.disabled = true;
+            postButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+            postStatusElement.style.display = 'none';
+
+            try {
+                await db.collection('feedItems').add({
+                    title: title,
+                    link: link,
+                    user: posterName, // Use dynamic name
+                    content: content, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    likes: 0,
+                    isPinned: false, // Default to unpinned
+                    pinnedBy: '',
+                });
+
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#27ae60';
+                postStatusElement.innerHTML = '<i class="fas fa-check-circle"></i> Announcement published successfully!';
+                
+                document.getElementById('newPostForm').reset(); 
+                newPostEditor.setContents([]); 
+
+                setTimeout(() => {
+                    closeModal('newPostModal');
+                    fetchFeed(); 
+                }, 800);
+
+            } catch (error) {
+                console.error("Firebase Post Error:", error);
+                
+                postStatusElement.style.display = 'block';
+                postStatusElement.style.color = '#c0392b';
+                postStatusElement.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i> **Publishing Failed!** <br> 
+                    The most common cause is a **Firebase Security Rule** preventing write access.
+                `;
+            } finally {
+                postButton.disabled = false;
+                postButton.innerHTML = '<i class="fas fa-paper-plane"></i> Publish Announcement';
+            }
+        }
+        
+        // --- Other Management/Filter Functions (Same) ---
+        async function deletePost(id) {
+            if (!isAdmin) {
+                alert("Access Denied. Please enter the PIN first.");
+                return;
+            }
+            
+            if (confirm("Are you sure you want to permanently delete this announcement?")) {
+                try {
+                    await db.collection('feedItems').doc(id).delete();
+                    alert("Announcement deleted successfully!");
+                    fetchFeed(); 
+                } catch (error) {
+                    console.error("Firebase Delete Error:", error);
+                    alert("Deletion Failed. Check Security Rules (delete access)!");
+                }
+            }
+        }
+        
+        function filterFeed(searchTerm = '') {
+            let term = searchTerm.toLowerCase().trim();
+            
+            if (term === '') {
+                searchBar.value = ''; // Clear search bar for "Show All" or if called with no argument
+            } else if (searchTerm) {
+                searchBar.value = searchTerm;
+            } else {
+                term = searchBar.value.toLowerCase().trim();
+            }
+
+            if (!term) {
+                renderFeed(allPosts);
+                return;
+            }
+
+            const filteredPosts = allPosts.filter(post => {
+                const title = (post.data.title || '').toLowerCase();
+                const content = (post.data.content || '').toLowerCase();
+                
+                return title.includes(term) || content.includes(term);
+            });
+
+            renderFeed(filteredPosts);
+        }
+        
+
+        // --- EXPOSE FUNCTIONS AND INITIALIZE ---
         window.googleSignIn = googleSignIn;
         window.signOutUser = signOutUser;
         window.checkPin = checkPin;
@@ -1632,25 +1545,24 @@
         window.saveEdit = saveEdit;
         window.deletePost = deletePost;
         window.closeModal = closeModal;
+        window.closeNewPostModal = closeNewPostModal;
         window.filterFeed = filterFeed;
         window.likePost = likePost;
         window.toggleComments = toggleComments;
         window.addComment = addComment;
         window.deleteComment = deleteComment;
-        window.openCommentEditor = openCommentEditor;
-        window.closeCommentEditor = closeCommentEditor;
-        window.saveCommentEdit = saveCommentEdit;
+        window.getFileName = getFileName;
+        // Expose Refresh Handler
         window.handleRefreshClick = handleRefreshClick;
-        window.deletePost = deletePost;
-
 
         document.addEventListener('DOMContentLoaded', async () => {
             
+            // Read Minimization Feature - Enable Firestore Persistence
             try {
                 await db.enablePersistence();
-                console.log("Firestore persistence enabled.");
+                console.log("Firestore persistence enabled. Reads will be minimized using local cache.");
             } catch (err) {
-                console.error("Could not enable Firestore persistence.", err);
+                console.error("Could not enable Firestore persistence. Local cache reads will be limited.", err);
             }
             
             // Initialize Quill Editors after DOM is ready
@@ -1663,28 +1575,62 @@
                 ['link', 'clean']
             ];
 
-            newPostEditor = new Quill('#newPostEditor', { theme: 'snow', modules: { toolbar: toolbarOptions } });
-            editPostEditor = new Quill('#editPostEditor', { theme: 'snow', modules: { toolbar: toolbarOptions } });
+            newPostEditor = new Quill('#newPostEditor', {
+                theme: 'snow',
+                placeholder: 'Write your announcement content here...',
+                modules: {
+                    toolbar: toolbarOptions
+                }
+            });
 
-            document.getElementById('searchBar').addEventListener('keyup', debounce(filterFeed));
+            editPostEditor = new Quill('#editPostEditor', {
+                theme: 'snow',
+                placeholder: 'Edit your announcement content here...',
+                modules: {
+                    toolbar: toolbarOptions
+                }
+            });
+
+            // FIX: Attach the debounced filter function to the search bar
+            const searchBarElement = document.getElementById('searchBar');
+            if (searchBarElement) {
+                searchBarElement.addEventListener('keyup', debounce(filterFeed));
+            }
             
-            fetchFeedAndTools();
+            fetchFeed();
             setupAuthObserver(); 
             
+            // Event listeners for the modals
             document.getElementById('postIcon').addEventListener('click', openNewPostModal);
             document.getElementById('newPostForm').addEventListener('submit', addPost);
             document.getElementById('settingsIcon').addEventListener('click', openPinModal);
+            // Refresh Icon Event Listener
             refreshIcon.addEventListener('click', handleRefreshClick);
+            
+            // Notification Bell Click Listener (clears notifications)
+            notificationBell.addEventListener('click', () => {
+                 if (auth.currentUser) {
+                     db.collection('users').doc(auth.currentUser.uid).update({
+                         lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                     }).then(() => {
+                         checkNewPosts();
+                         alert("New announcement tracker reset!");
+                     }).catch(error => {
+                         console.error("Error resetting notification:", error);
+                         alert("Could not reset notification tracker.");
+                     });
+                 }
+            });
 
             window.addEventListener('click', (event) => {
                 if (event.target === managementModal) {
                     closeModal('managementModal');
                 } else if (event.target === newPostModal) {
-                    closeModal('newPostModal');
+                    closeNewPostModal();
                 }
             });
         });
-        
+
     </script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
