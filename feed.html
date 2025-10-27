@@ -553,6 +553,11 @@
                 }
                 timeoutId = setTimeout(() => {
                     func.apply(this, args);
+                    // Pass the current user's UID to checkReactionStatus
+                    const user = auth.currentUser;
+                    if (user) {
+                        allPosts.forEach(post => checkReactionStatus(post.id, user.uid));
+                    }
                 }, delay);
             };
         }
@@ -1001,7 +1006,7 @@
         }
         window.decodeContent = decodeContent;
 
-        // --- RENDER FEED (Fixed management button display) ---
+        // --- RENDER FEED (Fixed Link Preview Card Structure) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -1086,7 +1091,7 @@
                 
                 const posterName = escapeHTML(item.user || 'System');
 
-                // --- Link Preview Card HTML (Using the correct, working structure) ---
+                // --- Link Preview Card HTML (Restored working structure) ---
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -1432,9 +1437,6 @@
         window.toggleComments = toggleComments;
         window.addComment = addComment;
         window.deleteComment = deleteComment;
-        window.openCommentEdit = openCommentEdit; // NEW
-        window.saveCommentEdit = saveCommentEdit; // NEW
-        window.cancelCommentEdit = cancelCommentEdit; // NEW
         window.getFileName = getFileName;
         // Expose Refresh Handler
         window.handleRefreshClick = handleRefreshClick;
