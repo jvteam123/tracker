@@ -1594,7 +1594,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
             const endDate = new Date(year, month, 21);
             const startDate = new Date(year, month - 1, 21);
-        
+            
+            // Adjust start date to include time 00:00:00 and end date to include time 23:59:59
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(0, 0, 0, 0); // Start of the 21st
+
             const dateRangeStr = `from ${startDate.toLocaleDateString()} to ${new Date(endDate - 1).toLocaleDateString()}`;
         
             if (!confirm(`Are you sure you want to archive all completed projects ${dateRangeStr}? This cannot be undone.`)) return;
@@ -1604,7 +1608,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectsToArchive = this.state.projects.filter(p => {
                     if (p.status === 'Completed' && p.lastModifiedTimestamp) {
                         const modifiedDate = new Date(p.lastModifiedTimestamp);
-                        return modifiedDate >= startDate && modifiedDate < endDate;
+                        // Ensure it's greater than or equal to the start date (start of day)
+                        // AND strictly less than the end date (start of next day)
+                        return modifiedDate >= startDate && modifiedDate < endDate; 
                     }
                     return false;
                 });
@@ -1619,25 +1625,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-        
-                // FIX 1: Sort projects before archiving for grouping/readability in the archive sheet
+                
+                // Sort projects before archiving for grouping/readability in the archive sheet
                 const sortedProjectsToArchive = [...projectsToArchive].sort((a, b) => {
-                    // Sort primarily by Project Name
                     if (a.baseProjectName < b.baseProjectName) return -1;
                     if (a.baseProjectName > b.baseProjectName) return 1;
-                    // Sort secondary by Fix Category number
-                    const fixNumA = parseInt(a.fixCategory.replace('Fix', ''), 10);
-                    const fixNumB = parseInt(b.fixCategory.replace('Fix', ''), 10);
+                    const fixNumA = parseInt((a.fixCategory || 'Fix0').replace('Fix', ''), 10);
+                    const fixNumB = parseInt((b.fixCategory || 'Fix0').replace('Fix', ''), 10);
                     return fixNumA - fixNumB;
                 });
                 
                 const rowsToAppend = sortedProjectsToArchive.map(project => {
-                    return headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                    return headers.map(header => {
+                        const propNameKey = Object.keys(this.config.HEADER_MAP).find(k => k.toLowerCase() === header.trim().toLowerCase());
+                        if (propNameKey) {
+                            const propName = this.config.HEADER_MAP[propNameKey];
+                            return project[propName] || "";
+                        }
+                        return "";
+                    });
                 });
         
                 await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
                 
-                // FIX 2: Delete rows from Projects sheet and update local state
+                // Delete rows from Projects sheet and update local state
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
@@ -1649,7 +1660,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
         
             } catch (error) {
-                alert("Error archiving projects: " + error.message);
+                console.error("Archive Error Details:", error); // Log the full error
+                alert(`Error archiving projects: ${error.message}. Please check console for details, and ensure the 'Archive' sheet exists and permissions are set correctly.`);
                 await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
