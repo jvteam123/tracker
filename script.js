@@ -1626,7 +1626,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 this.hideLoading();
             }
-        }
+        },
         openTimeEditModal(projectId, day) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return;
