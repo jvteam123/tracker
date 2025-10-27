@@ -411,7 +411,7 @@
         const ADMIN_PIN = "2486"; 
         // Cooldown Constant (5 minutes)
         const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; 
-        
+
         // NEW: Reactions Map
         const REACTIONS = {
             '👍': 'like', 
@@ -553,11 +553,6 @@
                 }
                 timeoutId = setTimeout(() => {
                     func.apply(this, args);
-                    // Pass the current user's UID to checkReactionStatus
-                    const user = auth.currentUser;
-                    if (user) {
-                        allPosts.forEach(post => checkReactionStatus(post.id, user.uid));
-                    }
                 }, delay);
             };
         }
@@ -1006,7 +1001,7 @@
         }
         window.decodeContent = decodeContent;
 
-        // --- RENDER FEED (Fixed Link Preview Card Structure) ---
+        // --- RENDER FEED (Fixed Link Preview Card Structure and Reaction Buttons) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -1091,7 +1086,7 @@
                 
                 const posterName = escapeHTML(item.user || 'System');
 
-                // --- Link Preview Card HTML (Restored working structure) ---
+                // --- Link Preview Card HTML (Using the correct, stable structure from your example) ---
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -1135,9 +1130,10 @@
                             &bull; <i class="fas fa-calendar-alt"></i> ${timestamp}
                             
                             <span class="reaction-container">
-                                ${reactionsHtml}
-                                <span id="user-reaction-${docId}">
-                                    </span>
+                                <button id="like-btn-${docId}" class="like-btn" onclick="likePost('${docId}')">
+                                    <i class="fas fa-thumbs-up"></i> Like
+                                </button>
+                                <span id="like-count-${docId}" class="like-count">${item.likes || 0}</span>
                             </span>
                         </small>
 
@@ -1164,7 +1160,8 @@
             
             // Re-check reaction status for all posts after rendering
             if (user) {
-                postsToRender.forEach(post => checkReactionStatus(post.id, user.uid));
+                // NOTE: We call the simpler checkLikeStatus for compatibility with the restored HTML structure
+                postsToRender.forEach(post => checkLikeStatus(post.id, user.uid));
             }
 
             openCommentSections.forEach(docId => loadComments(docId));
