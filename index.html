@@ -74,6 +74,7 @@
             background-color: #475569;
             border-radius: 10px;
             border: 2px solid var(--primary-color);
+            z-index: 10;
         }
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
             background-color: #6c757d;
@@ -427,7 +428,6 @@
             box-sizing: border-box;
         }
         #notificationList {
-            display: none;
             position: absolute;
             top: 40px;
             left: 0;
@@ -530,6 +530,37 @@
             margin-top: 10px;
         }
 
+        /* NEW Archive Selection Modal Styles */
+        #archiveSelectModal .project-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            padding: 10px;
+            margin-top: 15px;
+        }
+        #archiveSelectModal .project-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px dashed #eee;
+        }
+        #archiveSelectModal .project-item:last-child {
+            border-bottom: none;
+        }
+        #archiveSelectModal .project-item input[type="checkbox"] {
+            width: 20px;
+            margin-right: 10px;
+        }
+        #archiveSelectModal .project-name-label {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+        #archiveSelectModal .project-stats {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+        
     </style>
     <link rel="icon" type="image/png" href="icon.png">
 </head>
@@ -550,7 +581,7 @@
                     <i class="fas fa-bell"></i>
                     <span id="notificationBadge"></span>
                 </div>
-                <div id="notificationList"></div>
+                <div id="notificationList" style="display: none;"></div>
             </div>
             <div class="sidebar-nav">
                 <div> 
@@ -808,6 +839,36 @@
                     <thead></thead>
                     <tbody></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW ARCHIVE SELECTION MODAL -->
+    <div id="archiveSelectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Select Projects to Archive</h2>
+                <span class="close-btn" id="closeArchiveSelectModalBtn">&times;</span>
+            </div>
+            <div class="settings-card">
+                <p>Choose which projects (all associated tasks/areas) should be moved to the Archive sheet.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label>Filter by Status:</label>
+                    <select id="archiveStatusFilter" class="w-1/2 p-2 border rounded">
+                        <option value="All">All Projects</option>
+                        <option value="Completed">Only Completed Projects</option>
+                        <option value="Active">Only Active Projects</option>
+                    </select>
+                </div>
+                <div class="project-list" id="archiveProjectList">
+                    <!-- Checkboxes will be rendered here -->
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; display: flex; justify-content: space-between;">
+                <button id="archiveSelectAllBtn" class="btn btn-secondary">Select All</button>
+                <button id="confirmArchiveBtn" class="btn btn-danger" disabled>
+                    <i class="fas fa-archive"></i> Archive Selected (<span id="archiveCount">0</span>)
+                </button>
             </div>
         </div>
     </div>
