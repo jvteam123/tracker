@@ -363,6 +363,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeArchiveModalBtn: document.getElementById('closeArchiveModalBtn'),
                 copyArchiveBtn: document.getElementById('copyArchiveBtn'),
                 archiveTable: document.getElementById('archiveTable'),
+                // NEW Archive Selection Modal Elements
+                archiveSelectModal: document.getElementById('archiveSelectModal'),
+                closeArchiveSelectModalBtn: document.getElementById('closeArchiveSelectModalBtn'),
+                archiveStatusFilter: document.getElementById('archiveStatusFilter'),
+                archiveProjectList: document.getElementById('archiveProjectList'),
+                archiveSelectAllBtn: document.getElementById('archiveSelectAllBtn'),
+                confirmArchiveBtn: document.getElementById('confirmArchiveBtn'),
+                archiveCount: document.getElementById('archiveCount'),
             };
         },
         attachEventListeners() {
@@ -399,6 +407,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.elements.closeArchiveModalBtn.onclick = () => this.elements.archiveModal.classList.remove('is-open');
             this.elements.copyArchiveBtn.onclick = () => this.handleCopyArchive();
+
+            // NEW Archive Modal Listeners
+            this.elements.closeArchiveSelectModalBtn.onclick = () => this.elements.archiveSelectModal.classList.remove('is-open');
+            this.elements.archiveStatusFilter.onchange = () => this.renderArchiveProjectSelection(this.elements.archiveStatusFilter.value);
+            this.elements.archiveProjectList.onchange = () => this.updateArchiveCount();
+            this.elements.archiveSelectAllBtn.onclick = () => this.handleArchiveSelectAll();
+            this.elements.confirmArchiveBtn.onclick = () => this.handleConfirmArchive();
+
 
             this.elements.openDashboardBtn.onclick = () => this.switchView('dashboard');
             this.elements.openDowntimePageBtn.onclick = () => { window.location.href = 'downtime.html'; };
@@ -1491,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3><i class="fas fa-archive icon"></i> Archiving & Backup</h3>
                         <p>Archive completed projects or create a full backup snapshot.</p>
                         <div class="btn-group">
-                            <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Completed Projects</button>
+                            <button class="btn btn-info" onclick="ProjectTrackerApp.openArchiveSelectModal()">Archive Projects</button>
                             <button class="btn btn-primary" onclick="ProjectTrackerApp.handleBackupProjects()">Backup Projects (Snapshot)</button>
                             <button class="btn btn-secondary" onclick="ProjectTrackerApp.renderArchiveModal()">View Archive</button>
                         </div>
@@ -1581,52 +1597,124 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm("This will scan for errors and orphaned rows. Continue?")) return;
             alert("Placeholder: Clean DB logic would run here.");
         },
-        async handleArchiveProjects() {
-            const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
-            if (code !== "248617") { 
-                alert("Incorrect code. Operation cancelled."); 
-                return; 
-            }
         
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = today.getMonth();
-        
-            const endDate = new Date(year, month, 21);
-            const startDate = new Date(year, month - 1, 21);
-            
-            // Adjust start date to include time 00:00:00 and end date to include time 23:59:59
-            startDate.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0); // Start of the 21st
+        openArchiveSelectModal() {
+            this.elements.archiveSelectModal.classList.add('is-open');
+            this.elements.archiveStatusFilter.value = 'All'; // Reset filter to default
+            this.renderArchiveProjectSelection('All');
+        },
 
-            const dateRangeStr = `from ${startDate.toLocaleDateString()} to ${new Date(endDate - 1).toLocaleDateString()}`;
-        
-            if (!confirm(`Are you sure you want to archive all completed projects ${dateRangeStr}? This cannot be undone.`)) return;
-        
-            this.showLoading("Archiving completed projects...");
-            try {
-                const projectsToArchive = this.state.projects.filter(p => {
-                    if (p.status === 'Completed' && p.lastModifiedTimestamp) {
-                        const modifiedDate = new Date(p.lastModifiedTimestamp);
-                        // Ensure it's greater than or equal to the start date (start of day)
-                        // AND strictly less than the end date (start of next day)
-                        return modifiedDate >= startDate && modifiedDate < endDate; 
-                    }
-                    return false;
+        renderArchiveProjectSelection(filterStatus) {
+            const container = this.elements.archiveProjectList;
+            container.innerHTML = '';
+            
+            const uniqueProjectsMap = {};
+
+            this.state.projects.forEach(p => {
+                const name = p.baseProjectName;
+                if (!uniqueProjectsMap[name]) {
+                    uniqueProjectsMap[name] = { 
+                        name: this.formatProjectName(name),
+                        total: 0, 
+                        completed: 0,
+                        rows: []
+                    };
+                }
+                uniqueProjectsMap[name].total++;
+                if (p.status === 'Completed' || p.status === 'No Refix') {
+                    uniqueProjectsMap[name].completed++;
+                }
+                // Store all unique project names and their completion status
+                uniqueProjectsMap[name].rows.push(p);
+            });
+
+            let projectKeys = Object.keys(uniqueProjectsMap).sort();
+
+            if (filterStatus !== 'All') {
+                projectKeys = projectKeys.filter(key => {
+                    const project = uniqueProjectsMap[key];
+                    const allCompleted = project.total === project.completed;
+                    const anyActive = project.completed < project.total;
+
+                    if (filterStatus === 'Completed') return allCompleted;
+                    if (filterStatus === 'Active') return anyActive;
+                    return true;
                 });
-        
+            }
+
+            if (projectKeys.length === 0) {
+                container.innerHTML = `<p class="p-4 text-gray-500">No projects match the filter criteria. All tasks must be loaded/completed to be fully visible.</p>`;
+            } else {
+                projectKeys.forEach(key => {
+                    const project = uniqueProjectsMap[key];
+                    const allCompleted = project.total === project.completed;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'project-item cursor-pointer hover:bg-gray-50';
+                    item.innerHTML = `
+                        <input type="checkbox" id="archive-${key}" name="archiveProject" value="${key}" 
+                                data-project-status="${allCompleted ? 'Completed' : 'Active'}"
+                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="archive-${key}" class="project-name-label flex justify-between items-center w-full">
+                            <span>${project.name}</span>
+                            <span class="project-stats">${allCompleted ? '✅ All Done' : `🟡 Active (${project.completed}/${project.total})`}</span>
+                        </label>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+
+            this.updateArchiveCount();
+        },
+
+        handleArchiveSelectAll() {
+            const checkboxes = this.elements.archiveProjectList.querySelectorAll('input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+            this.updateArchiveCount();
+        },
+
+        updateArchiveCount() {
+            const count = this.elements.archiveProjectList.querySelectorAll('input[type="checkbox"]:checked').length;
+            this.elements.archiveCount.textContent = count;
+            this.elements.confirmArchiveBtn.disabled = count === 0;
+        },
+
+        async handleConfirmArchive() {
+            const selectedCheckboxes = this.elements.archiveProjectList.querySelectorAll('input[type="checkbox"]:checked');
+            const projectNamesToArchive = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            if (projectNamesToArchive.length === 0) {
+                alert("Please select at least one project to archive.");
+                return;
+            }
+
+            const confirmationMessage = `Are you sure you want to archive ${projectNamesToArchive.length} project(s)? This will move ALL associated tasks to the Archive sheet and delete them from the main Projects sheet. This cannot be undone.`;
+            if (!confirm(confirmationMessage)) {
+                return;
+            }
+            
+            this.elements.archiveSelectModal.classList.remove('is-open');
+            this.showLoading(`Archiving ${projectNamesToArchive.length} project(s)...`);
+
+            try {
+                // 1. Identify ALL tasks belonging to the selected projects
+                const projectsToArchive = this.state.projects.filter(p => projectNamesToArchive.includes(p.baseProjectName));
+                
                 if (projectsToArchive.length === 0) {
-                    alert(`No completed projects found within the date range: ${dateRangeStr}.`);
+                    alert(`No tasks found for the selected projects. Archive aborted.`);
                     return;
                 }
-        
+                
                 const getHeaders = await gapi.client.sheets.spreadsheets.values.get({
                     spreadsheetId: this.config.google.SPREADSHEET_ID,
                     range: `${this.config.sheetNames.PROJECTS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
                 
-                // Sort projects before archiving for grouping/readability in the archive sheet
+                // 2. Sort projects before archiving for grouping/readability in the archive sheet
                 const sortedProjectsToArchive = [...projectsToArchive].sort((a, b) => {
                     if (a.baseProjectName < b.baseProjectName) return -1;
                     if (a.baseProjectName > b.baseProjectName) return 1;
@@ -1646,27 +1734,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
         
+                // 3. Append to Archive Sheet
                 await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
                 
-                // Delete rows from Projects sheet and update local state
+                // 4. Delete rows from Projects sheet
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
-                // Manually remove projects from the local state array for immediate dashboard consistency
+                // 5. Update local state
                 const archivedIds = new Set(projectsToArchive.map(p => p.id));
                 this.state.projects = this.state.projects.filter(p => !archivedIds.has(p.id));
         
                 await this.loadDataFromSheets(true);
-                alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
+                alert(`${projectNamesToArchive.length} project(s) (${projectsToArchive.length} tasks) have been archived successfully!`);
         
             } catch (error) {
-                console.error("Archive Error Details:", error); // Log the full error
-                alert(`Error archiving projects: ${error.message}. Please check console for details, and ensure the 'Archive' sheet exists and permissions are set correctly.`);
+                console.error("Archive Error Details:", error); 
+                alert(`Error archiving projects: ${error.message}. Please check console for details.`);
                 await this.loadDataFromSheets(true);
             } finally {
                 this.hideLoading();
             }
         },
+
+        async handleArchiveProjects() {
+            // This function now opens the selection modal
+            this.openArchiveSelectModal();
+        },
+
         async handleBackupProjects() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
             if (code !== "248617") { 
