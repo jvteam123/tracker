@@ -240,7 +240,7 @@
             transform: scale(1.2);
         }
         .reaction-button.selected {
-            background-color: #e0e0e0;
+            background-color: #bdc3c7;
             border-radius: 50%;
         }
         .reaction-count-display {
@@ -275,6 +275,17 @@
         #managementArea input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #dcdde1; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
         .quill-editor-container { margin-bottom: 15px; }
         .quill-editor-container .ql-editor { min-height: 150px; }
+
+        /* Preview Card Specific Styles */
+        .review-card-header { 
+            /* Removed dark filter for better visibility of file name */
+            background-image: url('https://via.placeholder.com/400x150/222/ffffff?text=EAGLEVIEW'); 
+        }
+        .review-card-body {
+            /* Ensured white background for file details */
+            background-color: white; 
+            padding: 10px 15px;
+        }
     </style>
 </head>
 <body>
@@ -528,10 +539,12 @@
 
         function getFileName(url) {
             try {
+                // Return the segment after the last slash, decoding URI components
                 const path = new URL(url).pathname;
                 const segments = path.split('/');
-                return segments[segments.length - 1];
+                return decodeURIComponent(segments[segments.length - 1]);
             } catch (e) {
+                // If URL parsing fails, return the original string
                 return url; 
             }
         }
@@ -1047,6 +1060,8 @@
                 }
 
                 // --- FIX: Escape and Encode Content for safe JS call ---
+                // This guarantees that any quotes or special characters in the title/content
+                // are safely passed as parameters to the JS function without breaking the HTML attribute string.
                 const safeTitle = encodeURIComponent(item.title || '');
                 const link = item.link || '';
                 const safeLink = encodeURIComponent(link);
@@ -1077,7 +1092,8 @@
                 
                 const posterName = escapeHTML(item.user || 'System');
 
-                // --- Enhanced Link Preview Card HTML (Same) ---
+                // --- Enhanced Link Preview Card HTML ---
+                // The structure for this card is local HTML/CSS, not dynamic scraping.
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -1150,6 +1166,7 @@
             
             // Re-check reaction status for all posts after rendering
             if (user) {
+                // FIX: Ensure checkReactionStatus runs for ALL posts
                 postsToRender.forEach(post => checkReactionStatus(post.id, user.uid));
             }
 
