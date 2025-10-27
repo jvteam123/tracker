@@ -196,18 +196,128 @@
         .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
         .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
         .comment-actions button { margin-left: 5px; } /* Space out actions */
-
-        /* Review/Media Card Styling (MODIFIED - Simplified for PDF/Generic) */
-        .media-card-container { margin-top: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; border-radius: 6px; overflow: hidden; }
-        .media-card-body { padding: 10px 15px; background-color: #f7f7f7; display: flex; align-items: center; justify-content: space-between; border: 1px solid #dcdde1; border-top: none; }
-        .file-info { display: flex; align-items: center; flex-grow: 1; }
-        .file-info i { color: #e74c3c; font-size: 1.5em; margin-right: 8px; }
-        .file-details { display: flex; flex-direction: column; line-height: 1.3; }
-        .review-card-filename { font-size: 1em; font-weight: bold; color: #34495e; margin: 0; }
-        .file-access { font-size: 0.8em; color: #7f8c8d; }
-        .file-actions i { color: #555; cursor: pointer; font-size: 1.1em; margin-left: 10px; }
         
-        /* YouTube specific styles for embedded player */
+        /* --- NEW: TEAMS/SHAREPOINT STYLE CARD --- */
+        .media-card-container {
+            margin-top: 15px; 
+            max-width: 400px; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15); 
+        }
+
+        /* Header Section (Dark Background with Overlays) */
+        .media-card-header {
+            background-color: #222; 
+            color: white;
+            height: 150px;
+            padding: 20px 15px;
+            text-align: center;
+            position: relative;
+            /* Use a linear-gradient overlay for text contrast and a background image placeholder */
+            background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://via.placeholder.com/400x150/1c1e21/ffffff?text=EAGLEVIEW'); 
+            background-size: cover;
+            background-position: center;
+        }
+
+        .media-card-header .logo {
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            font-size: 1.5em; 
+            color: #ccc; 
+            font-weight: bold;
+        }
+
+        .media-card-header .date-text {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em; 
+            color: #aaa; 
+            margin: 0;
+        }
+
+        .media-card-header h4 { 
+            font-size: 1.8em; 
+            margin: 30px 0 5px 0; 
+            letter-spacing: 2px;
+            position: relative; 
+        }
+
+        /* Preview Button Style */
+        .media-card-preview-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            border: 1px solid white;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 15px; 
+            position: absolute; 
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .media-card-preview-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .media-card-preview-btn i { 
+            margin-right: 8px; 
+        }
+
+
+        /* Footer Section (File Details - White Background) */
+        .media-card-footer { 
+            padding: 10px 15px; 
+            background-color: #ffffff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            border: 1px solid #dcdde1;
+            border-top: none; 
+        }
+        .media-card-footer .file-info { 
+            display: flex; 
+            align-items: center; 
+            flex-grow: 1; 
+        }
+        .media-card-footer .file-info i { 
+            color: #e74c3c; /* Red icon for PDF/generic file */
+            font-size: 1.5em; 
+            margin-right: 8px; 
+        }
+        .media-card-footer .file-details { 
+            display: flex; 
+            flex-direction: column; 
+            line-height: 1.3; 
+        }
+        .media-card-filename { 
+            font-size: 1em; 
+            font-weight: bold; 
+            color: #34495e; 
+            margin: 0; 
+        }
+        .file-access { 
+            font-size: 0.8em; 
+            color: #7f8c8d; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-actions i { 
+            color: #7f8c8d; 
+            cursor: pointer; 
+            font-size: 1.1em; 
+            margin-left: 10px; 
+        }
+        /* Ensure the old static card is gone */
+        .review-card { display: none !important; }
+
+        /* YouTube specific styles for embedded player (Unchanged) */
         .youtube-embed-container {
             margin-top: 15px; 
             max-width: 400px; 
@@ -216,7 +326,7 @@
         .youtube-embed-container iframe {
             display: block; 
         }
-
+        
         /* Modal Styling (Same) */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
         .modal-content { background-color: #ffffff; margin: 5% auto; padding: 30px; border: none; width: 80%; max-width: 700px; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23); }
@@ -482,7 +592,7 @@
             if (!text) return '';
             const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
             
-            const tempText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const tempText = text.replace(/</g, '&lt;').replace(/&gt;/g, '&gt;');
 
             return tempText.replace(urlRegex, (url) => {
                 return `<a href="${url}" target="_blank" style="color: #3498db; text-decoration: underline;">${url}</a>`;
@@ -1006,12 +1116,12 @@
                     </div>
                 ` : '';
 
-                // --- Enhanced Link Preview Card HTML (DYNAMIC) ---
+                // --- Enhanced Link Preview Card HTML (DYNAMIC & TEAMS STYLE) ---
                 const linkType = getLinkType(link);
                 let mediaCard = '';
 
                 if (link && linkType === 'youtube') {
-                    // Simple YouTube Embed
+                    // Simple YouTube Embed (Kept separate as it uses an iframe)
                     const videoId = link.match(/(?<=v=|youtu\.be\/)[\w-]+/)?.[0];
                     if (videoId) {
                         mediaCard = `
@@ -1019,69 +1129,62 @@
                                 <iframe width="100%" height="225" src="https://www.youtube.com/embed/${videoId}" 
                                     frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                                     allowfullscreen></iframe>
-                                <div class="media-card-body" style="border-left: 5px solid #c0392b;">
+                                <div class="media-card-footer" style="border-left: 5px solid #c0392b;">
                                     <div class="file-info">
                                         <i class="fab fa-youtube" style="color: #c0392b;"></i>
                                         <div class="file-details">
                                             <a href="${link}" target="_blank" style="text-decoration: none;">
-                                                <span class="review-card-filename">YouTube Video</span>
+                                                <span class="review-card-filename">YouTube Video: ${postTitle}</span>
                                             </a>
                                             <span class="file-access">Watch Now</span>
                                         </div>
                                     </div>
                                     <div class="file-actions">
-                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
+                                        <i class="fas fa-share-square"></i>
                                     </div>
                                 </div>
                             </div>
                         `;
                     }
-                } else if (link && linkType === 'pdf') {
-                    // PDF Card
+                } else if (link) { 
+                    // Use the Teams-style template for PDF, Generic, and Image links
+                    
+                    const fileIcon = linkType === 'pdf' ? 'fas fa-file-pdf' : (linkType === 'image' ? 'fas fa-image' : 'fas fa-file');
+                    // Placeholder for file path/access info
+                    const filePath = `MNL-Accuplus > Accuplus GEO Cen...`; 
+                    const fileIconColor = linkType === 'pdf' ? '#e74c3c' : (linkType === 'image' ? '#3498db' : '#95a5a6');
+
                     mediaCard = `
-                        <div class="media-card-container" style="border-left: 5px solid #e74c3c;">
-                            <div class="media-card-body">
+                        <div class="media-card-container">
+                            <a href="${link}" target="_blank" style="text-decoration: none;">
+                                <div class="media-card-header">
+                                    <span class="logo">EAGLEVIEW</span>
+                                    <h4>QUICK UPDATE</h4>
+                                    
+                                    <div class="media-card-preview-btn">
+                                        <i class="fas fa-play"></i> Preview
+                                    </div>
+                                    <p class="date-text">October 2025</p>
+                                </div>
+                            </a>
+                            
+                            <div class="media-card-footer">
                                 <div class="file-info">
-                                    <i class="fas fa-file-pdf"></i>
+                                    <i class="${fileIcon}" style="color: ${fileIconColor}"></i>
                                     <div class="file-details">
                                         <a href="${link}" target="_blank" style="text-decoration: none;">
-                                            <span class="review-card-filename">${getFileName(link) || 'PDF Document'}</span>
+                                            <span class="review-card-filename">${getFileName(link) || 'Linked Document'}</span>
                                         </a>
-                                        <span class="file-access">Click to open PDF</span>
+                                        <span class="file-access">${filePath}</span>
                                     </div>
                                 </div>
                                 <div class="file-actions">
-                                    <a href="${link}" target="_blank" style="text-decoration: none;">
-                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else if (link && linkType === 'generic') {
-                     // Generic Link Card
-                    mediaCard = `
-                        <div class="media-card-container" style="border-left: 5px solid #95a5a6;">
-                            <div class="media-card-body">
-                                <div class="file-info">
-                                    <i class="fas fa-link" style="color: #95a5a6;"></i>
-                                    <div class="file-details">
-                                        <a href="${link}" target="_blank" style="text-decoration: none;">
-                                            <span class="review-card-filename">${getFileName(link) || 'External Link'}</span>
-                                        </a>
-                                        <span class="file-access">Open external resource</span>
-                                    </div>
-                                </div>
-                                <div class="file-actions">
-                                    <a href="${link}" target="_blank" style="text-decoration: none;">
-                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
-                                    </a>
+                                    <i class="fas fa-share-square"></i>
                                 </div>
                             </div>
                         </div>
                     `;
                 }
-                
 
 
                 html += `
