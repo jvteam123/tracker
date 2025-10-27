@@ -87,6 +87,46 @@
             color: #3498db;
             text-decoration: underline;
         }
+        
+        /* --- NEW: PCS Tools Styling --- */
+        #pcsToolsBox {
+            margin-top: 30px; 
+            padding-top: 15px;
+            border-top: 2px solid #bdc3c7;
+        }
+        #pcsToolsBox h3 {
+             color: #2c3e50;
+             margin-top: 0;
+             border-bottom: none;
+             padding-bottom: 0;
+             margin-bottom: 10px;
+             font-size: 1.1em;
+             font-weight: bold;
+        }
+        .tool-link {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background-color: #f1f2f6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #34495e;
+            font-size: 0.9em;
+            transition: background-color 0.2s, color 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .tool-link:hover {
+            background-color: #dcdde1;
+            color: #2c3e50;
+        }
+        .tool-link i {
+            margin-right: 10px;
+            color: #2ecc71; /* Green for download/external link */
+            font-size: 1.1em;
+        }
+        /* ------------------------------- */
+
 
         /* NEW: Show All Link Style */
         #showAllLink {
@@ -197,7 +237,7 @@
         .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
         .comment-actions button { margin-left: 5px; } /* Space out actions */
         
-        /* --- NEW: TEAMS/SHAREPOINT STYLE CARD --- */
+        /* --- TEAMS/SHAREPOINT STYLE CARD --- */
         .media-card-container {
             margin-top: 15px; 
             max-width: 400px; 
@@ -363,6 +403,22 @@
                     <span style="display: block; font-size: 0.85em; color: #7f8c8d;">Loading titles...</span>
                 </div>
             </div>
+        </div>
+        
+        <div id="pcsToolsBox">
+             <h3><i class="fas fa-toolbox"></i> PCS Tools & Downloads</h3>
+             <a href="YOUR_GOOGLE_DRIVE_LINK_FOR_TOOL_1" class="tool-link" target="_blank">
+                 <i class="fas fa-download"></i> PCS Tool: Analyzer v2.1
+             </a>
+             <a href="YOUR_GOOGLE_DRIVE_LINK_FOR_TOOL_2" class="tool-link" target="_blank">
+                 <i class="fas fa-download"></i> Batch Naming Script
+             </a>
+             <a href="YOUR_GOOGLE_DRIVE_LINK_FOR_TOOL_3" class="tool-link" target="_blank">
+                 <i class="fas fa-file-excel"></i> Template: Tracker v3
+             </a>
+             <p style="font-size: 0.75em; color: #7f8c8d; margin-top: 15px;">
+                 *Links open Google Drive. Ensure you have access.
+             </p>
         </div>
         </div>
     <div class="main-content">
