@@ -1551,6 +1551,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm("This will scan for errors and orphaned rows. Continue?")) return;
             alert("Placeholder: Clean DB logic would run here.");
         },
+        // ... in script.js
+
         async handleArchiveProjects() {
             const code = prompt("This is a sensitive operation. Please enter the admin code to proceed:");
             if (code !== "248617") { 
@@ -1590,15 +1592,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const headers = getHeaders.result.values[0];
         
-                const rowsToAppend = projectsToArchive.map(project => {
+                // --- FIX 1: Sort projects before archiving for grouping/readability in the archive sheet ---
+                const sortedProjectsToArchive = [...projectsToArchive].sort((a, b) => {
+                    // Sort primarily by Project Name
+                    if (a.baseProjectName < b.baseProjectName) return -1;
+                    if (a.baseProjectName > b.baseProjectName) return 1;
+                    // Sort secondary by Fix Category number
+                    const fixNumA = parseInt(a.fixCategory.replace('Fix', ''), 10);
+                    const fixNumB = parseInt(b.fixCategory.replace('Fix', ''), 10);
+                    return fixNumA - fixNumB;
+                });
+                
+                const rowsToAppend = sortedProjectsToArchive.map(project => {
                     return headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
                 });
         
                 await this.appendRowsToSheet(this.config.sheetNames.ARCHIVE, rowsToAppend);
                 
+                // --- FIX 2: Delete rows from Projects sheet and update local state ---
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
-        
+                
+                // Manually remove projects from the local state array for immediate dashboard consistency
+                const archivedIds = new Set(projectsToArchive.map(p => p.id));
+                this.state.projects = this.state.projects.filter(p => !archivedIds.has(p.id));
+
                 await this.loadDataFromSheets(true);
                 alert(`${projectsToArchive.length} completed project(s) have been archived successfully.`);
         
@@ -1608,7 +1626,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 this.hideLoading();
             }
-        },
+        }
         openTimeEditModal(projectId, day) {
             const project = this.state.projects.find(p => p.id === projectId);
             if (!project) return;
