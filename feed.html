@@ -212,16 +212,7 @@
 
         .comment-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 40px; margin-top: 5px; }
         .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
-        .delete-comment-btn, .edit-comment-btn { 
-            background: none; 
-            border: none; 
-            cursor: pointer; 
-            font-size: 0.9em; 
-            padding: 0; 
-            margin-left: 10px; 
-        }
-        .delete-comment-btn { color: #e74c3c; }
-        .edit-comment-btn { color: #3498db; }
+        .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
 
         /* Reaction Emojis */
         .reaction-container {
@@ -1095,7 +1086,7 @@
                 
                 const posterName = escapeHTML(item.user || 'System');
 
-                // --- Enhanced Link Preview Card HTML (Restored structure from working version) ---
+                // --- Link Preview Card HTML (Using the correct, working structure) ---
                 const mediaCard = link ? `
                     <div class="review-card">
                         <a href="${link}" target="_blank">
@@ -1168,7 +1159,6 @@
             
             // Re-check reaction status for all posts after rendering
             if (user) {
-                // FIX: Ensure checkReactionStatus runs for ALL posts
                 postsToRender.forEach(post => checkReactionStatus(post.id, user.uid));
             }
 
