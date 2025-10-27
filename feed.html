@@ -124,6 +124,9 @@
         .action-icon { cursor: pointer; color: #34495e; font-size: 1.5em; transition: color 0.2s; }
         .action-icon:hover { color: #c0392b; }
         .post-icon:hover { color: #2ecc71; }
+        /* NEW: Notification Icon Style */
+        #notificationBell { margin-left: -5px; color: #3498db; }
+        #notificationBell.active { color: #e74c3c !important; }
 
         /* NEW: Styles for Cooldown */
         .action-icons #refreshFeedIcon.fa-spin {
@@ -175,6 +178,10 @@
         /* END FIX */
 
         /* Like and Comment Styles (Same) */
+        /* FIX: Add a hover state for the like count to show the tooltip */
+        .like-count {
+            cursor: help; 
+        }
         .like-btn { background: none; border: none; color: #e74c3c; cursor: pointer; margin-left: 10px; font-size: 0.9em; font-weight: bold; transition: opacity 0.2s; }
         .like-btn:hover { opacity: 0.7; }
         .like-btn.liked { color: #2980b9; } 
@@ -184,29 +191,31 @@
         .comment-toggle { display: block; margin-top: 10px; font-size: 0.85em; color: #3498db; cursor: pointer; text-align: right; border-top: 1px dashed #ecf0f1; padding-top: 5px; }
         .comment-section { padding-top: 10px; border-top: 1px solid #dcdde1; margin-top: 10px; }
         .comment-item { background-color: #f8f9fa; padding: 8px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9em; position: relative; }
-        .comment-meta { font-weight: bold; color: #7f8c8d; font-size: 0.8em; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center;}
+        .comment-meta { font-weight: bold; color: #7f8c8d; font-size: 0.8em; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;}
         .comment-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; min-height: 40px; margin-top: 5px; }
         .comment-form button { background-color: #3498db; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; float: right; }
         .delete-comment-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 0.9em; padding: 0; margin-left: 10px; }
+        .comment-actions button { margin-left: 5px; } /* Space out actions */
 
-        /* Review/Media Card Styling (Same) */
-        .review-card { border: 1px solid #444; border-radius: 6px; overflow: hidden; margin-top: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); max-width: 400px; }
-        .review-card a { text-decoration: none; color: inherit; }
-        .review-card-header { background-color: #222; color: white; height: 150px; padding: 20px 15px; text-align: center; position: relative; background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://via.placeholder.com/400x150/222/ffffff?text=EAGLEVIEW'); background-size: cover; background-position: center; }
-        .review-card-logo { position: absolute; top: 15px; left: 15px; font-size: 1.5em; color: #ccc; font-weight: bold; }
-        .review-card-header h4 { font-size: 1.8em; margin: 30px 0 5px 0; letter-spacing: 2px; }
-        .review-card-header p { font-size: 0.8em; margin: 0; color: #aaa; }
-        .review-card-preview { display: inline-flex; align-items: center; padding: 8px 18px; border: 1px solid white; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: 15px; }
-        .review-card-preview:hover { background-color: rgba(255, 255, 255, 0.2); }
-        .review-card-preview i { margin-right: 8px; }
-
-        .review-card-body { padding: 10px 15px; background-color: #f7f7f7; display: flex; align-items: center; justify-content: space-between; }
+        /* Review/Media Card Styling (MODIFIED - Simplified for PDF/Generic) */
+        .media-card-container { margin-top: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; border-radius: 6px; overflow: hidden; }
+        .media-card-body { padding: 10px 15px; background-color: #f7f7f7; display: flex; align-items: center; justify-content: space-between; border: 1px solid #dcdde1; border-top: none; }
         .file-info { display: flex; align-items: center; flex-grow: 1; }
         .file-info i { color: #e74c3c; font-size: 1.5em; margin-right: 8px; }
         .file-details { display: flex; flex-direction: column; line-height: 1.3; }
         .review-card-filename { font-size: 1em; font-weight: bold; color: #34495e; margin: 0; }
         .file-access { font-size: 0.8em; color: #7f8c8d; }
         .file-actions i { color: #555; cursor: pointer; font-size: 1.1em; margin-left: 10px; }
+        
+        /* YouTube specific styles for embedded player */
+        .youtube-embed-container {
+            margin-top: 15px; 
+            max-width: 400px; 
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        .youtube-embed-container iframe {
+            display: block; 
+        }
 
         /* Modal Styling (Same) */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
@@ -251,6 +260,7 @@
             <h1>Project Updates Feed</h1>
             
             <div class="action-icons">
+                <i class="fas fa-bell action-icon" id="notificationBell" title="No New Announcements"></i>
                 <i class="fas fa-sync-alt action-icon" id="refreshFeedIcon" title="Refresh Feed (5 min cooldown)"></i>
                 <i class="fas fa-plus post-icon action-icon" id="postIcon" title="New TL Announcement"></i>
                 <i class="fas fa-cog settings-icon action-icon" id="settingsIcon" title="Management Access"></i>
@@ -282,7 +292,7 @@
         <h2><i class="fas fa-bullhorn"></i> New TL Announcement</h2>
         <form id="newPostForm" class="modal-form">
             <input type="text" id="postTitle" placeholder="Announcement Title (e.g., Quick Update)" required>
-            <input type="text" id="postLink" placeholder="Optional: Link to PDF/Media for Review (e.g., https://example.com/file.pdf)">
+            <input type="text" id="postLink" placeholder="Optional: Link to PDF, YouTube, or Media (e.g., https://youtu.be/videoID or https://example.com/file.pdf)">
             <input type="hidden" id="postUser" required> 
             
             <div class="quill-editor-container">
@@ -401,6 +411,8 @@
         const quickJumpList = document.getElementById('quickJumpList'); 
         // Refresh Icon
         const refreshIcon = document.getElementById('refreshFeedIcon');
+        // Notification Bell
+        const notificationBell = document.getElementById('notificationBell');
 
 
         // --- HELPER FUNCTIONS ---
@@ -426,6 +438,31 @@
                 console.error("Error checking like status:", error);
             }
         }
+        
+        // --- LIKER HOVER LOGIC ---
+        async function showLikers(docId, element) {
+            const likersRef = db.collection('feedItems').doc(docId).collection('likers');
+            try {
+                const snapshot = await likersRef.get();
+                let likerNames = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.user) {
+                        likerNames.push(escapeHTML(data.user));
+                    }
+                });
+
+                if (likerNames.length === 0) {
+                    element.title = "No likes yet. Be the first!";
+                } else {
+                    element.title = "Liked by: " + likerNames.join(', ');
+                }
+            } catch (error) {
+                console.error("Error fetching likers:", error);
+                element.title = "Failed to load likers.";
+            }
+        }
+        window.showLikers = showLikers; 
         
         // Render HTML (Moved up)
         const renderHTML = (html) => {
@@ -462,6 +499,15 @@
             }
         }
 
+        // --- NEW: LINK TYPE UTILITY FOR MEDIA CARDS ---
+        function getLinkType(url) {
+            if (!url) return null;
+            if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+            if (url.toLowerCase().endsWith('.pdf')) return 'pdf';
+            if (url.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/)) return 'image';
+            return 'generic';
+        }
+
         // Debounce function for stable search input
         function debounce(func, delay = 300) {
             let timeoutId;
@@ -475,19 +521,26 @@
             };
         }
         
-        // --- AUTHENTICATION FUNCTIONS (Same) ---
+        // --- AUTHENTICATION FUNCTIONS (Modified for Notifications) ---
         function setupAuthObserver() {
             auth.onAuthStateChanged(user => {
                 if (user) {
                     authMessage.innerHTML = `<i class="fas fa-user-circle"></i> Signed in as: <b>${escapeHTML(user.displayName)}</b>`;
                     signInBtn.style.display = 'none';
                     signOutBtn.style.display = 'block';
+                    
+                    // Log last login/activity for notification tracking
+                    db.collection('users').doc(user.uid).set({
+                        displayName: user.displayName || user.email,
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+
                 } else {
                     authMessage.innerHTML = '<i class="fas fa-user-times"></i> You must sign in to Like or Comment.';
                     signInBtn.style.display = 'block';
                     signOutBtn.style.display = 'none';
                 }
-                // Refresh feed to update like/comment buttons based on auth status
+                // Refresh feed to update like/comment buttons/notifications based on auth status
                 filterFeed(); 
             });
         }
@@ -590,19 +643,39 @@
                     const commentId = doc.id;
                     const timestamp = comment.timestamp ? (comment.timestamp.toDate ? new Date(comment.timestamp.toDate()).toLocaleString() : new Date(comment.timestamp).toLocaleString()) : 'N/A';
                     
-                    const deleteButton = (user && user.uid === comment.uid) ? 
+                    const isAuthor = user && user.uid === comment.uid;
+
+                    const deleteButton = isAuthor ? 
                         `<button class="delete-comment-btn" onclick="deleteComment('${docId}', '${commentId}')">
                             <i class="fas fa-trash-alt"></i> Delete
                         </button>` : '';
+                    
+                    const editButton = isAuthor ? 
+                        `<button class="delete-comment-btn" onclick="openCommentEditor('${docId}', '${commentId}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>` : '';
 
+                    const editedLabel = comment.edited ? ' (Edited)' : '';
                     const commentText = linkify(escapeHTML(comment.text)); 
-
+                    
+                    // Add an ID to the comment-item for easy access
                     html += `
-                        <div class="comment-item">
-                            ${commentText}
+                        <div class="comment-item" id="comment-item-${commentId}">
+                            <div id="comment-display-${commentId}">${commentText}</div>
+                            
+                            <form id="comment-edit-form-${commentId}" style="display:none; margin-top: 5px;" onsubmit="event.preventDefault(); saveCommentEdit('${docId}', '${commentId}')">
+                                <textarea id="edit-text-${commentId}" style="width: 100%; padding: 5px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box;">${escapeHTML(comment.text)}</textarea>
+                                <button type="submit" class="btn-primary" style="float: right; margin-top: 5px; padding: 3px 8px; font-size: 0.8em;">Save</button>
+                                <button type="button" class="btn-secondary" style="float: right; margin-top: 5px; margin-right: 5px; padding: 3px 8px; font-size: 0.8em;" onclick="closeCommentEditor('${commentId}')">Cancel</button>
+                                <div style="clear: both;"></div>
+                            </form>
+
                             <div class="comment-meta">
-                                <span><i class="fas fa-user-circle"></i> ${escapeHTML(comment.user)} - ${timestamp}</span>
-                                ${deleteButton}
+                                <span><i class="fas fa-user-circle"></i> ${escapeHTML(comment.user)} - ${timestamp}${editedLabel}</span>
+                                <span class="comment-actions">
+                                    ${editButton}
+                                    ${deleteButton}
+                                </span>
                             </div>
                         </div>
                     `;
@@ -615,6 +688,48 @@
                 commentList.innerHTML = '<div class="comment-item" style="color: #c0392b;">Failed to load comments.</div>';
             }
         }
+        
+        // --- COMMENT EDITING LOGIC ---
+        function openCommentEditor(postId, commentId) {
+            // Ensure the textarea is populated with the current text
+            const currentTextElement = document.getElementById(`comment-display-${commentId}`);
+            const editTextArea = document.getElementById(`edit-text-${commentId}`);
+
+            // Set the value from the content (unescaped)
+            editTextArea.value = currentTextElement.textContent; 
+
+            currentTextElement.style.display = 'none';
+            document.getElementById(`comment-edit-form-${commentId}`).style.display = 'block';
+        }
+
+        function closeCommentEditor(commentId) {
+            document.getElementById(`comment-display-${commentId}`).style.display = 'block';
+            document.getElementById(`comment-edit-form-${commentId}`).style.display = 'none';
+        }
+
+        async function saveCommentEdit(postId, commentId) {
+            const newText = document.getElementById(`edit-text-${commentId}`).value.trim();
+            if (!newText) {
+                alert("Comment text cannot be empty.");
+                return;
+            }
+
+            try {
+                await db.collection('feedItems').doc(postId).collection('comments').doc(commentId).update({
+                    text: newText,
+                    edited: true,
+                });
+                
+                // Reload comments to show the updated text and close the editor
+                loadComments(postId); 
+            } catch (error) {
+                console.error("Error saving comment edit:", error);
+                alert("Failed to update comment. Check Firebase Security Rules.");
+            }
+        }
+        window.openCommentEditor = openCommentEditor;
+        window.closeCommentEditor = closeCommentEditor;
+        window.saveCommentEdit = saveCommentEdit;
 
         async function deleteComment(postId, commentId) {
             if (!confirm("Are you sure you want to delete your comment?")) return;
@@ -696,7 +811,7 @@
                     
                     likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
                     likeButton.classList.remove('liked');
-                    likeButton.innerHTML = '<i class="fas fa-thumbs-down"></i> Unlike';
+                    likeButton.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
 
                 } else {
                     await db.collection('feedItems').doc(docId).update({
@@ -830,7 +945,7 @@
             }
         }
 
-        // --- RENDER FEED (Fixed management button display) ---
+        // --- RENDER FEED (Fixed management button display & dynamic media cards) ---
         function renderFeed(postsToRender) {
             outputElement.classList.remove('status-message');
             outputElement.innerHTML = '';
@@ -891,35 +1006,82 @@
                     </div>
                 ` : '';
 
-                // --- Enhanced Link Preview Card HTML ---
-                const mediaCard = link ? `
-                    <div class="review-card">
-                        <a href="${link}" target="_blank">
-                            <div class="review-card-header">
-                                <span class="review-card-logo">EAGLEVIEW</span>
-                                <h4>QUICK UPDATE</h4>
-                                <div class="review-card-preview">
-                                    <i class="fas fa-play"></i> Preview
+                // --- Enhanced Link Preview Card HTML (DYNAMIC) ---
+                const linkType = getLinkType(link);
+                let mediaCard = '';
+
+                if (link && linkType === 'youtube') {
+                    // Simple YouTube Embed
+                    const videoId = link.match(/(?<=v=|youtu\.be\/)[\w-]+/)?.[0];
+                    if (videoId) {
+                        mediaCard = `
+                            <div class="youtube-embed-container">
+                                <iframe width="100%" height="225" src="https://www.youtube.com/embed/${videoId}" 
+                                    frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen></iframe>
+                                <div class="media-card-body" style="border-left: 5px solid #c0392b;">
+                                    <div class="file-info">
+                                        <i class="fab fa-youtube" style="color: #c0392b;"></i>
+                                        <div class="file-details">
+                                            <a href="${link}" target="_blank" style="text-decoration: none;">
+                                                <span class="review-card-filename">YouTube Video</span>
+                                            </a>
+                                            <span class="file-access">Watch Now</span>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions">
+                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
+                                    </div>
                                 </div>
-                                <p style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);">October 2025</p>
                             </div>
-                        </a>
-                            <div class="review-card-body">
+                        `;
+                    }
+                } else if (link && linkType === 'pdf') {
+                    // PDF Card
+                    mediaCard = `
+                        <div class="media-card-container" style="border-left: 5px solid #e74c3c;">
+                            <div class="media-card-body">
                                 <div class="file-info">
                                     <i class="fas fa-file-pdf"></i>
                                     <div class="file-details">
                                         <a href="${link}" target="_blank" style="text-decoration: none;">
-                                            <span class="review-card-filename">${getFileName(link)}</span>
+                                            <span class="review-card-filename">${getFileName(link) || 'PDF Document'}</span>
                                         </a>
-                                        <span class="file-access">People with existing access can use the link</span>
+                                        <span class="file-access">Click to open PDF</span>
                                     </div>
                                 </div>
                                 <div class="file-actions">
-                                    <i class="fas fa-times"></i>
+                                    <a href="${link}" target="_blank" style="text-decoration: none;">
+                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
+                                    </a>
                                 </div>
                             </div>
-                    </div>
-                ` : '';
+                        </div>
+                    `;
+                } else if (link && linkType === 'generic') {
+                     // Generic Link Card
+                    mediaCard = `
+                        <div class="media-card-container" style="border-left: 5px solid #95a5a6;">
+                            <div class="media-card-body">
+                                <div class="file-info">
+                                    <i class="fas fa-link" style="color: #95a5a6;"></i>
+                                    <div class="file-details">
+                                        <a href="${link}" target="_blank" style="text-decoration: none;">
+                                            <span class="review-card-filename">${getFileName(link) || 'External Link'}</span>
+                                        </a>
+                                        <span class="file-access">Open external resource</span>
+                                    </div>
+                                </div>
+                                <div class="file-actions">
+                                    <a href="${link}" target="_blank" style="text-decoration: none;">
+                                        <i class="fas fa-external-link-alt" style="color: #3498db;"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
 
 
                 html += `
@@ -933,10 +1095,22 @@
                             <i class="fas fa-user-tag"></i> ${escapeHTML(item.user || 'System')} 
                             &bull; <i class="fas fa-calendar-alt"></i> ${timestamp}
                             
-                            <button id="like-btn-${docId}" class="like-btn" onclick="likePost('${docId}')">
+                            <button 
+                                id="like-btn-${docId}" 
+                                class="like-btn" 
+                                onclick="likePost('${docId}')"
+                                onmouseover="showLikers('${docId}', this.parentNode.querySelector('#like-count-${docId}'))"
+                            >
                                 <i class="fas fa-thumbs-up"></i> Like
                             </button>
-                            <span id="like-count-${docId}" class="like-count">${likes}</span>
+                            <span 
+                                id="like-count-${docId}" 
+                                class="like-count" 
+                                onmouseover="showLikers('${docId}', this)"
+                                title="Hover to see likers"
+                            >
+                                ${likes}
+                            </span>
 
                         </small>
 
@@ -967,6 +1141,9 @@
             }
 
             openCommentSections.forEach(docId => loadComments(docId));
+            
+            // Run notification check after rendering feed
+            checkNewPosts();
         }
 
         async function fetchFeed() {
@@ -1012,6 +1189,7 @@
                     outputElement.innerHTML = '✅ **Connection Successful.** No TL announcements found.';
                     allPosts = [];
                     renderQuickJumpList();
+                    checkNewPosts(); // Check notifications even if feed is empty
                     return;
                 }
 
@@ -1027,9 +1205,48 @@
                     2. Check that your **Firebase Security Rules** allow read access for everyone.<br>
                     3. If the error persists after creating the index, manually **ensure all old posts have the field isPinned: false** in the Firestore console.
                 `;
+                checkNewPosts(); // Still run for cleanup
             }
         }
         
+        // --- NEW: NOTIFICATION CHECK ---
+        async function checkNewPosts() {
+            const user = auth.currentUser;
+            if (!user) {
+                notificationBell.classList.remove('active');
+                notificationBell.title = 'Sign in to track new announcements.';
+                return;
+            }
+
+            try {
+                // Get the user's last login timestamp
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const lastVisit = userDoc.exists && userDoc.data().lastLogin ? userDoc.data().lastLogin.toDate() : new Date(0);
+
+                let newPostsCount = 0;
+                
+                // Iterate through the already fetched posts (allPosts)
+                allPosts.forEach(post => {
+                    const postTime = post.data.timestamp ? (post.data.timestamp.toDate ? post.data.timestamp.toDate() : new Date(post.data.timestamp)) : new Date(0);
+                    
+                    if (postTime > lastVisit) {
+                         newPostsCount++;
+                    }
+                });
+
+                if (newPostsCount > 0) {
+                    notificationBell.classList.add('active'); 
+                    notificationBell.title = `${newPostsCount} NEW Announcements since your last visit!`;
+                } else {
+                    notificationBell.classList.remove('active');
+                    notificationBell.title = 'No New Announcements';
+                }
+            } catch (error) {
+                console.error("Error checking new posts:", error);
+                notificationBell.title = 'Error checking status.';
+            }
+        }
+
         // --- OPEN EDIT MODAL (Modified to decode content) ---
         function openEditModal(id, encodedTitle, encodedLink, encodedContent) {
             if (!isAdmin) return;
@@ -1049,7 +1266,7 @@
             pinToggleButton.innerHTML = isPinned ? 
                 '<i class="fas fa-thumbtack"></i> Unpin Post' : 
                 '<i class="fas fa-thumbtack"></i> Pin to Top';
-            pinToggleButton.className = isPinned ? 'btn btn-danger' : 'btn btn-primary';
+            pinToggleButton.className = isPinned ? 'btn btn-secondary' : 'btn btn-primary';
 
             editPostId.value = id;
             editTitle.value = title;
@@ -1286,6 +1503,21 @@
             document.getElementById('settingsIcon').addEventListener('click', openPinModal);
             // Refresh Icon Event Listener
             refreshIcon.addEventListener('click', handleRefreshClick);
+            
+            // Notification Bell Click Listener (clears notifications)
+            notificationBell.addEventListener('click', () => {
+                 if (auth.currentUser) {
+                     db.collection('users').doc(auth.currentUser.uid).update({
+                         lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                     }).then(() => {
+                         checkNewPosts();
+                         alert("New announcement tracker reset!");
+                     }).catch(error => {
+                         console.error("Error resetting notification:", error);
+                         alert("Could not reset notification tracker.");
+                     });
+                 }
+            });
 
             window.addEventListener('click', (event) => {
                 if (event.target === managementModal) {
