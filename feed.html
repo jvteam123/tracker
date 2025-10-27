@@ -240,7 +240,7 @@
             transform: scale(1.2);
         }
         .reaction-button.selected {
-            background-color: #bdc3c7;
+            background-color: #e0e0e0;
             border-radius: 50%;
         }
         .reaction-count-display {
@@ -275,11 +275,11 @@
         #managementArea input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #dcdde1; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
         .quill-editor-container { margin-bottom: 15px; }
         .quill-editor-container .ql-editor { min-height: 150px; }
-
+        
         /* Preview Card Specific Styles */
         .review-card-header { 
-            /* Removed dark filter for better visibility of file name */
-            background-image: url('https://via.placeholder.com/400x150/222/ffffff?text=EAGLEVIEW'); 
+            /* Ensure the background is visible */
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://via.placeholder.com/400x150/222/ffffff?text=EAGLEVIEW'); 
         }
         .review-card-body {
             /* Ensured white background for file details */
@@ -480,6 +480,12 @@
             
             if (!userReactionElement) return;
             
+            // If user is not logged in, just display the counts and exit.
+            if (!uid) {
+                userReactionElement.innerHTML = ''; 
+                return;
+            }
+
             userReactionElement.innerHTML = ''; // Clear previous state
 
             try {
@@ -492,7 +498,7 @@
                         // User has reacted: show only the current reaction as a toggle to remove it
                         userReactionElement.innerHTML = `<button class="reaction-button selected" onclick="handleReactionClick('${docId}', 'none')" title="Click to remove reaction">${emoji}</button>`;
                     } else {
-                        // Display default reaction buttons if unknown type or no known reaction is found (defaulting to full set)
+                        // Fallback: Display default reaction buttons if unknown type
                         let buttonsHtml = '';
                         for (const emoji in REACTIONS) {
                             buttonsHtml += `<button class="reaction-button" onclick="handleReactionClick('${docId}', '${REACTIONS[emoji]}')">${emoji}</button>`;
@@ -539,12 +545,10 @@
 
         function getFileName(url) {
             try {
-                // Return the segment after the last slash, decoding URI components
                 const path = new URL(url).pathname;
                 const segments = path.split('/');
                 return decodeURIComponent(segments[segments.length - 1]);
             } catch (e) {
-                // If URL parsing fails, return the original string
                 return url; 
             }
         }
@@ -664,6 +668,7 @@
             commentList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading comments...';
 
             try {
+                // NOTE: Persistence enabled below helps minimize reads here as well.
                 const snapshot = await db.collection('feedItems').doc(docId).collection('comments').orderBy('timestamp', 'asc').get();
                 
                 if (snapshot.empty) {
