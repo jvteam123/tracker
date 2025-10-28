@@ -4,13 +4,17 @@ document.addEventListener('DOMContentLoaded', () => {
             google: {
                 API_KEY: "AIzaSyBxlhWwf3mlS_6Q3BiUsfpH21AsbhVmDw8",
                 CLIENT_ID: "221107133299-7r4vnbhpsdrnqo8tss0dqbtrr9ou683e.apps.googleusercontent.com",
+                // CRITICAL FIX: Add both Sheets scope and basic user email scope
+                SCOPES: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email",
                 SPREADSHEET_ID: "15bhPCYDLChEwO6_uQfvUyq5_qMQp4h816uM26yq3rNY",
-                SCOPES: "https://www.googleapis.com/auth/spreadsheets",
             },
             cacheDuration: 5 * 60 * 1000, // 5 minutes in milliseconds
             sheetNames: { PROJECTS: "Projects", USERS: "Users", DISPUTES: "Disputes", EXTRAS: "Extras", ARCHIVE: "Archive", NOTIFICATIONS: "Notifications", BACKUP: "Backup" }, // Added BACKUP
             HEADER_MAP: { 'id': 'id', 'Fix Cat': 'fixCategory', 'Project Name': 'baseProjectName', 'Area/Task': 'areaTask', 'GSD': 'gsd', 'Assigned To': 'assignedTo', 'Status': 'status', 'Day 1 Start': 'startTimeDay1', 'Day 1 Finish': 'finishTimeDay1', 'Day 1 Break': 'breakDurationMinutesDay1', 'Day 2 Start': 'startTimeDay2', 'Day 2 Finish': 'finishTimeDay2', 'Day 2 Break': 'breakDurationMinutesDay2', 'Day 3 Start': 'startTimeDay3', 'Day 3 Finish': 'finishTimeDay3', 'Day 3 Break': 'breakDurationMinutesDay3', 'Day 4 Start': 'startTimeDay4', 'Day 4 Finish': 'finishTimeDay4', 'Day 4 Break': 'breakDurationMinutesDay4', 'Day 5 Start': 'startTimeDay5', 'Day 5 Finish': 'finishTimeDay5', 'Day 5 Break': 'breakDurationMinutesDay5', 'Total (min)': 'totalMinutes', 'Last Modified': 'lastModifiedTimestamp', 'Batch ID': 'batchId' },
-            USER_HEADER_MAP: { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId' },
+            // CRITICAL FIX: Reversing mapping to match user's final sheet format:
+            // 'techId' (sheet header containing '7236LE') maps to 'techId' (the final assigned value)
+            // 'Employee Code' (sheet header containing 'ev.lorens.ebrado') maps to 'loginMatchKey'
+            USER_HEADER_MAP: { 'id': 'id', 'name': 'name', 'email': 'email', 'techId': 'techId', 'Employee Code': 'loginMatchKey' },
             DISPUTE_HEADER_MAP: { 'id': 'id', 'Block ID': 'blockId', 'Project Name': 'projectName', 'Partial': 'partial', 'Phase': 'phase', 'UID': 'uid', 'RQA TechID': 'rqaTechId', 'Reason for Dispute': 'reasonForDispute', 'Tech ID': 'techId', 'Tech Name': 'techName', 'Team': 'team', 'Type': 'type', 'Category': 'category', 'Status': 'status' },
             EXTRAS_HEADER_MAP: { 'id': 'id', 'name': 'name', 'url': 'url', 'icon': 'icon' },
             NOTIFICATIONS_HEADER_MAP: { 'id': 'id', 'message': 'message', 'projectName': 'projectName', 'timestamp': 'timestamp', 'read': 'read' },
@@ -36,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showDays: { 1: true, 2: false, 3: false, 4: false, 5: false },
                 disputeStatus: 'All',
             },
+            currentUserEmail: null, // Stored email from userinfo
         },
         elements: {},
 
@@ -50,13 +55,20 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         async initializeGapiClient() {
             try {
+                // Initialize Sheets client and API Key
                 await gapi.client.init({
                     apiKey: this.config.google.API_KEY,
                     discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
                 });
+                
+                await gapi.client.load('sheets', 'v4');
+                // Ensure the OAuth2 API is loaded for user info lookup
+                await gapi.client.load('oauth2', 'v2'); 
+
                 this.initializeGsi();
+
             } catch (error) {
-                console.error("GAPI Error: Failed to initialize GAPI client.", error);
+                console.error("GAPI Client initialization failed:", error);
                 this.handleSignedOutUser();
             }
         },
@@ -78,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.tokenClient.requestAccessToken({ prompt: 'consent' });
         },
+        
         async handleTokenResponse(resp) {
             if (this.state.signInTimeoutId) {
                 clearTimeout(this.state.signInTimeoutId);
@@ -86,7 +99,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (resp && resp.access_token) {
                 gapi.client.setToken(resp);
-                this.handleAuthorizedUser();
+                
+                try {
+                    // Use gapi.client.oauth2.userinfo.get() for reliability
+                    const userResponse = await gapi.client.oauth2.userinfo.get();
+                    const userInfo = userResponse.result;
+
+                    if (userInfo && userInfo.email) {
+                        this.state.currentUserEmail = userInfo.email; // Store email for Tech ID calculation
+                        this.handleAuthorizedUser();
+                    } else {
+                        console.error("User info missing email or API failed to return email:", userInfo);
+                        alert("Sign-in failed: Could not retrieve your email address from Google. Please ensure 'User Data' scope is accepted.");
+                        this.handleSignedOutUser();
+                    }
+
+                } catch(error) {
+                     console.error("Failed to fetch user info after token response:", error);
+                     alert("Sign-in failed due to API connection issue. Please check your network and Google Sheet permissions.");
+                     this.handleSignedOutUser();
+                }
             } else {
                 console.log("Sign-in failed or was cancelled by the user.");
                 this.handleSignedOutUser();
@@ -103,17 +135,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.handleSignedOutUser();
             }
         },
+        // NEW Helper: Retrieves the canonical Tech ID (e.g., 7236LE) from the Users list
+        getTechIdFromEmail(email) {
+            if (!email) return null;
+            const loginKey = email.split('@')[0].toLowerCase();
+            
+            // CRITICAL FIX: Search using the login key against the stored email prefix (loginMatchKey)
+            const user = this.state.users.find(u => u.loginMatchKey.toLowerCase() === loginKey);
+            
+            // Return the canonical Tech ID (e.g., 7236LE) found in the 'techId' property.
+            // If the user is not found, return null to prevent assignment
+            return user ? user.techId : null; 
+        },
         async handleAuthorizedUser() {
             document.body.classList.remove('login-view-active');
             this.elements.authWrapper.style.display = 'none';
             this.elements.dashboardWrapper.style.display = 'flex';
-            this.elements.loggedInUser.textContent = `Signed In`;
+            
+            // Load data before trying to find user info
             if (!this.state.isAppInitialized) {
                 await this.loadDataFromSheets();
                 this.state.isAppInitialized = true;
-            } else {
-                this.filterAndRenderProjects();
             }
+
+            // Get the canonical Tech ID (will be null if not found in Users sheet)
+            const canonicalTechId = this.getTechIdFromEmail(this.state.currentUserEmail);
+            
+            if (this.state.currentUserEmail) {
+                // Default display key is the email prefix 
+                const emailPrefix = this.state.currentUserEmail.split('@')[0];
+                
+                // Find user info based on the canonical Tech ID (which is now in user.techId)
+                const userInfo = this.state.users.find(u => u.techId === canonicalTechId);
+
+                // Determine what to display for the ID and Name
+                const displayId = canonicalTechId || emailPrefix; // Display canonical if found, else prefix
+                const displayName = userInfo ? userInfo.name : emailPrefix; 
+                
+                // Show status based on canonical ID availability
+                const statusSuffix = canonicalTechId ? 'Active' : 'Missing from Users List - Cannot Assign';
+
+                this.elements.loggedInUser.textContent = displayName;
+                this.elements.loggedInUserStatus.textContent = `ID: ${displayId} - Status: ${statusSuffix}`;
+            } else {
+                // This case should ideally be caught in handleTokenResponse now, but kept for robustness
+                this.elements.loggedInUser.textContent = "User Not Found";
+                this.elements.loggedInUserStatus.textContent = "Status: Error retrieving ID";
+                console.error("Final check failed: User Tech ID is null after authorization.");
+            }
+            
+            this.filterAndRenderProjects();
             this.renderExtrasMenu();
         },
         handleSignedOutUser() {
@@ -142,7 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = values[0];
             return values.slice(1).map((row, index) => {
                 let obj = { _row: index + 2 };
-                headers.forEach((header, i) => { const propName = headerMap[header.trim()]; if (propName) obj[propName] = row[i] || ""; });
+                headers.forEach((header, i) => {
+                    // Find the key in the expected header map (e.g., 'techId') that matches the sheet header (e.g., 'TechId') case-insensitively
+                    const headerKey = Object.keys(headerMap).find(key => key.toLowerCase() === header.trim().toLowerCase());
+                    if (headerKey) {
+                        const propName = headerMap[headerKey];
+                        obj[propName] = row[i] || "";
+                    }
+                });
                 return obj;
             });
         },
@@ -371,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 archiveSelectAllBtn: document.getElementById('archiveSelectAllBtn'),
                 confirmArchiveBtn: document.getElementById('confirmArchiveBtn'),
                 archiveCount: document.getElementById('archiveCount'),
+                loggedInUserStatus: document.getElementById('loggedInUserStatus'), 
             };
         },
         attachEventListeners() {
@@ -408,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.closeArchiveModalBtn.onclick = () => this.elements.archiveModal.classList.remove('is-open');
             this.elements.copyArchiveBtn.onclick = () => this.handleCopyArchive();
 
-            // NEW Archive Modal Listeners
+            // Archive Modal Listeners
             this.elements.closeArchiveSelectModalBtn.onclick = () => this.elements.archiveSelectModal.classList.remove('is-open');
             this.elements.archiveStatusFilter.onchange = () => this.renderArchiveProjectSelection(this.elements.archiveStatusFilter.value);
             this.elements.archiveProjectList.onchange = () => this.updateArchiveCount();
@@ -627,7 +706,93 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.filterAndRenderProjects();
                 await this.updateRowInSheet(this.config.sheetNames.PROJECTS, project._row, project);
             }
-        },        
+        },
+        // NEW FEATURE: Quick Assign Handler
+        async handleQuickAssign(projectId) {
+            // Get the canonical Tech ID (e.g., 7236LE).
+            const techId = this.getTechIdFromEmail(this.state.currentUserEmail);
+            if (!techId) {
+                alert("Could not retrieve your canonical Tech ID for assignment. Please ensure your Tech ID is listed in the 'Users' sheet.");
+                return;
+            }
+            
+            const finalTechId = techId; // This is the canonical Tech ID (e.g., 7236LE)
+
+            if (confirm(`Assign this task to yourself (${finalTechId})?`)) {
+                
+                // CRITICAL FIX: Step 1 - Force a fresh reload of all project data 
+                // to check against the absolute current database state.
+                this.showLoading("Verifying assignment status...");
+                await this.loadDataFromSheets(true); 
+                this.hideLoading();
+                
+                // CRITICAL FIX: Step 2 - Re-find the project using the fresh state
+                const freshProject = this.state.projects.find(p => p.id === projectId);
+
+                if (!freshProject) {
+                     alert("Error: Project no longer exists in the database. Please refresh your dashboard.");
+                     return;
+                }
+                
+                // CRITICAL FIX: Step 3 - Check the fresh state for assignment
+                if (freshProject.assignedTo && freshProject.assignedTo.trim() !== '') {
+                    alert(`Error: This project was assigned to ${freshProject.assignedTo} by another user. Cannot overwrite.`);
+                    return;
+                }
+
+                // If the check passes, proceed with the assignment write
+                if (freshProject) {
+                    // 1. Optimistically update local state BEFORE API call to instantly hide button/spinner
+                    freshProject.assignedTo = finalTechId;
+                    this.filterAndRenderProjects();
+                    
+                    // 2. Perform asynchronous update to sheet (handleProjectUpdate handles the sheet logic)
+                    await this.handleProjectUpdate(projectId, { 'assignedTo': finalTechId });
+                }
+            }
+        },
+        // NEW FEATURE: Total Minutes Breakdown
+        openTimeBreakdown(projectId) {
+            const project = this.state.projects.find(p => p.id === projectId);
+            if (!project) return;
+            
+            let breakdown = `Time Breakdown for ${this.formatProjectName(project.baseProjectName)} - ${project.areaTask}\n\n`;
+            let totalLoggedTime = 0;
+            
+            for (let i = 1; i <= 5; i++) {
+                const start = this.formatTo12Hour(project[`startTimeDay${i}`]) || 'N/A';
+                const finish = this.formatTo12Hour(project[`finishTimeDay${i}`]) || 'N/A';
+                const breakMins = project[`breakDurationMinutesDay${i}`] || '0';
+                
+                if (start !== 'N/A' && finish !== 'N/A') {
+                    // Recalculate daily minutes accurately for the breakdown display
+                    let startMins = this.parseTimeToMinutes(project[`startTimeDay${i}`]);
+                    let finishMins = this.parseTimeToMinutes(project[`finishTimeDay${i}`]);
+                    if (finishMins < startMins) {
+                        finishMins += 24 * 60; // Handle overnight shift
+                    }
+                    const dailyMinutes = finishMins - startMins - (parseInt(breakMins, 10) || 0);
+
+                    totalLoggedTime += dailyMinutes;
+                    
+                    breakdown += `Day ${i} (Work: ${dailyMinutes} mins):\n`;
+                    breakdown += `  Start: ${start}\n`;
+                    breakdown += `  Finish: ${finish}\n`;
+                    breakdown += `  Break: ${breakMins} mins\n\n`;
+                }
+            }
+            
+            if (totalLoggedTime === 0) {
+                breakdown += "No time entries logged yet.";
+            } else {
+                const totalHours = (totalLoggedTime / 60).toFixed(2);
+                breakdown += `--- Total Calculated Time ---\n`;
+                breakdown += `Total Minutes: ${totalLoggedTime} \n`;
+                breakdown += `Total Hours: ${totalHours} hrs`;
+            }
+
+            alert(breakdown);
+        },
         getCurrentTime() {
             const now = new Date();
             let hours = now.getHours();
@@ -655,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         parseTimeToMinutes(timeStr) {
             if (!timeStr || typeof timeStr !== 'string') return 0;
-            const time = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            const time = timeStr.match(/(\d+):\d+\s*(AM|PM)/i);
             if (!time) {
                 const parts = timeStr.split(':');
                 if (parts.length !== 2) return 0;
@@ -701,7 +866,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showLoading(`Releasing ${fromFix} to ${toFix}...`);
             try {
                 const tasksToClone = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fromFix);
-                if (tasksToClone.length === 0) throw new Error(`No tasks found for ${baseProjectName} in ${fromFix}.`);
+                if (tasksToClone.length === 0) {
+                    throw new Error(`No tasks found for ${fromFix}.`);
+                }
                 
                 const batchId = `batch_release_${Date.now()}`;
                 tasksToClone.forEach((task, index) => {
@@ -749,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lastAreaNumber = parseInt((latestTask.areaTask.match(/\d+$/) || ['0'])[0], 10);
                 const batchId = `batch_extra_${Date.now()}`;
         
-                for (let i = 1; i <= numToAdd; i++) {
+                for (let i = 1; i <= numRows; i++) {
                     const newAreaNumber = lastAreaNumber + i;
                     const newRowObj = { 
                         ...latestTask, 
@@ -781,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         async handleRollback(baseProjectName, fixToDelete) {
-            if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Continue?`)) return;
+            if (!confirm(`DANGER: This will permanently delete all '${fixToDelete}' tasks for project '${this.formatProjectName(baseProjectName)}'. This cannot be undone. Are you sure?`)) return;
             this.showLoading(`Rolling back ${fixToDelete}...`);
             try {
                 const tasksToDelete = this.state.projects.filter(p => p.baseProjectName === baseProjectName && p.fixCategory === fixToDelete);
@@ -1108,6 +1275,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         row.insertCell().textContent = project.gsd || '';
                         
                         const assignedToCell = row.insertCell();
+                        
+                        // Assignment Dropdown
                         const assignedToSelect = document.createElement('select');
                         assignedToSelect.innerHTML = '<option value="">Available</option>' + this.state.users.map(u => `<option value="${u.techId}" ${project.assignedTo === u.techId ? 'selected' : ''}>${u.techId}</option>`).join('');
                         assignedToSelect.onchange = (e) => this.handleProjectUpdate(project.id, { 'assignedTo': e.target.value });
@@ -1117,7 +1286,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             assignedToSelect.disabled = true;
                         }
                         
-                        assignedToCell.appendChild(assignedToSelect);
+                        // NEW FEATURE: Quick Assign Button
+                        if (project.status === 'Available' && !project.assignedTo) {
+                            const quickAssignBtn = document.createElement('button');
+                            quickAssignBtn.textContent = 'Assign Me';
+                            quickAssignBtn.className = 'btn btn-quick-assign btn-small';
+                            quickAssignBtn.onclick = () => this.handleQuickAssign(project.id);
+                            
+                            // Group assignment elements
+                            const assignGroup = document.createElement('div');
+                            assignGroup.style.display = 'flex';
+                            assignGroup.style.alignItems = 'center';
+                            assignGroup.style.gap = '5px';
+                            assignGroup.appendChild(assignedToSelect);
+                            assignGroup.appendChild(quickAssignBtn);
+                            assignedToCell.appendChild(assignGroup);
+                        } else {
+                            assignedToCell.appendChild(assignedToSelect);
+                        }
                         
                         const statusCell = row.insertCell();
                         statusCell.innerHTML = `<span class="status status-${(project.status || "available").toLowerCase().replace(/[^a-z0-9]/gi, '')}">${project.status}</span>`;
@@ -1145,8 +1331,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         const totalMinCell = row.insertCell();
-                        totalMinCell.className = 'total-minutes-cell';
+                        totalMinCell.className = 'total-minutes-cell clickable'; // Added clickable class
                         totalMinCell.textContent = project.totalMinutes || '';
+                        // NEW FEATURE: Time breakdown on click
+                        if (project.totalMinutes) {
+                             totalMinCell.onclick = () => this.openTimeBreakdown(project.id);
+                             totalMinCell.style.cursor = 'pointer';
+                        }
+
 
                         const actionsCell = row.insertCell();
                         const btnGroup = document.createElement('div');
@@ -1218,11 +1410,42 @@ document.addEventListener('DOMContentLoaded', () => {
         renderUserManagement() {
             const tableBody = this.elements.userTableBody;
             tableBody.innerHTML = "";
+            
+            // NEW FEATURE: Calculate user performance stats
+            const userStats = this.state.projects.reduce((acc, project) => {
+                const techId = project.assignedTo;
+                if (!techId) return acc;
+
+                if (!acc[techId]) {
+                    acc[techId] = { assignedTasks: 0, completedTasks: 0, totalMinutes: 0 };
+                }
+                
+                acc[techId].assignedTasks++;
+                if (project.status === 'Completed' || project.status === 'No Refix') {
+                    acc[techId].completedTasks++;
+                }
+                acc[techId].totalMinutes += (parseInt(project.totalMinutes, 10) || 0);
+
+                return acc;
+            }, {});
+
             this.state.users.forEach(user => {
+                const stats = userStats[user.techId] || { assignedTasks: 0, completedTasks: 0, totalMinutes: 0 };
+                
+                const tasksCompleted = `${stats.completedTasks}/${stats.assignedTasks}`;
+                const totalHours = (stats.totalMinutes / 60).toFixed(1);
+                
                 const row = tableBody.insertRow();
                 row.insertCell().textContent = user.name;
                 row.insertCell().textContent = user.email;
                 row.insertCell().textContent = user.techId;
+                
+                // NEW FEATURE: Display user performance
+                row.insertCell().innerHTML = `
+                    <p style="margin:0;">Completed: <b>${tasksCompleted}</b></p>
+                    <p style="margin:0; font-size: 0.9em; color: var(--info-color);">Time: ${totalHours} hrs</p>
+                `;
+
                 const actionsCell = row.insertCell();
                 actionsCell.className = 'user-actions';
 
@@ -1262,6 +1485,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: this.elements.userName.value,
                 email: this.elements.userEmail.value,
                 techId: this.elements.userTechId.value,
+                // The lookup key (email prefix) is derived from the email for writing back to the sheet
+                loginMatchKey: this.elements.userEmail.value.split('@')[0],
             };
             const rowIndex = this.elements.userRow.value;
 
@@ -1273,11 +1498,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     spreadsheetId: this.config.google.SPREADSHEET_ID, range: `${this.config.sheetNames.USERS}!1:1`,
                 });
                 const headers = getHeaders.result.values[0];
-                const newRow = [headers.map(h => {
-                    // Find the sheet header corresponding to the property name in the user object
-                    const propName = Object.keys(this.config.USER_HEADER_MAP).find(k => k.toLowerCase() === h.toLowerCase());
-                    return user[this.config.USER_HEADER_MAP[propName]] || "";
+                
+                // Manually create the row values based on the expected sheet headers
+                const newRow = [headers.map(header => {
+                    // Find the property name based on the header's expected mapping
+                    const headerKey = Object.keys(this.config.USER_HEADER_MAP).find(k => k.toLowerCase() === header.trim().toLowerCase());
+                    const propName = headerKey ? this.config.USER_HEADER_MAP[headerKey] : null;
+
+                    if (propName === 'techId') return user.techId; 
+                    if (propName === 'loginMatchKey') return user.loginMatchKey; 
+                    if (user[propName] !== undefined) return user[propName];
+                    return "";
                 })];
+                
                 await this.appendRowsToSheet(this.config.sheetNames.USERS, newRow);
             }
             this.elements.userFormModal.classList.remove('is-open');
@@ -1507,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3><i class="fas fa-archive icon"></i> Archiving & Backup</h3>
                         <p>Archive completed projects or create a full backup snapshot.</p>
                         <div class="btn-group">
-                            <button class="btn btn-info" onclick="ProjectTrackerApp.openArchiveSelectModal()">Archive Projects</button>
+                            <button class="btn btn-info" onclick="ProjectTrackerApp.handleArchiveProjects()">Archive Projects</button>
                             <button class="btn btn-primary" onclick="ProjectTrackerApp.handleBackupProjects()">Backup Projects (Snapshot)</button>
                             <button class="btn btn-secondary" onclick="ProjectTrackerApp.renderArchiveModal()">View Archive</button>
                         </div>
@@ -1741,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowNumbersToDelete = projectsToArchive.map(p => p._row);
                 await this.deleteSheetRows(this.config.sheetNames.PROJECTS, rowNumbersToDelete);
                 
-                // 5. Update local state
+                // 5. Update local state to remove archived projects from dashboard
                 const archivedIds = new Set(projectsToArchive.map(p => p.id));
                 this.state.projects = this.state.projects.filter(p => !archivedIds.has(p.id));
         
@@ -1796,7 +2029,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Prepare project data rows
                 this.state.projects.forEach(project => {
-                    const row = headers.map(header => project[this.config.HEADER_MAP[header.trim()]] || "");
+                    // Map data keys to sheet headers
+                    const row = headers.map(header => {
+                        const propNameKey = Object.keys(this.config.HEADER_MAP).find(k => k.toLowerCase() === header.trim().toLowerCase());
+                        if (propNameKey) {
+                            const propName = this.config.HEADER_MAP[propNameKey];
+                            return project[propName] || "";
+                        }
+                        return "";
+                    });
                     rowsToAppend.push(row);
                 });
         
@@ -1826,8 +2067,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const startTimeStr = project[`startTimeDay${day}`] || '';
             const finishTimeStr = project[`finishTimeDay${day}`] || '';
         
-            const startTimeMatch = startTimeStr.match(/(\d+:\d+)\s*(AM|PM)/i);
-            const finishTimeMatch = finishTimeStr.match(/(\d+:\d+)\s*(AM|PM)/i);
+            const startTimeMatch = startTimeStr.match(/(\d+):\d+\s*(AM|PM)/i);
+            const finishTimeMatch = finishTimeStr.match(/(\d+):\d+\s*(AM|PM)/i);
         
             this.elements.editStartTime.value = startTimeMatch ? startTimeMatch[1] : startTimeStr;
             this.elements.editStartTimeAmPm.value = startTimeMatch ? startTimeMatch[2].toUpperCase() : 'AM';
@@ -2154,6 +2395,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: `proj_${Date.now()}`,
                     areaTask: `${originalTask.areaTask.split(' - ')[0]} - Part ${nextPartNumber}`,
                     status: 'Available',
+                    assignedTo: originalTask.assignedTo, // Keep the same assignment
                     startTimeDay1: "", finishTimeDay1: "", breakDurationMinutesDay1: "",
                     startTimeDay2: "", finishTimeDay2: "", breakDurationMinutesDay2: "",
                     startTimeDay3: "", finishTimeDay3: "", breakDurationMinutesDay3: "",
