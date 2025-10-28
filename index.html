@@ -52,6 +52,8 @@
         .sidebar-header { text-align: center; margin-bottom: 20px; position: relative; }
         .sidebar-header h2 { color: #fff; margin-top: 0; margin-bottom: 5px; font-size: 1.5em; }
         .sidebar-header #loggedInUser { color: #bdc3c7; font-size: 0.9em; }
+        /* NEW: Style for user status */
+        #loggedInUserStatus { color: #2ecc71; font-size: 0.85em; font-weight: 500; margin-top: 5px; }
         
         .sidebar-nav {
             flex-grow: 1;
@@ -94,6 +96,7 @@
         .btn-warning { background-color: var(--warning-color); color: white; }
         .btn-danger { background-color: var(--danger-color); color: white; }
         .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-quick-assign { background-color: #3498db; color: white; padding: 6px 10px; font-size: 0.85em; } /* NEW Style for quick assign */
 
 
         .filter-section {
@@ -148,9 +151,6 @@
             cursor: pointer;
             transition: background-color: 0.2s, border-color: 0.2s;
             min-width: unset;
-        }
-        .filter-group input[type="checkbox"] + label:hover {
-            background-color: #e0e0e0;
         }
         .filter-group input[type="checkbox"]:checked + label {
             background-color: var(--primary-color);
@@ -523,6 +523,14 @@
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.1);
         }
+        .form-group input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        .form-group input::-webkit-outer-spin-button,
+        .form-group input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
         #newProjectForm .btn-success {
             grid-column: 1 / -1; /* Span across both columns */
             padding: 12px;
@@ -530,7 +538,7 @@
             margin-top: 10px;
         }
 
-        /* NEW Archive Selection Modal Styles */
+        /* Archive Selection Modal Styles */
         #archiveSelectModal .project-list {
             max-height: 400px;
             overflow-y: auto;
@@ -577,6 +585,7 @@
             <div class="sidebar-header">
                 <h2>Team123</h2>
                 <div id="loggedInUser"></div>
+                <div id="loggedInUserStatus"></div> 
                  <div id="notificationBell">
                     <i class="fas fa-bell"></i>
                     <span id="notificationBadge"></span>
@@ -675,7 +684,7 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="userTableBody"></tbody>
+                            <tbody id="userTableBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -843,7 +852,6 @@
         </div>
     </div>
 
-    <!-- NEW ARCHIVE SELECTION MODAL -->
     <div id="archiveSelectModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -861,8 +869,7 @@
                     </select>
                 </div>
                 <div class="project-list" id="archiveProjectList">
-                    <!-- Checkboxes will be rendered here -->
-                </div>
+                    </div>
             </div>
             <div class="modal-footer" style="margin-top: 20px; display: flex; justify-content: space-between;">
                 <button id="archiveSelectAllBtn" class="btn btn-secondary">Select All</button>
@@ -962,7 +969,7 @@
                 <input type="text" id="userName" required>
                 <label for="userEmail">Email:</label>
                 <input type="email" id="userEmail">
-                <label for="userTechId">Tech ID:</label>
+                <label for="userTechId">Canonical Tech ID (for Projects, e.g., 7236LE):</label>
                 <input type="text" id="userTechId" required>
                 <button type="submit" class="btn btn-success">Save User</button>
             </form>
