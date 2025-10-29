@@ -820,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         parseTimeToMinutes(timeStr) {
             if (!timeStr || typeof timeStr !== 'string') return 0;
-            const time = timeStr.match(/(\d+):\d+\s*(AM|PM)/i);
+            const time = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
             if (!time) {
                 const parts = timeStr.split(':');
                 if (parts.length !== 2) return 0;
