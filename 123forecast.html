@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Windy Weather Map Integration</title>
+    <title>123 Weather Map Integration (iFrame)</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    colors: {
+                        'dark-bg': '#1e293b',    // Slate-800 equivalent
+                        'dark-card': '#334155',  // Slate-700 equivalent
+                        'primary-blue': '#3b82f6', // Blue-500
+                    },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
@@ -21,104 +26,100 @@
         /* Set the map container to take up most of the viewport height */
         #windy-container {
             width: 100%;
-            height: 80vh; /* 80% of viewport height */
-            min-height: 400px; /* Minimum height for mobile viewing */
-            border-radius: 0.5rem; /* Rounded corners */
+            height: 85vh; /* Increased height for immersion */
+            min-height: 450px; 
+            border-radius: 1rem; /* More rounded corners */
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); /* Stronger, darker shadow */
+            position: relative; 
+            border: 2px solid #3b82f6; /* Subtle blue border for emphasis */
+        }
+        /* Style the iframe to fill the container */
+        #windy-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col items-center p-4 sm:p-8 font-sans">
+<body class="bg-dark-bg flex flex-col items-center p-4 sm:p-10 font-sans min-h-screen text-white">
 
-    <div class="max-w-4xl w-full">
+    <div class="max-w-6xl w-full">
         <!-- Header Section -->
-        <header class="text-center mb-6">
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-2">Live Weather Forecast</h1>
-            <p class="text-gray-600 text-lg">Powered by Windy.com</p>
+        <header class="text-center mb-10 p-4">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-primary-blue mb-2 tracking-tight">
+                123 Forecast
+            </h1>
+            <p class="text-slate-400 text-lg sm:text-xl font-light italic">
+                Real-time, stunning visualization powered by Windy
+            </p>
         </header>
 
-        <!-- API Key Status Alert -->
-        <div id="alert-box" class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-md shadow-md" role="alert">
-            <p class="font-bold">Key Inserted!</p>
-            <p>The API key has been inserted into the script. Click **Preview** to see the live, interactive weather map!</p>
-        </div>
-
-        <!-- Windy Map Container -->
-        <div id="windy-container">
-            <!-- The map will be initialized here by the JavaScript -->
-            <div id="map" class="w-full h-full bg-gray-200 flex items-center justify-center">
-                 <p class="text-gray-500 font-medium">Loading Map...</p>
-            </div>
+        <!-- Windy Map Container (Now holding an iframe) -->
+        <div id="windy-container" class="transition-all duration-300 hover:shadow-xl">
+            <iframe 
+                id="windy-iframe"
+                src="" 
+                title="Windy Weather Map"
+                loading="lazy"
+            ></iframe>
         </div>
 
         <!-- Footer / Credits -->
-        <footer class="mt-8 text-center text-sm text-gray-500">
-            Weather data source: Windy Map Forecast API (Leaflet Plugin)
+        <footer class="mt-12 text-center text-sm text-slate-500">
+            <p>Weather data provided by the Windy iFrame Widget, utilizing key: 
+               <span class="font-mono text-xs bg-slate-700 px-1 py-0.5 rounded opacity-75">9CbzreShuP283Fr5d8cuaqUBl37zeFcv</span>
+            </p>
+            <p class="mt-2 text-xs">For educational and development purposes only.</p>
         </footer>
     </div>
 
     <!-- 
         ========================================
-        WINDY API & MAP INITIALIZATION SCRIPT
+        IFRAME WIDGET SCRIPT
         ========================================
     -->
     <script>
-        // --- API Key has been inserted ---
+        // --- API Key (still used to unlock advanced features in the iFrame) ---
         const W_API_KEY = '9CbzreShuP283Fr5d8cuaqUBl37zeFcv';
 
-        // Check if the placeholder is still present (it is now only used to check if the key is default)
-        if (W_API_KEY.includes('YOUR_WINDY_API_KEY_HERE')) {
-            console.error("Windy API key is missing. Please replace the placeholder.");
-        } else {
-            // Dynamically load the Windy API script
-            const script = document.createElement('script');
-            // This is the core Windy Map Forecast API script based on Leaflet
-            script.src = `https://api.windy.com/assets/map-forecast/libH.js`;
-            script.onload = initializeWindy;
-            script.onerror = () => {
-                document.getElementById('map').innerHTML = '<p class="text-red-500 p-4">Error loading Windy API script. Check console for details.</p>';
-            };
-            document.head.appendChild(script);
-        }
+        function initializeWindyIFrame() {
+            // Base URL for the Windy widget
+            const baseUrl = "https://embed.windy.com/embed2.html";
 
-        function initializeWindy() {
-            // Configuration options for the map
-            var options = {
-                // REQUIRED: Your API Key
-                key: W_API_KEY, 
-
-                // REQUIRED: Map target element ID
-                verbose: true,
-                lat: 34.0522,      // Default center latitude (Los Angeles)
-                lon: -118.2437,    // Default center longitude
-                zoom: 7,           // Default zoom level
-
-                // Optional: Customize initial view
-                overlay: 'wind',   // Initial overlay (e.g., wind, temp, clouds)
-                product: 'gfs',    // Forecast model (gfs is global)
-                menu: false,       // Hide right-side menu
-                time: null,        // Start at current time
-
-                // Optional: Use Leaflet options to define container
-                // Leaflet requires a container element
-                mapContainer: document.getElementById('windy-container')
-            };
-
-            // Call the initialization function
-            // It uses the Leaflet map and adds the Windy visualization layers on top
-            window.windyInit(options, function(windyAPI) {
-                console.log("Windy Map loaded and initialized successfully!");
-                document.getElementById('map').style.display = 'none'; // Hide the "Loading Map..." message
+            // Define map parameters (can be customized)
+            const params = new URLSearchParams({
+                // Required parameters
+                key: W_API_KEY,               // Your API Key
+                lat: 34.0522,                 // Center Latitude (Los Angeles)
+                lon: -118.2437,               // Center Longitude
+                zoom: 7,                      // Zoom level
                 
-                // Example of interacting with the API (optional)
-                // To change the overlay to temperature after 5 seconds:
-                // setTimeout(() => {
-                //     windyAPI.broadcast.fire('paramsChange', { overlay: 'temp' });
-                //     console.log('Overlay changed to Temperature.');
-                // }, 5000);
+                // Visualization and UI options
+                current: 'true',              // Display current conditions
+                overlay: 'wind',              // Initial overlay
+                product: 'gfs',               // Forecast model
+                // We show the small menu for better interaction (the user asked for more beautiful)
+                menu: 'true', 
+                // Colorize the UI for better aesthetic integration with dark mode
+                header: 'dark', 
+                
+                // Other display options
+                calendar: 'false',
+                clouds: 'false',
+                marker: 'false',
+                detail: 'false',
+                height: '100%',
+                width: '100%',
             });
+
+            const iframe = document.getElementById('windy-iframe');
+            iframe.src = `${baseUrl}?${params.toString()}`;
+            console.log("iFrame source set:", iframe.src);
         }
+
+        // Initialize on page load
+        window.onload = initializeWindyIFrame;
     </script>
 </body>
 </html>
