@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>123 PH Forecast</title>
+    <!-- Load Orbitron font for the title -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+    <!-- Load Roboto Mono font for the subtitle (NEW ADDITION) -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -17,23 +21,37 @@
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                        // New font family for the title
+                        orbitron: ['Orbitron', 'sans-serif'], 
+                        // New font family for the subtitle (NEW ADDITION)
+                        mono: ['Roboto Mono', 'monospace'],
                     },
                 }
             }
         }
     </script>
     <style>
-        /* Set the map container to take up most of the viewport height */
+        /*
+         * CORE FIX: Set body to full screen height and use flex column layout.
+         * The #windy-container will now use 'flex-grow' to consume remaining space.
+         */
+        body {
+            height: 100vh; /* Ensures the body occupies the entire viewport height */
+        }
+        
         #windy-container {
+            /* flex-grow: 1 makes it take up all available vertical space */
+            flex-grow: 1; 
+            /* h-0 is necessary for flex-grow to work correctly in a column layout */
+            height: 0; 
             width: 100%;
-            height: 85vh; /* Increased height for immersion */
-            min-height: 450px; 
             border-radius: 1rem; /* More rounded corners */
             overflow: hidden;
             /* Stronger shadow, blending with dark background */
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); 
             position: relative; 
             border: 2px solid #3b82f6; /* Subtle blue border for emphasis */
+            min-height: 300px; /* Ensure map is still visible on very small screens */
         }
         /* Style the iframe to fill the container */
         #windy-iframe {
@@ -43,37 +61,39 @@
         }
     </style>
 </head>
-<!-- Added a subtle gradient to the dark background for a better aesthetic -->
-<body class="bg-dark-bg bg-gradient-to-br from-slate-900 via-dark-bg to-slate-900 flex flex-col items-center p-4 sm:p-10 font-sans min-h-screen text-white">
+<!-- Updated body classes for guaranteed screen fit (h-screen and flex-col) -->
+<body class="bg-dark-bg bg-gradient-to-br from-slate-900 via-dark-bg to-slate-900 flex flex-col items-center p-4 sm:p-10 font-sans text-white">
 
-    <div class="max-w-6xl w-full">
+    <div class="max-w-6xl w-full flex flex-col h-full"> <!-- Added h-full to inner div -->
         <!-- Header Section -->
-        <header class="text-center mb-6 p-4">
-            <h1 class="text-4xl sm:text-5xl font-extrabold text-primary-blue mb-2 tracking-tight">
+        <header class="text-center mb-6 p-4 flex-shrink-0">
+            <!-- Title updated with Orbitron font, slightly smaller size, and less bold -->
+            <h1 class="text-3xl sm:text-4xl font-orbitron font-semibold text-primary-blue mb-2 tracking-wider">
                 123 PH Forecast
             </h1>
-            <p class="text-slate-400 text-lg sm:text-xl font-light italic">
+            <!-- Subtitle updated with Roboto Mono font and adjusted style -->
+            <p class="text-slate-400 text-sm sm:text-base font-mono font-light italic opacity-90">
                 Real-time, stunning visualization powered by Windy
             </p>
         </header>
         
-        <!-- Toggle Switch for Satellite View -->
-        <div class="flex justify-center mb-6">
+        <!-- Toggle Switch for Satellite/Wind View -->
+        <div class="flex justify-center mb-6 flex-shrink-0">
             <div class="inline-flex items-center space-x-3 bg-dark-card p-2 rounded-full shadow-lg border border-slate-600">
-                <span class="text-sm font-medium text-slate-300">Default View:</span>
+                <span id="current-view-label" class="text-sm font-medium text-slate-300">Default View: Satellite Layer</span>
                 <button 
                     id="toggle-satellite" 
                     onclick="toggleView()" 
                     class="px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 bg-primary-blue text-white shadow-md hover:bg-blue-600 active:scale-95"
                     data-current-view="satellite"
                 >
-                    Satellite View
+                    Switch to Wind Layer
                 </button>
             </div>
         </div>
 
 
-        <!-- Windy Map Container (Now holding an iframe) -->
+        <!-- Windy Map Container (Now using flex-grow: 1) -->
         <div id="windy-container" class="transition-all duration-300 hover:shadow-xl">
             <iframe 
                 id="windy-iframe"
@@ -83,8 +103,8 @@
             ></iframe>
         </div>
 
-        <!-- Footer / Credits (API key information removed as requested) -->
-        <footer class="mt-8 text-center text-sm text-slate-500">
+        <!-- Footer / Credits (flex-shrink-0 prevents it from being compressed) -->
+        <footer class="mt-8 text-center text-sm text-slate-500 flex-shrink-0">
             <p>Weather forecast and visualization powered by Windy.</p>
             <p class="mt-1 text-xs opacity-75">For educational and development purposes only.</p>
         </footer>
@@ -99,7 +119,7 @@
         // --- API Key (still used to unlock advanced features in the iFrame) ---
         const W_API_KEY = '9CbzreShuP283Fr5d8cuaqUBl37zeFcv';
         const MAP_BASE_URL = "https://embed.windy.com/embed2.html";
-        const MAP_DEFAULT_OVERLAY = 'satellite'; // Changed default to satellite
+        const MAP_DEFAULT_OVERLAY = 'satellite'; 
 
         /**
          * Initializes the Windy iFrame with current settings.
@@ -129,8 +149,6 @@
                 detail: 'false',
                 height: '100%',
                 width: '100%',
-                // Add play parameter for motion if using an animated layer
-                // play: overlay === 'satellite' ? '1' : '0' // Enable motion for satellite view
             });
 
             const iframe = document.getElementById('windy-iframe');
@@ -143,20 +161,25 @@
          */
         function toggleView() {
             const button = document.getElementById('toggle-satellite');
+            const label = document.getElementById('current-view-label');
             let currentView = button.getAttribute('data-current-view');
             let newView;
             let buttonText;
+            let labelText;
             
             if (currentView === 'satellite') {
                 newView = 'wind';
-                buttonText = 'Wind Layer';
+                buttonText = 'Switch to Satellite View';
+                labelText = 'Current View: Wind Layer';
             } else {
                 newView = 'satellite';
-                buttonText = 'Satellite View';
+                buttonText = 'Switch to Wind Layer';
+                labelText = 'Current View: Satellite Layer';
             }
             
             button.setAttribute('data-current-view', newView);
             button.textContent = buttonText;
+            label.textContent = labelText;
             initializeWindyIFrame(newView);
         }
 
