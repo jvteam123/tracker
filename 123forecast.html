@@ -48,7 +48,7 @@
 
     <div class="max-w-6xl w-full">
         <!-- Header Section -->
-        <header class="text-center mb-10 p-4">
+        <header class="text-center mb-6 p-4">
             <h1 class="text-4xl sm:text-5xl font-extrabold text-primary-blue mb-2 tracking-tight">
                 123 PH Forecast
             </h1>
@@ -56,6 +56,22 @@
                 Real-time, stunning visualization powered by Windy
             </p>
         </header>
+        
+        <!-- Toggle Switch for Satellite View -->
+        <div class="flex justify-center mb-6">
+            <div class="inline-flex items-center space-x-3 bg-dark-card p-2 rounded-full shadow-lg border border-slate-600">
+                <span class="text-sm font-medium text-slate-300">Default View:</span>
+                <button 
+                    id="toggle-satellite" 
+                    onclick="toggleView()" 
+                    class="px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 bg-primary-blue text-white shadow-md hover:bg-blue-600 active:scale-95"
+                    data-current-view="satellite"
+                >
+                    Satellite View
+                </button>
+            </div>
+        </div>
+
 
         <!-- Windy Map Container (Now holding an iframe) -->
         <div id="windy-container" class="transition-all duration-300 hover:shadow-xl">
@@ -82,11 +98,15 @@
     <script>
         // --- API Key (still used to unlock advanced features in the iFrame) ---
         const W_API_KEY = '9CbzreShuP283Fr5d8cuaqUBl37zeFcv';
+        const MAP_BASE_URL = "https://embed.windy.com/embed2.html";
+        const MAP_DEFAULT_OVERLAY = 'satellite'; // Changed default to satellite
 
-        function initializeWindyIFrame() {
-            // Base URL for the Windy widget
-            const baseUrl = "https://embed.windy.com/embed2.html";
-
+        /**
+         * Initializes the Windy iFrame with current settings.
+         * @param {string} overlay - The weather overlay to display (e.g., 'satellite', 'wind', 'temp').
+         */
+        function initializeWindyIFrame(overlay = MAP_DEFAULT_OVERLAY) {
+            
             // Define map parameters (customized for the Philippines)
             const params = new URLSearchParams({
                 // Required parameters
@@ -97,8 +117,8 @@
                 
                 // Visualization and UI options
                 current: 'true',              // Display current conditions
-                overlay: 'wind',              // Initial overlay
-                product: 'gfs',               // Forecast model
+                overlay: overlay,             // Initial overlay - now dynamic
+                product: 'gfs',               // Forecast model (only relevant for wind/temp overlays)
                 menu: 'true', 
                 header: 'dark', 
                 
@@ -109,15 +129,42 @@
                 detail: 'false',
                 height: '100%',
                 width: '100%',
+                // Add play parameter for motion if using an animated layer
+                // play: overlay === 'satellite' ? '1' : '0' // Enable motion for satellite view
             });
 
             const iframe = document.getElementById('windy-iframe');
-            iframe.src = `${baseUrl}?${params.toString()}`;
+            iframe.src = `${MAP_BASE_URL}?${params.toString()}`;
             console.log("iFrame source set:", iframe.src);
         }
 
+        /**
+         * Toggles between Satellite and Wind view.
+         */
+        function toggleView() {
+            const button = document.getElementById('toggle-satellite');
+            let currentView = button.getAttribute('data-current-view');
+            let newView;
+            let buttonText;
+            
+            if (currentView === 'satellite') {
+                newView = 'wind';
+                buttonText = 'Wind Layer';
+            } else {
+                newView = 'satellite';
+                buttonText = 'Satellite View';
+            }
+            
+            button.setAttribute('data-current-view', newView);
+            button.textContent = buttonText;
+            initializeWindyIFrame(newView);
+        }
+
+
         // Initialize on page load
-        window.onload = initializeWindyIFrame;
+        window.onload = () => {
+            initializeWindyIFrame(MAP_DEFAULT_OVERLAY);
+        };
     </script>
 </body>
 </html>
