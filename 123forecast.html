@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>123 Weather Map Integration (iFrame)</title>
+    <title>123 PH Forecast</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -30,7 +30,8 @@
             min-height: 450px; 
             border-radius: 1rem; /* More rounded corners */
             overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5); /* Stronger, darker shadow */
+            /* Stronger shadow, blending with dark background */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); 
             position: relative; 
             border: 2px solid #3b82f6; /* Subtle blue border for emphasis */
         }
@@ -42,13 +43,14 @@
         }
     </style>
 </head>
-<body class="bg-dark-bg flex flex-col items-center p-4 sm:p-10 font-sans min-h-screen text-white">
+<!-- Added a subtle gradient to the dark background for a better aesthetic -->
+<body class="bg-dark-bg bg-gradient-to-br from-slate-900 via-dark-bg to-slate-900 flex flex-col items-center p-4 sm:p-10 font-sans min-h-screen text-white">
 
     <div class="max-w-6xl w-full">
         <!-- Header Section -->
         <header class="text-center mb-10 p-4">
             <h1 class="text-4xl sm:text-5xl font-extrabold text-primary-blue mb-2 tracking-tight">
-                123 Forecast
+                123 PH Forecast
             </h1>
             <p class="text-slate-400 text-lg sm:text-xl font-light italic">
                 Real-time, stunning visualization powered by Windy
@@ -65,12 +67,10 @@
             ></iframe>
         </div>
 
-        <!-- Footer / Credits -->
-        <footer class="mt-12 text-center text-sm text-slate-500">
-            <p>Weather data provided by the Windy iFrame Widget, utilizing key: 
-               <span class="font-mono text-xs bg-slate-700 px-1 py-0.5 rounded opacity-75">9CbzreShuP283Fr5d8cuaqUBl37zeFcv</span>
-            </p>
-            <p class="mt-2 text-xs">For educational and development purposes only.</p>
+        <!-- Footer / Credits (API key information removed as requested) -->
+        <footer class="mt-8 text-center text-sm text-slate-500">
+            <p>Weather forecast and visualization powered by Windy.</p>
+            <p class="mt-1 text-xs opacity-75">For educational and development purposes only.</p>
         </footer>
     </div>
 
@@ -87,21 +87,19 @@
             // Base URL for the Windy widget
             const baseUrl = "https://embed.windy.com/embed2.html";
 
-            // Define map parameters (can be customized)
+            // Define map parameters (customized for the Philippines)
             const params = new URLSearchParams({
                 // Required parameters
                 key: W_API_KEY,               // Your API Key
-                lat: 34.0522,                 // Center Latitude (Los Angeles)
-                lon: -118.2437,               // Center Longitude
-                zoom: 7,                      // Zoom level
+                lat: 12.88,                   // Center Latitude (Philippines)
+                lon: 121.77,                  // Center Longitude (Philippines)
+                zoom: 5,                      // Increased zoom to cover the whole country
                 
                 // Visualization and UI options
                 current: 'true',              // Display current conditions
                 overlay: 'wind',              // Initial overlay
                 product: 'gfs',               // Forecast model
-                // We show the small menu for better interaction (the user asked for more beautiful)
                 menu: 'true', 
-                // Colorize the UI for better aesthetic integration with dark mode
                 header: 'dark', 
                 
                 // Other display options
