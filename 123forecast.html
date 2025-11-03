@@ -6,7 +6,7 @@
     <title>123 PH Forecast</title>
     <!-- Load Orbitron font for the title -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
-    <!-- Load Roboto Mono font for the subtitle (NEW ADDITION) -->
+    <!-- Load Roboto Mono font for the subtitle -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,7 +23,7 @@
                         sans: ['Inter', 'sans-serif'],
                         // New font family for the title
                         orbitron: ['Orbitron', 'sans-serif'], 
-                        // New font family for the subtitle (NEW ADDITION)
+                        // New font family for the subtitle
                         mono: ['Roboto Mono', 'monospace'],
                     },
                 }
@@ -52,6 +52,18 @@
             position: relative; 
             border: 2px solid #3b82f6; /* Subtle blue border for emphasis */
             min-height: 300px; /* Ensure map is still visible on very small screens */
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Ensure the container takes up the full viewport when in fullscreen mode */
+        #windy-container:fullscreen {
+            border-radius: 0;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            box-shadow: none;
         }
         /* Style the iframe to fill the container */
         #windy-iframe {
@@ -77,17 +89,35 @@
             </p>
         </header>
         
-        <!-- Toggle Switch for Satellite/Wind View -->
+        <!-- Toggle Switch and Fullscreen Button Group (MOBILE OPTIMIZED) -->
         <div class="flex justify-center mb-6 flex-shrink-0">
-            <div class="inline-flex items-center space-x-3 bg-dark-card p-2 rounded-full shadow-lg border border-slate-600">
-                <span id="current-view-label" class="text-sm font-medium text-slate-300">Default View: Satellite Layer</span>
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 bg-dark-card p-3 rounded-xl shadow-lg border border-slate-600">
+                
+                <!-- View Toggle Button -->
+                <div class="inline-flex items-center space-x-3">
+                    <span id="current-view-label" class="text-sm font-medium text-slate-300 hidden md:block">Default View: Satellite Layer</span>
+                    <button 
+                        id="toggle-satellite" 
+                        onclick="toggleView()" 
+                        class="px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 bg-primary-blue text-white shadow-md hover:bg-blue-600 active:scale-95"
+                        data-current-view="satellite"
+                    >
+                        Switch to Wind Layer
+                    </button>
+                </div>
+
+                <!-- Fullscreen Button - Adjusted for full width on mobile (w-full) -->
                 <button 
-                    id="toggle-satellite" 
-                    onclick="toggleView()" 
-                    class="px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 bg-primary-blue text-white shadow-md hover:bg-blue-600 active:scale-95"
-                    data-current-view="satellite"
+                    id="fullscreen-button" 
+                    onclick="toggleFullscreen()" 
+                    class="py-2 px-3 text-sm font-semibold rounded-full transition-all duration-300 bg-slate-600 text-white shadow-md hover:bg-slate-700 active:scale-95 flex items-center justify-center space-x-1 w-full sm:w-auto"
+                    aria-label="Toggle Fullscreen"
                 >
-                    Switch to Wind Layer
+                    <span id="fs-icon-container">
+                        <!-- Initial Enter Fullscreen Icon (will be replaced by JS) -->
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7-11v4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"></path></svg>
+                    </span>
+                    <span id="fs-text">Fullscreen</span>
                 </button>
             </div>
         </div>
@@ -183,10 +213,68 @@
             initializeWindyIFrame(newView);
         }
 
+        // ===================================
+        // FULLSCREEN LOGIC
+        // ===================================
+
+        // SVG Path for Enter Fullscreen
+        const FS_ENTER_SVG = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7-11v4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"></path></svg>`;
+        
+        // SVG Path for Exit Fullscreen (a cleaner, general exit icon)
+        const FS_EXIT_SVG = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+
+        /**
+         * Toggles the map container into and out of fullscreen mode.
+         */
+        function toggleFullscreen() {
+            const container = document.getElementById('windy-container');
+            
+            if (document.fullscreenElement) {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            } else {
+                // Enter fullscreen
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                }
+            }
+        }
+
+        /**
+         * Updates the fullscreen button appearance based on current fullscreen status.
+         */
+        function updateFullscreenButton() {
+            const button = document.getElementById('fullscreen-button');
+            const iconContainer = document.getElementById('fs-icon-container');
+            const textSpan = document.getElementById('fs-text');
+            
+            if (document.fullscreenElement) {
+                // Currently in fullscreen
+                iconContainer.innerHTML = FS_EXIT_SVG;
+                textSpan.textContent = 'Exit FS';
+                button.classList.replace('bg-slate-600', 'bg-red-500'); 
+                button.classList.replace('hover:bg-slate-700', 'hover:bg-red-600');
+            } else {
+                // Not in fullscreen
+                iconContainer.innerHTML = FS_ENTER_SVG;
+                textSpan.textContent = 'Fullscreen';
+                button.classList.replace('bg-red-500', 'bg-slate-600');
+                button.classList.replace('hover:bg-red-600', 'hover:bg-slate-700');
+            }
+        }
+
+        // Attach event listeners to catch changes (like pressing ESC)
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton); // For Safari
+        document.addEventListener('mozfullscreenchange', updateFullscreenButton); // For Firefox
+        document.addEventListener('msfullscreenchange', updateFullscreenButton); // For IE/Edge
 
         // Initialize on page load
         window.onload = () => {
             initializeWindyIFrame(MAP_DEFAULT_OVERLAY);
+            updateFullscreenButton(); // Set initial button state
         };
     </script>
 </body>
