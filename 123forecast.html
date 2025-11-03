@@ -38,11 +38,10 @@
             <p class="text-gray-600 text-lg">Powered by Windy.com</p>
         </header>
 
-        <!-- API Key Instructions Alert -->
-        <div id="alert-box" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded-md shadow-md" role="alert">
-            <p class="font-bold">Action Required!</p>
-            <p>1. Get your API Key from the <a href="https://api.windy.com/" target="_blank" class="font-semibold underline hover:text-yellow-900">Windy API website</a>.</p>
-            <p>2. Replace **'YOUR_WINDY_API_KEY_HERE'** in the script section (near the bottom) with your actual key.</p>
+        <!-- API Key Status Alert -->
+        <div id="alert-box" class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 mb-6 rounded-md shadow-md" role="alert">
+            <p class="font-bold">Key Inserted!</p>
+            <p>The API key has been inserted into the script. Click **Preview** to see the live, interactive weather map!</p>
         </div>
 
         <!-- Windy Map Container -->
@@ -65,11 +64,11 @@
         ========================================
     -->
     <script>
-        // --- MANDATORY: Replace 'YOUR_WINDY_API_KEY_HERE' with your actual key ---
+        // --- API Key has been inserted ---
         const W_API_KEY = '09fzfnCo21jCAy3rFrIPoFP5oGc0AvDU';
 
-        // Check if a key has been entered before attempting to load the script
-        if (W_API_KEY.includes('09fzfnCo21jCAy3rFrIPoFP5oGc0AvDU')) {
+        // Check if the placeholder is still present (it is now only used to check if the key is default)
+        if (W_API_KEY.includes('YOUR_WINDY_API_KEY_HERE')) {
             console.error("Windy API key is missing. Please replace the placeholder.");
         } else {
             // Dynamically load the Windy API script
