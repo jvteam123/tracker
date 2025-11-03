@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windy Weather Map Integration</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Set the map container to take up most of the viewport height */
+        #windy-container {
+            width: 100%;
+            height: 80vh; /* 80% of viewport height */
+            min-height: 400px; /* Minimum height for mobile viewing */
+            border-radius: 0.5rem; /* Rounded corners */
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center p-4 sm:p-8 font-sans">
+
+    <div class="max-w-4xl w-full">
+        <!-- Header Section -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-700 mb-2">Live Weather Forecast</h1>
+            <p class="text-gray-600 text-lg">Powered by Windy.com</p>
+        </header>
+
+        <!-- API Key Instructions Alert -->
+        <div id="alert-box" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded-md shadow-md" role="alert">
+            <p class="font-bold">Action Required!</p>
+            <p>1. Get your API Key from the <a href="https://api.windy.com/" target="_blank" class="font-semibold underline hover:text-yellow-900">Windy API website</a>.</p>
+            <p>2. Replace **'YOUR_WINDY_API_KEY_HERE'** in the script section (near the bottom) with your actual key.</p>
+        </div>
+
+        <!-- Windy Map Container -->
+        <div id="windy-container">
+            <!-- The map will be initialized here by the JavaScript -->
+            <div id="map" class="w-full h-full bg-gray-200 flex items-center justify-center">
+                 <p class="text-gray-500 font-medium">Loading Map...</p>
+            </div>
+        </div>
+
+        <!-- Footer / Credits -->
+        <footer class="mt-8 text-center text-sm text-gray-500">
+            Weather data source: Windy Map Forecast API (Leaflet Plugin)
+        </footer>
+    </div>
+
+    <!-- 
+        ========================================
+        WINDY API & MAP INITIALIZATION SCRIPT
+        ========================================
+    -->
+    <script>
+        // --- MANDATORY: Replace 'YOUR_WINDY_API_KEY_HERE' with your actual key ---
+        const W_API_KEY = '09fzfnCo21jCAy3rFrIPoFP5oGc0AvDU';
+
+        // Check if a key has been entered before attempting to load the script
+        if (W_API_KEY.includes('09fzfnCo21jCAy3rFrIPoFP5oGc0AvDU')) {
+            console.error("Windy API key is missing. Please replace the placeholder.");
+        } else {
+            // Dynamically load the Windy API script
+            const script = document.createElement('script');
+            // This is the core Windy Map Forecast API script based on Leaflet
+            script.src = `https://api.windy.com/assets/map-forecast/libH.js`;
+            script.onload = initializeWindy;
+            script.onerror = () => {
+                document.getElementById('map').innerHTML = '<p class="text-red-500 p-4">Error loading Windy API script. Check console for details.</p>';
+            };
+            document.head.appendChild(script);
+        }
+
+        function initializeWindy() {
+            // Configuration options for the map
+            var options = {
+                // REQUIRED: Your API Key
+                key: W_API_KEY, 
+
+                // REQUIRED: Map target element ID
+                verbose: true,
+                lat: 34.0522,      // Default center latitude (Los Angeles)
+                lon: -118.2437,    // Default center longitude
+                zoom: 7,           // Default zoom level
+
+                // Optional: Customize initial view
+                overlay: 'wind',   // Initial overlay (e.g., wind, temp, clouds)
+                product: 'gfs',    // Forecast model (gfs is global)
+                menu: false,       // Hide right-side menu
+                time: null,        // Start at current time
+
+                // Optional: Use Leaflet options to define container
+                // Leaflet requires a container element
+                mapContainer: document.getElementById('windy-container')
+            };
+
+            // Call the initialization function
+            // It uses the Leaflet map and adds the Windy visualization layers on top
+            window.windyInit(options, function(windyAPI) {
+                console.log("Windy Map loaded and initialized successfully!");
+                document.getElementById('map').style.display = 'none'; // Hide the "Loading Map..." message
+                
+                // Example of interacting with the API (optional)
+                // To change the overlay to temperature after 5 seconds:
+                // setTimeout(() => {
+                //     windyAPI.broadcast.fire('paramsChange', { overlay: 'temp' });
+                //     console.log('Overlay changed to Temperature.');
+                // }, 5000);
+            });
+        }
+    </script>
+</body>
+</html>
