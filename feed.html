@@ -147,6 +147,14 @@
         .feed-post h3 { color: #2c3e50; margin-top: 0; margin-bottom: 5px; }
         .feed-post .content-display p { white-space: normal; } 
         .feed-post .content-display { font-size: 0.95em; line-height: 1.4; color: #34495e; }
+        /* NEW: Image constraint for posted images */
+        .feed-post .content-display img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: block;
+        } 
         .feed-post small { color: #7f8c8d; font-size: 0.85em; display: block; margin-top: 10px; }
         
         /* FIX: Management Buttons Positioning */
@@ -574,10 +582,14 @@
         }
         window.showLikers = showLikers; 
         
-        // Render HTML (Moved up)
+        // Render HTML (Modified to allow img tags)
         const renderHTML = (html) => {
             if (!html) return '';
-            const cleanHtml = DOMPurify.sanitize(html, {ALLOWED_TAGS: ['b', 'i', 'u', 's', 'p', 'br', 'a', 'strong', 'em', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'hr'], ADD_ATTR: ['target', 'href', 'style']});
+            // FIX: ADD 'img' to ALLOWED_TAGS and 'src', 'alt' to ADD_ATTR to support images from Quill
+            const cleanHtml = DOMPurify.sanitize(html, {
+                ALLOWED_TAGS: ['b', 'i', 'u', 's', 'p', 'br', 'a', 'strong', 'em', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'hr', 'img'], 
+                ADD_ATTR: ['target', 'href', 'style', 'src', 'alt']
+            });
             return cleanHtml;
         };
 
@@ -1500,11 +1512,13 @@
             
             if (confirm("Are you sure you want to permanently delete this announcement?")) {
                 try {
+                    // This call will only succeed if the Firestore Security Rules allow the delete operation for an authenticated user.
                     await db.collection('feedItems').doc(id).delete();
                     alert("Announcement deleted successfully!");
                     fetchFeed(); 
                 } catch (error) {
                     console.error("Firebase Delete Error:", error);
+                    // The error described in the original query is FirebaseError: Missing or insufficient permissions.
                     alert("Deletion Failed. Check Security Rules (delete access)!");
                 }
             }
@@ -1566,13 +1580,14 @@
             }
             
             // Initialize Quill Editors after DOM is ready
+            // FIX: Added 'image' to the toolbarOptions
             const toolbarOptions = [
                 ['bold', 'italic', 'underline', 'strike'],
                 ['blockquote', 'code-block'],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                 [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
                 [{ 'color': [] }, { 'background': [] }],
-                ['link', 'clean']
+                ['link', 'image', 'clean'] // This now includes the image button
             ];
 
             newPostEditor = new Quill('#newPostEditor', {
