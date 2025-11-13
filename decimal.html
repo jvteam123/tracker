@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minutes to Decimal Converter</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom focus style for inputs */
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 0 0 2px #a5b4fc; /* indigo-200 */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white/90 backdrop-blur-lg p-6 md:p-8 rounded-2xl shadow-2xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">
+            Minutes to Decimal Converter
+        </h1>
+        <p class="text-center text-gray-600 mb-8">Enter a value in any field to convert.</p>
+
+        <!-- Standard Time Section -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">Standard Time</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="std_h" class="block text-sm font-medium text-gray-600 mb-1">Hours</label>
+                    <input type="number" id="std_h" min="0" placeholder="e.g., 1" class="w-full p-3 rounded-lg border border-gray-300 text-lg transition duration-200">
+                </div>
+                <div>
+                    <label for="std_m" class="block text-sm font-medium text-gray-600 mb-1">Minutes</label>
+                    <input type="number" id="std_m" min="0" placeholder="e.g., 30" class="w-full p-3 rounded-lg border border-gray-300 text-lg transition duration-200">
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Minutes Section -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">Total Minutes</h2>
+            <div>
+                <label for="total_m" class="block text-sm font-medium text-gray-600 mb-1 sr-only">Total Minutes</label>
+                <input type="number" id="total_m" min="0" placeholder="e.g., 90" class="w-full p-3 rounded-lg border border-gray-300 text-lg transition duration-200">
+            </div>
+        </div>
+
+        <!-- Decimal Hours Section -->
+        <div class="mb-8">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">Decimal Hours</h2>
+            <div>
+                <label for="dec_h" class="block text-sm font-medium text-gray-600 mb-1 sr-only">Decimal Hours</label>
+                <input type="number" id="dec_h" min="0" placeholder="e.g., 1.5" class="w-full p-3 rounded-lg border border-gray-300 text-lg transition duration-200">
+            </div>
+        </div>
+
+        <!-- "Clear" Button -->
+        <button id="clearBtn" class="w-full bg-gray-600 text-white p-3 rounded-lg font-semibold text-lg hover:bg-gray-700 active:bg-gray-800 transition duration-300 shadow-lg hover:shadow-gray-500/50">
+            Clear
+        </button>
+    </div>
+
+    <script>
+        // Get all input elements
+        const std_h = document.getElementById('std_h');
+        const std_m = document.getElementById('std_m');
+        const total_m = document.getElementById('total_m');
+        const dec_h = document.getElementById('dec_h');
+        const clearBtn = document.getElementById('clearBtn');
+        const STORAGE_KEY = 'decimalConverterLastValue';
+
+        // --- Event Listeners ---
+        std_h.addEventListener('input', updateFromStandard);
+        std_m.addEventListener('input', updateFromStandard);
+        total_m.addEventListener('input', updateFromTotalMinutes);
+        dec_h.addEventListener('input', updateFromDecimalHours);
+        clearBtn.addEventListener('click', clearAllFields);
+
+        // --- Update Functions ---
+
+        /**
+         * Updates all fields based on Standard Time (Hours and Minutes)
+         */
+        function updateFromStandard() {
+            const h = parseFloat(std_h.value) || 0;
+            const m = parseFloat(std_m.value) || 0;
+
+            const totalMinutes = (h * 60) + m;
+            const decimalHours = totalMinutes / 60;
+
+            // Update other fields without triggering their listeners
+            setInputValue(total_m, totalMinutes);
+            setInputValue(dec_h, formatDecimal(decimalHours));
+            saveData(totalMinutes);
+        }
+
+        /**
+         * Updates all fields based on Total Minutes
+         */
+        function updateFromTotalMinutes() {
+            const totalMinutes = parseFloat(total_m.value) || 0;
+
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
+            const decimalHours = totalMinutes / 60;
+
+            // Update other fields
+            setInputValue(std_h, h);
+            setInputValue(std_m, m);
+            setInputValue(dec_h, formatDecimal(decimalHours));
+            saveData(totalMinutes);
+        }
+
+        /**
+         * Updates all fields based on Decimal Hours
+         */
+        function updateFromDecimalHours() {
+            const decimalHours = parseFloat(dec_h.value) || 0;
+
+            const totalMinutes = decimalHours * 60;
+            const h = Math.floor(totalMinutes / 60);
+            // Round minutes to avoid floating point issues (e.g., 1.5 hours = 90.000001 min)
+            const m = Math.round(totalMinutes % 60);
+
+            // Update other fields
+            setInputValue(std_h, h);
+            setInputValue(std_m, m);
+            const roundedTotalMinutes = Math.round(totalMinutes);
+            setInputValue(total_m, roundedTotalMinutes);
+            saveData(roundedTotalMinutes);
+        }
+
+        /**
+         * Clears all input fields.
+         */
+        function clearAllFields() {
+            std_h.value = '';
+            std_m.value = '';
+            total_m.value = '';
+            dec_h.value = '';
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
+        // --- Helper Functions ---
+
+        /**
+         * A helper to set input value. This prevents runaway listeners
+         * by only setting the value if it's different.
+         */
+        function setInputValue(element, value) {
+            // Check for NaN or 0 and set to empty string
+            if (value === 0 || isNaN(value)) {
+                // Only clear if it's not the field being typed in
+                if (document.activeElement !== element) {
+                    element.value = '';
+                }
+            } else if (element.value !== String(value)) {
+                element.value = value;
+            }
+        }
+        
+        /**
+         * Formats decimal to a reasonable number of places, avoiding trailing zeros
+         */
+        function formatDecimal(num) {
+            if (num === 0) return '';
+            // Use parseFloat(num.toFixed(4)) to trim excess decimals and remove trailing zeros
+            return parseFloat(num.toFixed(4));
+        }
+
+        // --- Local Storage Functions ---
+
+        /**
+         * Saves the last valid total minutes to local storage.
+         */
+        function saveData(totalMinutes) {
+            if (totalMinutes > 0) {
+                localStorage.setItem(STORAGE_KEY, totalMinutes);
+            } else {
+                // Don't save 0 or NaN, just clear
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+
+        /**
+         * Loads the last value from local storage on page load.
+         */
+        function loadData() {
+            const savedMinutes = localStorage.getItem(STORAGE_KEY);
+            if (savedMinutes) {
+                const totalMinutes = parseFloat(savedMinutes);
+                if (totalMinutes > 0) {
+                    total_m.value = totalMinutes;
+                    updateFromTotalMinutes(); // Populate all other fields
+                }
+            }
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', loadData);
+
+    </script>
+</body>
+</html>
