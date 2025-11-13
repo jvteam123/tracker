@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Randomizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+        }
+        .team-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .team-card:hover {
+            transform: translateY(-2px);
+        }
+        textarea {
+            resize: none;
+        }
+        .pinning-item-grid {
+            display: grid;
+            grid-template-columns: 1fr auto; /* Name on the left, selector on the right */
+            gap: 1rem;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Main Container -->
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-gray-800 mb-6 text-center">Random Team Generator</h1>
+        
+        <!-- Input and Control Area -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <label for="nameInput" class="block text-lg font-semibold text-gray-700 mb-2">
+                1. Enter Names (one per line, or separated by commas):
+            </label>
+            <textarea id="nameInput" rows="6" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800" placeholder="e.g., Marky&#10;Channix&#10;John&#10;Nene&#10;Lorenz&#10;..."></textarea>
+            
+            <button id="loadNamesBtn" onclick="loadNamesAndRenderPins()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200">
+                Load Names for Pinning
+            </button>
+            
+            <!-- Pinning Options Area (Step 2) -->
+            <div id="pinningOptions" class="mt-8 pt-4 border-t border-gray-200 hidden">
+                <h2 class="text-lg font-semibold text-gray-700 mb-3">
+                    2. Select Team Preference (Pinning)
+                </h2>
+                <div id="nameEntryContainer" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                    <!-- Dynamic name list with pinning selectors goes here -->
+                </div>
+                
+                <button id="randomizeBtn" onclick="generateTeams()" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200">
+                    Final Randomize
+                </button>
+            </div>
+            
+            <!-- Error/Message Box -->
+            <div id="messageBox" class="mt-4 p-3 hidden rounded-lg text-sm font-medium" role="alert"></div>
+        </div>
+
+        <!-- Team Output Area -->
+        <div id="teamOutput" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Team 1 Card -->
+            <div id="team1Card" class="team-card rounded-xl border-4 border-green-700 bg-white">
+                <div class="bg-green-700 p-3 rounded-t-lg flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">Team 1</h2>
+                    <span id="team1Count" class="bg-white text-green-700 font-bold px-3 py-1 rounded-full text-sm">0</span>
+                </div>
+                <ul id="team1List" class="p-4 space-y-2 text-lg text-gray-800">
+                    <li class="text-gray-400">Add names, pin, and randomize!</li>
+                </ul>
+            </div>
+
+            <!-- Team 2 Card -->
+            <div id="team2Card" class="team-card rounded-xl border-4 border-yellow-500 bg-white">
+                <div class="bg-yellow-500 p-3 rounded-t-lg flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Team 2</h2>
+                    <span id="team2Count" class="bg-gray-800 text-yellow-500 font-bold px-3 py-1 rounded-full text-sm">0</span>
+                </div>
+                <ul id="team2List" class="p-4 space-y-2 text-lg text-gray-800">
+                     <li class="text-gray-400">Add names, pin, and randomize!</li>
+                </ul>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Firebase setup boilerplate -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+
+        if (firebaseConfig) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Authenticate user
+            (async () => {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Signed in anonymously.");
+                    }
+                } catch (error) {
+                    console.error("Firebase authentication error:", error);
+                }
+            })();
+        } else {
+            console.log("Firebase config not found. Running team randomizer in local mode.");
+        }
+    </script>
+
+    <script>
+        const nameInput = document.getElementById('nameInput');
+        const loadNamesBtn = document.getElementById('loadNamesBtn');
+        const randomizeBtn = document.getElementById('randomizeBtn');
+        const pinningOptions = document.getElementById('pinningOptions');
+        const nameEntryContainer = document.getElementById('nameEntryContainer');
+        const team1List = document.getElementById('team1List');
+        const team2List = document.getElementById('team2List');
+        const team1Count = document.getElementById('team1Count');
+        const team2Count = document.getElementById('team2Count');
+        const messageBox = document.getElementById('messageBox');
+        const team1Card = document.getElementById('team1Card');
+        const team2Card = document.getElementById('team2Card');
+        
+        // Global state to hold the parsed names
+        let currentNames = [];
+
+        // Function to shuffle an array using the Fisher-Yates (Knuth) algorithm
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            }
+        }
+
+        function clearTeams() {
+            team1List.innerHTML = `<li class="text-gray-400">Add names, pin, and randomize!</li>`;
+            team2List.innerHTML = `<li class="text-gray-400">Add names, pin, and randomize!</li>`;
+            team1Count.textContent = 0;
+            team2Count.textContent = 0;
+            messageBox.classList.add('hidden');
+        }
+        
+        /**
+         * Step 1: Loads names from the textarea, filters them, and renders the pinning options.
+         */
+        function loadNamesAndRenderPins() {
+            messageBox.classList.add('hidden');
+            
+            // 1. Process Input
+            const rawNames = nameInput.value;
+            let names = rawNames
+                .split(/[\n,]+/) // Split by new lines or commas
+                .map(name => name.trim()) // Trim whitespace
+                .filter(name => name.length > 0) // Remove empty strings
+                .filter((name, index, self) => self.indexOf(name) === index); // Ensure uniqueness
+
+            if (names.length < 2) {
+                pinningOptions.classList.add('hidden');
+                clearTeams();
+                showMessage("Please enter at least two unique names to form teams.", 'error');
+                return;
+            }
+
+            currentNames = names;
+            renderPinningOptions(currentNames);
+            pinningOptions.classList.remove('hidden');
+            showMessage(`Successfully loaded ${currentNames.length} unique names. Now set your pinning options.`, 'success');
+        }
+
+        /**
+         * Renders the interactive list with dropdowns for team pinning.
+         */
+        function renderPinningOptions(names) {
+            nameEntryContainer.innerHTML = '';
+            
+            // Header for the list
+            const header = document.createElement('div');
+            header.className = 'pinning-item-grid font-bold text-sm text-gray-600 border-b pb-2 mb-2';
+            header.innerHTML = `
+                <div>Name</div>
+                <div class="text-right pr-2">Pin To</div>
+            `;
+            nameEntryContainer.appendChild(header);
+
+            names.forEach((name, index) => {
+                const item = document.createElement('div');
+                item.className = 'pinning-item-grid p-2 border-b border-gray-100';
+                
+                // Name display
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = name;
+                nameSpan.className = 'text-gray-800 font-medium truncate'; // Truncate long names
+
+                // Team selector (Dropdown)
+                const select = document.createElement('select');
+                select.id = `pin-${index}`;
+                // Using w-full ensures it's responsive
+                select.className = 'p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-blue-500 focus:border-blue-500 w-full md:w-auto'; 
+                
+                select.innerHTML = `
+                    <option value="Random">Random</option>
+                    <option value="Team1">Team 1 (Green)</option>
+                    <option value="Team2">Team 2 (Yellow)</option>
+                `;
+                
+                item.appendChild(nameSpan);
+                item.appendChild(select);
+                nameEntryContainer.appendChild(item);
+            });
+        }
+        
+        /**
+         * Step 2: Generates the final teams based on pinned members and random pool.
+         */
+        function generateTeams() {
+            messageBox.classList.add('hidden');
+
+            if (currentNames.length < 2) {
+                showMessage("Please load names first using Step 1.", 'error');
+                return;
+            }
+
+            // 1. Collect Pinned/Random Status from the UI
+            let team1Pinned = [];
+            let team2Pinned = [];
+            let randomPool = [];
+
+            currentNames.forEach((name, index) => {
+                const selectElement = document.getElementById(`pin-${index}`);
+                const selection = selectElement ? selectElement.value : 'Random';
+
+                if (selection === 'Team1') {
+                    team1Pinned.push(name);
+                } else if (selection === 'Team2') {
+                    team2Pinned.push(name);
+                } else {
+                    randomPool.push(name);
+                }
+            });
+            
+            // Store the pinned lists globally for correct rendering/highlighting
+            const finalTeam1Pinned = [...team1Pinned];
+            const finalTeam2Pinned = [...team2Pinned];
+
+
+            // 2. Shuffle Random Pool
+            shuffleArray(randomPool);
+
+            // 3. Distribute Random Pool for balance
+            let finalTeam1 = [...team1Pinned];
+            let finalTeam2 = [...team2Pinned];
+
+            for (const name of randomPool) {
+                // Assign to the team with fewer current members
+                if (finalTeam1.length <= finalTeam2.length) {
+                    finalTeam1.push(name);
+                } else {
+                    finalTeam2.push(name);
+                }
+            }
+
+            // 4. Render Teams
+            renderTeams(finalTeam1, finalTeam2, finalTeam1Pinned, finalTeam2Pinned);
+            showMessage(`Randomization complete! Total members: ${finalTeam1.length + finalTeam2.length}. Pinned: ${finalTeam1Pinned.length + finalTeam2Pinned.length}.`, 'success');
+        }
+
+        /**
+         * Renders the final team lists, highlighting pinned members.
+         */
+        function renderTeams(team1, team2, team1Pinned, team2Pinned) {
+            const renderList = (team, listElement, countElement, pinnedList) => {
+                listElement.innerHTML = ''; 
+                countElement.textContent = team.length;
+                
+                if (team.length === 0) {
+                    listElement.innerHTML = `<li class="text-gray-400">No members assigned.</li>`;
+                    return;
+                }
+                
+                // Separate pinned and randomized members for structured display
+                const pinnedMembers = team.filter(name => pinnedList.includes(name));
+                const randomizedMembers = team.filter(name => !pinnedList.includes(name));
+                
+                // Combine in order: Pinned first, then randomized
+                const allMembers = [...pinnedMembers, ...randomizedMembers];
+
+                allMembers.forEach(name => {
+                    const li = document.createElement('li');
+                    li.textContent = name;
+                    
+                    if (pinnedList.includes(name)) {
+                         // Use strong colors for highlighting
+                         li.className = 'font-bold italic ' + (listElement.id === 'team1List' ? 'text-green-800' : 'text-yellow-700');
+                         li.textContent += ' (Pinned)';
+                    } else {
+                        li.className = 'text-gray-800';
+                    }
+                    
+                    listElement.appendChild(li);
+                });
+            };
+
+            renderList(team1, team1List, team1Count, team1Pinned);
+            renderList(team2, team2List, team2Count, team2Pinned);
+
+             // Simple animation (optional: trigger hover effect)
+             team1Card.style.transform = 'scale(1.02)';
+             team2Card.style.transform = 'scale(1.02)';
+             setTimeout(() => {
+                team1Card.style.transform = 'scale(1)';
+                team2Card.style.transform = 'scale(1)';
+             }, 300);
+        }
+
+        // Initialize with default state and load sample data
+        clearTeams();
+        nameInput.value = "Marky\nChannix\nLorenz\nNegel\nTotong\nJohn\nNene\nArjohn\nDejie\nHumfrey\nAna\nBen";
+
+    </script>
+</body>
+</html>
