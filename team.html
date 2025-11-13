@@ -146,6 +146,40 @@
         // Global state to hold the parsed names
         let currentNames = [];
 
+        // --- LOCAL STORAGE FUNCTIONS ---
+
+        /**
+         * Saves the current list of names in the textarea to local storage.
+         */
+        function saveNames() {
+            try {
+                localStorage.setItem('teamRandomizerNames', nameInput.value);
+            } catch (e) {
+                console.error("Could not save names to local storage:", e);
+            }
+        }
+
+        /**
+         * Loads names from local storage or sets default sample data if none found.
+         */
+        function loadSavedNames() {
+            try {
+                const savedNames = localStorage.getItem('teamRandomizerNames');
+                if (savedNames) {
+                    nameInput.value = savedNames;
+                } else {
+                    // Sample data for first run
+                    nameInput.value = "Marky\nChannix\nLorenz\nNegel\nTotong\nJohn\nNene\nArjohn\nDejie\nHumfrey\nAna\nBen";
+                }
+            } catch (e) {
+                console.error("Could not load names from local storage:", e);
+                // Fallback to sample data on error
+                nameInput.value = "Marky\nChannix\nLorenz\nNegel\nTotong\nJohn\nNene\nArjohn\nDejie\nHumfrey\nAna\nBen";
+            }
+        }
+
+        // --- UTILITY FUNCTIONS ---
+        
         // Function to shuffle an array using the Fisher-Yates (Knuth) algorithm
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
@@ -176,6 +210,8 @@
          * Step 1: Loads names from the textarea, filters them, and renders the pinning options.
          */
         function loadNamesAndRenderPins() {
+            saveNames(); // Save the names to local storage upon processing
+            
             messageBox.classList.add('hidden');
             
             // 1. Process Input
@@ -344,9 +380,9 @@
              }, 300);
         }
 
-        // Initialize with default state and load sample data
+        // Initialize by loading saved names (or sample data) and clearing team lists
         clearTeams();
-        nameInput.value = "Marky\nChannix\nLorenz\nNegel\nTotong\nJohn\nNene\nArjohn\nDejie\nHumfrey\nAna\nBen";
+        loadSavedNames();
 
     </script>
 </body>
