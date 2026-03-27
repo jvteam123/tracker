@@ -3,278 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB SQUAD RANDOMIZER</title>
+    <title>MLBB PRO DRAFT | Tournament Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --gold: #c3a462;
+            --gold-dark: #8a6d3b;
+            --bg-dark: #0a0a0f;
+            --panel-bg: rgba(20, 20, 30, 0.95);
+        }
         body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
-            color: #e0e0e0;
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #050508 0%, #10101a 100%);
+            color: #f0f0f0;
             min-height: 100vh;
         }
-        h1, h2, .gaming-font {
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .ml-card {
-            background: rgba(30, 30, 50, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #c3a462 0%, #8a6d3b 100%);
-            color: #000;
-            transition: all 0.3s ease;
-            text-shadow: 0 1px 2px rgba(255,255,255,0.3);
-        }
-        .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(195, 164, 98, 0.5);
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #6b21a8 0%, #4c1d95 100%);
-            color: #fff;
-        }
-        .input-dark {
-            background: rgba(0, 0, 0, 0.4) !important;
-            border: 1px solid #444 !important;
-            color: #fff !important;
-        }
-        .input-dark:focus {
-            border-color: #c3a462 !important;
-            ring: 1px solid #c3a462;
-        }
-        .team-blaze { border-top: 4px solid #c3a462; }
-        .team-venom { border-top: 4px solid #a855f7; }
+        .gaming-font { font-family: 'Orbitron', sans-serif; }
         
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f0f1a; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #c3a462; }
+        /* Professional Glassmorphism */
+        .pro-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        .pro-panel::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        }
 
-        .pinning-item-grid {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 1rem;
-            align-items: center;
+        .input-field {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(195, 164, 98, 0.2) !important;
+            transition: all 0.2s ease;
+        }
+        .input-field:focus {
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 10px rgba(195, 164, 98, 0.1);
+            outline: none;
+        }
+
+        .btn-gold {
+            background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
+            color: #000;
+            font-weight: 700;
+            letter-spacing: 1px;
+            clip-path: polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%);
+        }
+        .btn-gold:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .squad-card {
+            border-left: 4px solid var(--gold);
+            background: linear-gradient(90deg, rgba(195,164,98,0.05) 0%, transparent 100%);
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-12">
 
-    <div class="max-w-4xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-2">
-                Squad Randomizer
-            </h1>
-            <p class="text-gray-400 italic text-sm">Draft your legendary team for the Land of Dawn</p>
+    <div class="max-w-5xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-white/10 pb-6">
+            <div>
+                <h1 class="gaming-font text-3xl md:text-4xl text-white tracking-widest font-bold">
+                    <span class="text-yellow-500">PRO</span> DRAFT
+                </h1>
+                <p class="text-gray-500 uppercase tracking-tighter text-xs mt-1">Tournament Management System // v3.0</p>
+            </div>
+            <div class="text-right hidden md:block">
+                <p class="text-xs text-gray-500 font-mono">STATUS: SYSTEMS OPERATIONAL</p>
+                <p id="liveClock" class="text-sm font-bold text-yellow-600 font-mono"></p>
+            </div>
         </header>
         
-        <div class="ml-card p-6 rounded-2xl mb-8 border-b-2 border-yellow-900/30">
-            <label for="nameInput" class="block text-sm font-bold text-yellow-500 mb-3 gaming-font">
-                [1] Register Players (Names/Commas)
-            </label>
-            <textarea id="nameInput" rows="5" class="w-full p-4 input-dark rounded-xl focus:outline-none text-lg" placeholder="Enter IGNs..."></textarea>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <button id="loadNamesBtn" onclick="loadNamesAndRenderPins()" class="mt-4 w-full btn-primary font-bold py-4 px-4 rounded-xl shadow-lg gaming-font">
-                Initialize Draft
-            </button>
-            
-            <div id="pinningOptions" class="mt-8 pt-6 border-t border-gray-700 hidden">
-                <h2 class="text-lg font-bold text-purple-400 mb-4 gaming-font">
-                    [2] Assign Lane/Squad Preference
-                </h2>
-                <div id="nameEntryContainer" class="space-y-2 max-h-80 overflow-y-auto pr-2">
+            <div class="lg:col-span-1 space-y-6">
+                <section class="pro-panel p-6 rounded-sm">
+                    <h3 class="gaming-font text-xs text-yellow-500 mb-4 flex items-center">
+                        <span class="w-2 h-2 bg-yellow-500 mr-2 animate-pulse"></span>
+                        ENTRY_PROTOCOLS
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] uppercase text-gray-500 font-bold mb-1 block">Roster Input</label>
+                            <textarea id="nameInput" rows="8" class="w-full p-3 input-field rounded-sm text-sm font-mono" placeholder="LIST PLAYER IGNs..."></textarea>
+                        </div>
+                        
+                        <button onclick="loadNamesAndRenderPins()" class="w-full btn-gold py-3 text-sm uppercase">
+                            Load Team
+                        </button>
                     </div>
+                </section>
+
+                <div id="messageBox" class="hidden p-4 text-xs font-bold uppercase tracking-widest text-center border border-white/10"></div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-8">
                 
-                <button id="randomizeBtn" onclick="generateTeams()" class="mt-6 w-full btn-secondary font-bold py-4 px-4 rounded-xl shadow-lg gaming-font hover:brightness-125 transition-all">
-                    Launch Matchmaking
-                </button>
-            </div>
-            
-            <div id="messageBox" class="mt-4 p-4 hidden rounded-lg text-center text-sm font-bold" role="alert"></div>
-        </div>
+                <div id="pinningOptions" class="pro-panel p-6 rounded-sm hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="gaming-font text-xs text-yellow-500 italic">DRAFT_CONFIGURATION</h3>
+                        <span class="text-[10px] text-gray-500" id="playerCountBadge">0 PLAYERS DETECTED</span>
+                    </div>
 
-        <div id="teamOutput" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            <div id="team1Card" class="ml-card rounded-2xl overflow-hidden team-blaze transition-transform duration-300">
-                <div class="bg-gradient-to-r from-yellow-700 to-yellow-900 p-4 flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-white gaming-font">Squad Blaze</h2>
-                    <span id="team1Count" class="bg-black/40 text-yellow-400 border border-yellow-500 font-bold px-3 py-1 rounded text-xs">0 / 5</span>
-                </div>
-                <ul id="team1List" class="p-6 space-y-3 text-lg">
-                    <li class="text-gray-500 italic text-sm">Waiting for draft...</li>
-                </ul>
-            </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="text-[10px] uppercase text-gray-400 font-bold mb-1 block">Squad 1 Name</label>
+                            <input type="text" id="team1NameInput" value="SQUAD ALPHA" class="w-full p-2 input-field rounded-sm text-sm font-bold text-yellow-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] uppercase text-gray-400 font-bold mb-1 block">Squad 2 Name</label>
+                            <input type="text" id="team2NameInput" value="SQUAD OMEGA" class="w-full p-2 input-field rounded-sm text-sm font-bold text-blue-400">
+                        </div>
+                    </div>
 
-            <div id="team2Card" class="ml-card rounded-2xl overflow-hidden team-venom transition-transform duration-300">
-                <div class="bg-gradient-to-r from-purple-800 to-indigo-900 p-4 flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-white gaming-font">Squad Venom</h2>
-                    <span id="team2Count" class="bg-black/40 text-purple-300 border border-purple-500 font-bold px-3 py-1 rounded text-xs">0 / 5</span>
+                    <div id="nameEntryContainer" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto mb-6 pr-2">
+                        </div>
+
+                    <button onclick="generateTeams()" class="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white gaming-font text-sm transition-all">
+                        EXECUTE FINAL RANDOMIZATION
+                    </button>
                 </div>
-                <ul id="team2List" class="p-6 space-y-3 text-lg">
-                     <li class="text-gray-500 italic text-sm">Waiting for draft...</li>
-                </ul>
+
+                <div id="teamOutput" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="pro-panel rounded-sm">
+                        <div class="bg-white/5 p-4 border-b border-white/10 flex justify-between items-center">
+                            <h2 id="team1DisplayName" class="gaming-font text-lg text-yellow-500 truncate mr-2">SQUAD 1</h2>
+                            <span id="team1Count" class="text-xs font-mono text-gray-500">0</span>
+                        </div>
+                        <ul id="team1List" class="p-4 space-y-2 min-h-[200px]">
+                            <li class="text-gray-600 text-xs italic">Awaiting deployment...</li>
+                        </ul>
+                    </div>
+
+                    <div class="pro-panel rounded-sm">
+                        <div class="bg-white/5 p-4 border-b border-white/10 flex justify-between items-center">
+                            <h2 id="team2DisplayName" class="gaming-font text-lg text-blue-400 truncate mr-2">SQUAD 2</h2>
+                            <span id="team2Count" class="text-xs font-mono text-gray-500">0</span>
+                        </div>
+                        <ul id="team2List" class="p-4 space-y-2 min-h-[200px]">
+                            <li class="text-gray-600 text-xs italic">Awaiting deployment...</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            
         </div>
     </div>
 
     <script>
+        // Initialization & Logic
         const nameInput = document.getElementById('nameInput');
-        const loadNamesBtn = document.getElementById('loadNamesBtn');
-        const randomizeBtn = document.getElementById('randomizeBtn');
         const pinningOptions = document.getElementById('pinningOptions');
         const nameEntryContainer = document.getElementById('nameEntryContainer');
-        const team1List = document.getElementById('team1List');
-        const team2List = document.getElementById('team2List');
-        const team1Count = document.getElementById('team1Count');
-        const team2Count = document.getElementById('team2Count');
         const messageBox = document.getElementById('messageBox');
-        const team1Card = document.getElementById('team1Card');
-        const team2Card = document.getElementById('team2Card');
         
         let currentNames = [];
 
-        function saveNames() {
-            localStorage.setItem('mlbbRandomizerNames', nameInput.value);
+        // Clock Update
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').textContent = now.toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function showMessage(msg, isError) {
+            messageBox.textContent = msg;
+            messageBox.classList.remove('hidden', 'text-red-500', 'text-green-500');
+            messageBox.classList.add(isError ? 'text-red-500' : 'text-green-500');
+            setTimeout(() => messageBox.classList.add('hidden'), 4000);
         }
 
-        function loadSavedNames() {
-            const savedNames = localStorage.getItem('mlbbRandomizerNames');
-            nameInput.value = savedNames || "Skywee\nDogie\nOhMyV33nus\nWise\nEdward\nHadjji\nOheb\nCh4knu\nZ4pnu\nKelra";
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
-
-        function showMessage(message, type) {
-            messageBox.textContent = `SYSTEM: ${message}`;
-            messageBox.classList.remove('hidden', 'bg-red-900/50', 'text-red-200', 'bg-green-900/50', 'text-green-200');
-            if (type === 'error') {
-                messageBox.classList.add('bg-red-900/50', 'text-red-200', 'border', 'border-red-500');
-            } else {
-                messageBox.classList.add('bg-green-900/50', 'text-green-200', 'border', 'border-green-500');
-            }
-        }
-
-        function clearTeams() {
-            team1List.innerHTML = `<li class="text-gray-500 italic text-sm">Waiting for draft...</li>`;
-            team2List.innerHTML = `<li class="text-gray-500 italic text-sm">Waiting for draft...</li>`;
-            team1Count.textContent = "0 / 5";
-            team2Count.textContent = "0 / 5";
-            messageBox.classList.add('hidden');
-        }
-        
         function loadNamesAndRenderPins() {
-            saveNames();
-            messageBox.classList.add('hidden');
-            
-            const names = nameInput.value
-                .split(/[\n,]+/)
-                .map(name => name.trim())
-                .filter(name => name.length > 0)
-                .filter((name, index, self) => self.indexOf(name) === index);
+            const raw = nameInput.value.split(/[\n,]+/).map(n => n.trim()).filter(n => n !== "");
+            const names = [...new Set(raw)];
 
             if (names.length < 2) {
-                pinningOptions.classList.add('hidden');
-                clearTeams();
-                showMessage("NOT ENOUGH HEROES. ENTER AT LEAST 2 PLAYERS.", 'error');
+                showMessage("INSUFFICIENT DATA: MIN 2 PLAYERS", true);
                 return;
             }
 
             currentNames = names;
-            renderPinningOptions(currentNames);
-            pinningOptions.classList.remove('hidden');
-            showMessage(`${currentNames.length} PLAYERS READY FOR DRAFT.`, 'success');
-        }
-
-        function renderPinningOptions(names) {
-            nameEntryContainer.innerHTML = '';
-            names.forEach((name, index) => {
-                const item = document.createElement('div');
-                item.className = 'pinning-item-grid p-3 bg-black/20 border border-white/5 rounded-lg';
-                
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = name;
-                nameSpan.className = 'text-gray-200 font-semibold';
-
-                const select = document.createElement('select');
-                select.id = `pin-${index}`;
-                select.className = 'p-1 bg-gray-800 border border-gray-600 rounded text-xs text-yellow-500 outline-none'; 
-                select.innerHTML = `
-                    <option value="Random">AUTO-FILL</option>
-                    <option value="Team1">SQUAD BLAZE</option>
-                    <option value="Team2">SQUAD VENOM</option>
-                `;
-                
-                item.appendChild(nameSpan);
-                item.appendChild(select);
-                nameEntryContainer.appendChild(item);
-            });
-        }
-        
-        function generateTeams() {
-            if (currentNames.length < 2) return;
-
-            let team1Pinned = [], team2Pinned = [], randomPool = [];
-
-            currentNames.forEach((name, index) => {
-                const selection = document.getElementById(`pin-${index}`).value;
-                if (selection === 'Team1') team1Pinned.push(name);
-                else if (selection === 'Team2') team2Pinned.push(name);
-                else randomPool.push(name);
-            });
+            document.getElementById('playerCountBadge').textContent = `${names.length} OPERATIVES ACTIVE`;
             
-            shuffleArray(randomPool);
+            nameEntryContainer.innerHTML = '';
+            names.forEach((name, i) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 bg-white/5 border border-white/5 rounded-sm";
+                div.innerHTML = `
+                    <span class="text-xs font-bold truncate pr-2">${name}</span>
+                    <select id="pin-${i}" class="bg-black text-[10px] text-yellow-500 border-none outline-none cursor-pointer">
+                        <option value="Random">AUTO</option>
+                        <option value="Team1">SQ 1</option>
+                        <option value="Team2">SQ 2</option>
+                    </select>
+                `;
+                nameEntryContainer.appendChild(div);
+            });
 
-            let finalTeam1 = [...team1Pinned], finalTeam2 = [...team2Pinned];
+            pinningOptions.classList.remove('hidden');
+            showMessage("ROSTER SYNCHRONIZED", false);
+        }
 
-            for (const name of randomPool) {
-                if (finalTeam1.length <= finalTeam2.length) finalTeam1.push(name);
-                else finalTeam2.push(name);
+        function generateTeams() {
+            const t1Name = document.getElementById('team1NameInput').value || "SQUAD 1";
+            const t2Name = document.getElementById('team2NameInput').value || "SQUAD 2";
+            
+            document.getElementById('team1DisplayName').textContent = t1Name;
+            document.getElementById('team2DisplayName').textContent = t2Name;
+
+            let t1 = [], t2 = [], pool = [];
+
+            currentNames.forEach((name, i) => {
+                const val = document.getElementById(`pin-${i}`).value;
+                if (val === 'Team1') t1.push({name, pinned: true});
+                else if (val === 'Team2') t2.push({name, pinned: true});
+                else pool.push({name, pinned: false});
+            });
+
+            // Fisher-Yates Shuffle
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
             }
 
-            renderTeams(finalTeam1, finalTeam2, team1Pinned, team2Pinned);
-            showMessage("MATCHMAKING COMPLETE. TO THE LAND OF DAWN!", 'success');
+            pool.forEach(p => {
+                if (t1.length <= t2.length) t1.push(p);
+                else t2.push(p);
+            });
+
+            renderSquad(t1, 'team1List', 'team1Count', 'text-yellow-500');
+            renderSquad(t2, 'team2List', 'team2Count', 'text-blue-400');
+            showMessage("DRAFT SEQUENCE COMPLETE", false);
         }
 
-        function renderTeams(t1, t2, p1, p2) {
-            const render = (list, el, countEl, pinned) => {
-                el.innerHTML = ''; 
-                countEl.textContent = `${list.length} / 5`;
-                
-                list.forEach(name => {
-                    const li = document.createElement('li');
-                    li.className = 'flex items-center justify-between p-2 border-b border-white/5';
-                    const isPinned = pinned.includes(name);
-                    
-                    li.innerHTML = `
-                        <span class="${isPinned ? 'text-white font-bold' : 'text-gray-300'}">${name}</span>
-                        ${isPinned ? '<span class="text-[10px] bg-yellow-600/20 text-yellow-500 px-2 py-0.5 border border-yellow-600 rounded">CORE</span>' : ''}
-                    `;
-                    el.appendChild(li);
-                });
-            };
+        function renderSquad(members, listId, countId, accentClass) {
+            const listEl = document.getElementById(listId);
+            document.getElementById(countId).textContent = members.length;
+            listEl.innerHTML = '';
 
-            render(t1, team1List, team1Count, p1);
-            render(t2, team2List, team2Count, p2);
-
-            [team1Card, team2Card].forEach(c => {
-                c.style.transform = 'scale(1.05)';
-                setTimeout(() => c.style.transform = 'scale(1)', 200);
+            members.forEach(m => {
+                const li = document.createElement('li');
+                li.className = `flex justify-between items-center p-2 squad-card text-sm mb-1 bg-white/5 border-b border-white/5`;
+                li.innerHTML = `
+                    <span class="${m.pinned ? 'font-bold ' + accentClass : 'text-gray-300'}">${m.name}</span>
+                    ${m.pinned ? '<span class="text-[9px] opacity-50 font-mono tracking-tighter">PRE-ASSIGNED</span>' : '<span class="text-[9px] opacity-30 font-mono">DRAFTED</span>'}
+                `;
+                listEl.appendChild(li);
             });
         }
 
-        loadSavedNames();
+        // Default Load
+        nameInput.value = "Skywee\nDogie\nOhMyV33nus\nWise\nEdward\nHadjji\nOheb\nCh4knu\nZ4pnu\nKelra";
     </script>
 </body>
 </html>
