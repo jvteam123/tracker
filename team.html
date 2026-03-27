@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLBB TOURNAMENT PRO ENGINE</title>
+    <title>MLBB TOURNAMENT PRO ENGINE v10</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { --gold: #c3a462; --gold-dark: #8a6d3b; --bg-dark: #050508; --panel-bg: rgba(20, 20, 30, 0.98); }
-        body { font-family: 'Rajdhani', sans-serif; background: var(--bg-dark); color: #f0f0f0; min-height: 100vh; overflow-x: hidden; }
+        body { font-family: 'Rajdhani', sans-serif; background: var(--bg-dark); color: #f0f0f0; min-height: 100vh; }
         .gaming-font { font-family: 'Orbitron', sans-serif; }
         .pro-panel { background: var(--panel-bg); border: 1px solid rgba(255, 255, 255, 0.05); position: relative; }
         .pro-panel::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
         .btn-gold { background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%); color: #000; font-weight: 700; clip-path: polygon(5% 0%, 100% 0%, 95% 100%, 0% 100%); transition: 0.2s; cursor: pointer; }
-        .btn-gold:hover { filter: brightness(1.2); transform: scale(1.02); }
+        .btn-gold:hover { filter: brightness(1.2); }
         .input-field { background: rgba(0, 0, 0, 0.5) !important; border: 1px solid rgba(195, 164, 98, 0.2) !important; color: white !important; outline: none; }
-        .bracket-slot { background: #111; border: 1px solid #333; transition: 0.3s; cursor: pointer; position: relative; }
-        .bracket-slot:hover { border-color: var(--gold); }
+        .role-spinner { background: rgba(195, 164, 98, 0.1); border: 1px solid rgba(195, 164, 98, 0.3); color: var(--gold); font-size: 10px; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; min-width: 80px; text-align: center; }
+        .role-spinner:hover { background: var(--gold); color: black; }
+        .bracket-slot { background: #111; border: 1px solid #333; cursor: pointer; position: relative; }
         .bracket-slot.winner { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
-        .bracket-slot.winner::after { content: "🏆"; position: absolute; right: 5px; top: 5px; font-size: 10px; }
-        .score-input { background: #222; width: 35px; text-align: center; border-left: 1px solid #333; color: var(--gold); font-weight: bold; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: var(--gold); }
     </style>
@@ -30,56 +29,46 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-white/10 pb-4 gap-4">
             <div>
                 <h1 class="gaming-font text-3xl font-bold tracking-tighter text-white">
-                    <span class="text-yellow-500">MLBB</span> COMMAND <span class="text-xs opacity-50 font-sans">v8.0</span>
+                    <span class="text-yellow-500">MLBB</span> COMMAND <span class="text-xs opacity-50">PRO v10</span>
                 </h1>
-                <p id="storageStatus" class="text-[9px] text-green-500 tracking-widest uppercase italic">● System Online - Autosave Active</p>
+                <p class="text-[9px] text-green-500 tracking-widest uppercase italic">● Multi-Squad Sync Active</p>
             </div>
             <div class="flex gap-4">
-                <button onclick="setView('draft')" id="btnDraft" class="text-xs gaming-font px-6 py-2 border border-yellow-500/50 text-yellow-500 bg-yellow-500/10 uppercase">Drafting Floor</button>
-                <button onclick="setView('bracket')" id="btnBracket" class="text-xs gaming-font px-6 py-2 border border-white/10 hover:bg-white/5 uppercase">Tournament Bracket</button>
-                <button onclick="toggleSettings()" class="text-xs px-4 py-2 opacity-50 hover:opacity-100">⚙️</button>
+                <button onclick="setView('draft')" class="text-xs gaming-font px-6 py-2 border border-yellow-500/50 text-yellow-500 bg-yellow-500/10 uppercase">Drafting</button>
+                <button onclick="setView('bracket')" class="text-xs gaming-font px-6 py-2 border border-white/10 hover:bg-white/5 uppercase">Tournament Bracket</button>
+                <button onclick="fullReset()" class="text-xs px-4 py-2 text-red-500 opacity-50 hover:opacity-100">Wipe Data</button>
             </div>
         </header>
 
-        <div id="settingsPanel" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div class="pro-panel p-8 max-w-md w-full border-t-4 border-red-600">
-                <h2 class="gaming-font text-xl mb-4">SYSTEM SETTINGS</h2>
-                <div class="space-y-4">
-                    <button onclick="clearHistory()" class="w-full p-3 bg-white/5 border border-white/10 hover:bg-red-900/20 text-xs uppercase">Clear Match History</button>
-                    <button onclick="fullReset()" class="w-full p-3 bg-red-600/20 border border-red-600 text-red-500 text-xs uppercase font-bold">Factory Reset (Wipe All Data)</button>
-                    <button onclick="toggleSettings()" class="w-full p-3 bg-white/10 text-xs uppercase mt-4">Close</button>
-                </div>
-            </div>
-        </div>
-
         <div id="draftView" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div class="lg:col-span-4 space-y-6">
-                <section class="pro-panel p-5 rounded-sm shadow-2xl">
-                    <h3 class="gaming-font text-[10px] text-yellow-500 mb-4 flex justify-between">
-                        <span>ROSTER_DATABASE</span>
-                        <span id="playerCount" class="text-gray-500">0 Players</span>
-                    </h3>
-                    <textarea id="nameInput" rows="6" oninput="autoSave()" class="w-full p-3 input-field rounded-sm text-sm font-mono mb-4" placeholder="Enter names... (* for Captains)"></textarea>
-                    <button onclick="initializeRoster()" class="w-full btn-gold py-3 text-sm uppercase gaming-font">Sync & Balance</button>
+                <section class="pro-panel p-5 rounded-sm shadow-xl">
+                    <h3 class="gaming-font text-[10px] text-yellow-500 mb-4 uppercase">Roster Initialization</h3>
+                    <textarea id="nameInput" rows="6" class="w-full p-3 input-field rounded-sm text-sm font-mono mb-4" placeholder="Names here... (* for Captain)"></textarea>
+                    <button onclick="initializeRoster()" class="w-full btn-gold py-3 text-sm uppercase gaming-font">Load Players</button>
                 </section>
 
-                <section class="pro-panel p-5 rounded-sm flex flex-col h-[350px]">
-                    <h3 class="gaming-font text-[10px] text-gray-400 mb-4">LATEST_RESULTS</h3>
-                    <div id="historyLog" class="flex-1 overflow-y-auto space-y-2 pr-2 text-[11px]"></div>
+                <section class="pro-panel p-5 rounded-sm flex flex-col h-[400px]">
+                    <h3 class="gaming-font text-[10px] text-gray-400 mb-4 uppercase">Session History</h3>
+                    <div id="historyLog" class="flex-1 overflow-y-auto space-y-2 text-[11px]"></div>
                 </section>
             </div>
 
             <div class="lg:col-span-8 space-y-6">
                 <div id="configArea" class="pro-panel p-6 rounded-sm hidden border-l-4 border-yellow-600">
-                    <div id="squadNameList" class="flex flex-wrap gap-4 mb-6">
-                        <input type="text" class="squad-input p-2 input-field rounded-sm text-sm font-bold text-yellow-500 w-40" value="SQUAD ALPHA">
-                        <input type="text" class="squad-input p-2 input-field rounded-sm text-sm font-bold text-blue-400 w-40" value="SQUAD OMEGA">
+                    <div class="mb-6">
+                        <h3 class="text-[10px] text-yellow-500 uppercase font-bold mb-3">1. Manage Squad Identities</h3>
+                        <div id="squadNameContainer" class="flex flex-wrap gap-3 p-3 bg-black/30 rounded border border-white/5">
+                            </div>
+                        <button onclick="addSquad()" class="mt-3 text-[10px] border border-yellow-500/30 text-yellow-500 px-4 py-1 hover:bg-yellow-500/10 uppercase font-bold">+ Add New Squad</button>
                     </div>
-                    <div class="flex gap-2 mb-6">
-                        <button onclick="addSquadField()" class="text-[10px] border border-white/10 px-3 py-1 uppercase">+ Add Squad</button>
+
+                    <div class="mb-6">
+                        <h3 class="text-[10px] text-yellow-500 uppercase font-bold mb-3">2. Player Locks & Stars</h3>
+                        <div id="setupGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto p-1"></div>
                     </div>
-                    <div id="setupGrid" class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6 max-h-40 overflow-y-auto"></div>
-                    <button onclick="generateTournament()" class="w-full py-4 btn-gold text-sm uppercase gaming-font">Generate Teams & Bracket</button>
+
+                    <button onclick="generateTournament()" class="w-full py-4 btn-gold text-sm uppercase gaming-font">Execute Tournament Draft</button>
                 </div>
 
                 <div id="squadDisplayGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -90,38 +79,35 @@
             <div class="pro-panel p-10 min-h-[600px] flex items-center justify-center overflow-x-auto">
                 <div class="flex items-center">
                     <div class="flex flex-col gap-24">
-                        <div class="match-box flex flex-col w-56">
-                            <div onclick="markBracketWin('b1-1', 'final-1')" class="bracket-slot p-2 flex border-b border-white/5">
-                                <input type="text" id="b1-1" placeholder="TBD" class="bg-transparent text-xs w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                        <div class="match-box w-56">
+                            <div onclick="advance('b1-1', 'f-1')" class="bracket-slot p-2 flex border-b border-white/5">
+                                <input type="text" id="b1-1" placeholder="SF Team 1" readonly class="bg-transparent text-xs w-full cursor-pointer">
+                                <span class="text-yellow-600 font-bold px-2">0</span>
                             </div>
-                            <div onclick="markBracketWin('b1-2', 'final-1')" class="bracket-slot p-2 flex">
-                                <input type="text" id="b1-2" placeholder="TBD" class="bg-transparent text-xs w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                            <div onclick="advance('b1-2', 'f-1')" class="bracket-slot p-2 flex">
+                                <input type="text" id="b1-2" placeholder="SF Team 2" readonly class="bg-transparent text-xs w-full cursor-pointer">
+                                <span class="text-yellow-600 font-bold px-2">0</span>
                             </div>
                         </div>
-                        <div class="match-box flex flex-col w-56">
-                            <div onclick="markBracketWin('b2-1', 'final-2')" class="bracket-slot p-2 flex border-b border-white/5">
-                                <input type="text" id="b2-1" placeholder="TBD" class="bg-transparent text-xs w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                        <div class="match-box w-56">
+                            <div onclick="advance('b2-1', 'f-2')" class="bracket-slot p-2 flex border-b border-white/5">
+                                <input type="text" id="b2-1" placeholder="SF Team 3" readonly class="bg-transparent text-xs w-full cursor-pointer">
+                                <span class="text-yellow-600 font-bold px-2">0</span>
                             </div>
-                            <div onclick="markBracketWin('b2-2', 'final-2')" class="bracket-slot p-2 flex">
-                                <input type="text" id="b2-2" placeholder="TBD" class="bg-transparent text-xs w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                            <div onclick="advance('b2-2', 'f-2')" class="bracket-slot p-2 flex">
+                                <input type="text" id="b2-2" placeholder="SF Team 4" readonly class="bg-transparent text-xs w-full cursor-pointer">
+                                <span class="text-yellow-600 font-bold px-2">0</span>
                             </div>
                         </div>
                     </div>
                     <div class="w-12 h-px bg-white/20"></div>
                     <div class="ml-4">
-                        <div class="text-center gaming-font text-[10px] text-yellow-500 mb-2">GRAND FINAL</div>
-                        <div class="match-box border-yellow-500/50 w-64">
-                            <div onclick="markWinnerFinal('final-1')" class="bracket-slot p-4 flex border-b border-white/5">
-                                <input type="text" id="final-1" placeholder="Winner SF1" class="bg-transparent font-bold text-yellow-500 w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                        <div class="match-box border-yellow-500 w-64 shadow-[0_0_20px_rgba(195,164,98,0.1)]">
+                            <div onclick="markChamp('f-1')" class="bracket-slot p-4 flex border-b border-white/5">
+                                <input type="text" id="f-1" placeholder="Finalist 1" readonly class="bg-transparent font-bold text-yellow-500 w-full cursor-pointer">
                             </div>
-                            <div onclick="markWinnerFinal('final-2')" class="bracket-slot p-4 flex">
-                                <input type="text" id="final-2" placeholder="Winner SF2" class="bg-transparent font-bold text-yellow-500 w-full pointer-events-none">
-                                <input type="text" value="0" class="score-input">
+                            <div onclick="markChamp('f-2')" class="bracket-slot p-4 flex">
+                                <input type="text" id="f-2" placeholder="Finalist 2" readonly class="bg-transparent font-bold text-yellow-500 w-full cursor-pointer">
                             </div>
                         </div>
                     </div>
@@ -134,153 +120,190 @@
         const ROLES = ["Jungler", "Gold Lane", "Mid Lane", "EXP Lane", "Roamer"];
         let state = {
             players: [],
+            squads: ["SQUAD ALPHA", "SQUAD OMEGA"], // Default squads
             history: [],
-            bracket: { "b1-1": "", "b1-2": "", "b2-1": "", "b2-2": "", "final-1": "", "final-2": "" }
+            bracket: { "b1-1":"", "b1-2":"", "b2-1":"", "b2-2":"", "f-1":"", "f-2":"" }
         };
-
-        // LOCAL STORAGE SYSTEM
-        function autoSave() {
-            state.players = Array.from(document.querySelectorAll('#setupGrid > div')).map((div, i) => ({
-                name: div.querySelector('span').textContent,
-                stars: parseInt(div.querySelector('select').value)
-            }));
-            const rawNames = document.getElementById('nameInput').value;
-            localStorage.setItem('mlbb_names', rawNames);
-            localStorage.setItem('mlbb_state', JSON.stringify(state));
-        }
-
-        function loadData() {
-            const savedNames = localStorage.getItem('mlbb_names');
-            const savedState = localStorage.getItem('mlbb_state');
-            if(savedNames) document.getElementById('nameInput').value = savedNames;
-            if(savedState) {
-                state = JSON.parse(savedState);
-                updateHistoryUI();
-                renderBracketFromState();
-            }
-        }
-
-        function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('hidden'); }
 
         function setView(v) {
             document.getElementById('draftView').classList.toggle('hidden', v !== 'draft');
             document.getElementById('bracketView').classList.toggle('hidden', v !== 'bracket');
         }
 
-        function addSquadField() {
-            const container = document.getElementById('squadNameList');
-            const input = document.createElement('input');
-            input.className = "squad-input p-2 input-field rounded-sm text-sm font-bold text-white w-40";
-            input.value = `SQUAD ${String.fromCharCode(67 + container.children.length - 2)}`;
-            container.appendChild(input);
-        }
-
         function initializeRoster() {
             const raw = document.getElementById('nameInput').value.split(/[\n,]+/).map(n => n.trim()).filter(n => n !== "");
-            state.players = raw.map(name => ({ name, stars: 3 }));
-            document.getElementById('playerCount').textContent = `${state.players.length} Players`;
-            
+            state.players = raw.map(name => ({ name, stars: 3, lock: "AUTO" }));
+            renderSquadInputs();
+            renderSetup();
+            save();
+        }
+
+        // Fix: Render actual editable inputs for squad names
+        function renderSquadInputs() {
+            const container = document.getElementById('squadNameContainer');
+            container.innerHTML = state.squads.map((name, i) => `
+                <div class="flex items-center gap-1">
+                    <input type="text" value="${name}" 
+                        onchange="updateSquadName(${i}, this.value)" 
+                        class="bg-black/50 border border-white/10 p-1 text-xs text-yellow-500 font-bold rounded w-32 outline-none focus:border-yellow-500">
+                    ${i > 1 ? `<button onclick="removeSquad(${i})" class="text-red-500 px-1 text-xs">×</button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function updateSquadName(index, newName) {
+            state.squads[index] = newName.toUpperCase();
+            renderSetup(); // Refresh the player lock dropdowns to show new name
+            save();
+        }
+
+        function addSquad() {
+            const nextChar = String.fromCharCode(65 + state.squads.length);
+            state.squads.push(`SQUAD ${nextChar}`);
+            renderSquadInputs();
+            renderSetup();
+            save();
+        }
+
+        function removeSquad(index) {
+            state.squads.splice(index, 1);
+            renderSquadInputs();
+            renderSetup();
+            save();
+        }
+
+        function renderSetup() {
             const grid = document.getElementById('setupGrid');
             grid.innerHTML = state.players.map((p, i) => `
                 <div class="flex items-center justify-between p-2 bg-black/40 border border-white/5 text-[10px]">
-                    <span>${p.name}</span>
-                    <select onchange="autoSave()" class="bg-transparent text-yellow-600 outline-none">
-                        ${[1,2,3,4,5].map(s => `<option value="${s}" ${s===3?'selected':''}>${s}★</option>`).join('')}
-                    </select>
+                    <span class="truncate w-24 ${p.name.startsWith('*') ? 'text-yellow-500 font-bold' : ''}">${p.name}</span>
+                    <div class="flex gap-1">
+                        <select onchange="state.players[${i}].stars=parseInt(this.value);save()" class="bg-transparent text-yellow-600 outline-none">
+                            ${[1,2,3,4,5].map(s => `<option value="${s}" ${p.stars===s?'selected':''}>${s}★</option>`).join('')}
+                        </select>
+                        <select onchange="state.players[${i}].lock=this.value;save()" class="bg-transparent text-gray-500 outline-none w-20">
+                            <option value="AUTO">AUTO</option>
+                            ${state.squads.map(s => `<option value="${s}" ${p.lock===s?'selected':''}>${s}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
             `).join('');
             document.getElementById('configArea').classList.remove('hidden');
-            autoSave();
         }
 
         function generateTournament() {
-            const squadNames = Array.from(document.querySelectorAll('.squad-input')).map(i => i.value);
-            const squads = squadNames.map(() => []);
-            let pool = [...state.players].sort((a,b) => b.stars - a.stars).sort(() => Math.random() - 0.5);
+            const activeSquads = state.squads.map(() => []);
+            let pool = [...state.players].sort((a,b) => b.stars - a.stars);
 
-            pool.forEach(p => {
-                let target = squads.reduce((min, s) => s.length < min.length ? s : min);
+            // 1. Handle Hard Locks
+            pool = pool.filter(p => {
+                if (p.lock !== "AUTO") {
+                    const idx = state.squads.indexOf(p.lock);
+                    if (idx !== -1 && activeSquads[idx].length < 5) {
+                        activeSquads[idx].push(p);
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            // 2. Randomly fill based on MMR
+            pool.sort(() => Math.random() - 0.5).forEach(p => {
+                let target = activeSquads.reduce((min, s) => s.length < min.length ? s : min);
                 if (target.length < 5) target.push(p);
             });
 
-            // Map to bracket
-            if(squadNames[0]) state.bracket["b1-1"] = squadNames[0];
-            if(squadNames[1]) state.bracket["b1-2"] = squadNames[1];
-            if(squadNames[2]) state.bracket["b2-1"] = squadNames[2];
-            if(squadNames[3]) state.bracket["b2-2"] = squadNames[3];
-
-            renderSquadUI(squads, squadNames);
-            renderBracketFromState();
-            state.history.unshift({ names: squadNames, time: new Date().toLocaleTimeString() });
-            updateHistoryUI();
-            autoSave();
-            alert("Draft Complete! Bracket updated.");
+            renderSquadDisplay(activeSquads);
+            
+            // Map Squad Names to Bracket Slots
+            const bracketKeys = ["b1-1", "b1-2", "b2-1", "b2-2"];
+            state.squads.forEach((name, i) => { if(i < 4) state.bracket[bracketKeys[i]] = name; });
+            
+            state.history.unshift({ time: new Date().toLocaleTimeString(), count: state.squads.length });
+            updateHistory();
+            renderBracket();
+            save();
+            alert("Draft Synchronized with Bracket!");
         }
 
-        function renderSquadUI(squads, names) {
+        function renderSquadDisplay(squadData) {
             const grid = document.getElementById('squadDisplayGrid');
-            grid.innerHTML = squads.map((list, i) => `
-                <div class="pro-panel rounded-sm border-t-2 border-yellow-500 p-4">
-                    <h2 class="gaming-font text-yellow-500 text-xs mb-3 border-b border-white/5 pb-2">${names[i]}</h2>
+            grid.innerHTML = squadData.map((list, i) => `
+                <div class="pro-panel rounded-sm border-t-2 border-yellow-500 p-4 shadow-lg">
+                    <h2 class="gaming-font text-yellow-500 text-xs mb-3 flex justify-between uppercase">
+                        <span>${state.squads[i]}</span>
+                        <span class="opacity-30">${list.length}/5</span>
+                    </h2>
                     <ul class="space-y-1">
-                        ${list.map((p, j) => `<li class="flex justify-between text-xs p-1 bg-white/5"><span>${p.name}</span><span class="opacity-30 uppercase text-[9px]">${ROLES[j]}</span></li>`).join('')}
+                        ${list.map((p, j) => `
+                            <li class="flex justify-between items-center text-xs p-1 bg-white/5">
+                                <span class="${p.name.startsWith('*') ? 'text-yellow-500' : ''}">${p.name}</span>
+                                <div class="role-spinner" onclick="spinRole(this)">${ROLES[j] || "SUB"}</div>
+                            </li>
+                        `).join('')}
                     </ul>
                 </div>
             `).join('');
         }
 
-        function renderBracketFromState() {
-            for (let key in state.bracket) {
-                const el = document.getElementById(key);
-                if(el) el.value = state.bracket[key];
-            }
+        function spinRole(btn) {
+            let curIdx = ROLES.indexOf(btn.textContent);
+            btn.textContent = ROLES[(curIdx + 1) % ROLES.length];
         }
 
-        function markBracketWin(currentSlotId, targetSlotId) {
-            const winnerName = document.getElementById(currentSlotId).value;
-            if(!winnerName) return;
+        function advance(from, to) {
+            const name = document.getElementById(from).value;
+            if(!name || name === "SF Team 1") return;
+            state.bracket[to] = name;
             
-            // Advance name
-            state.bracket[targetSlotId] = winnerName;
-            document.getElementById(targetSlotId).value = winnerName;
+            const slot = document.getElementById(from).parentElement;
+            Array.from(slot.parentElement.children).forEach(c => c.classList.remove('winner'));
+            slot.classList.add('winner');
             
-            // Highlight
-            const parent = document.getElementById(currentSlotId).parentElement;
-            Array.from(parent.parentElement.children).forEach(child => child.classList.remove('winner'));
-            parent.classList.add('winner');
-            autoSave();
+            renderBracket();
+            save();
         }
 
-        function markWinnerFinal(id) {
-            const parent = document.getElementById(id).parentElement;
-            Array.from(parent.parentElement.children).forEach(child => child.classList.remove('winner'));
-            parent.classList.add('winner');
-            alert(`CONGRATULATIONS: ${document.getElementById(id).value} IS THE CHAMPION!`);
+        function markChamp(id) {
+            const name = document.getElementById(id).value;
+            if(name) alert(`🏆 CHAMPION DECLARED: ${name}`);
         }
 
-        function updateHistoryUI() {
-            const log = document.getElementById('historyLog');
-            log.innerHTML = state.history.map(h => `
-                <div class="p-2 border-l-2 border-yellow-600 bg-white/5 mb-1 flex justify-between">
-                    <span>${h.names.length} Squad Draft</span>
-                    <span class="opacity-40">${h.time}</span>
+        function renderBracket() {
+            Object.keys(state.bracket).forEach(k => {
+                const el = document.getElementById(k);
+                if(el) el.value = state.bracket[k] || el.placeholder;
+            });
+        }
+
+        function save() {
+            localStorage.setItem('mlbb_names_v10', document.getElementById('nameInput').value);
+            localStorage.setItem('mlbb_state_v10', JSON.stringify(state));
+        }
+
+        function updateHistory() {
+            document.getElementById('historyLog').innerHTML = state.history.map(h => `
+                <div class="p-2 border-l-2 border-yellow-600 bg-white/5 mb-1 flex justify-between items-center">
+                    <span>${h.count} Squads Formed</span>
+                    <span class="opacity-40 font-mono text-[9px]">${h.time}</span>
                 </div>
             `).join('');
         }
 
-        function clearHistory() { 
-            state.history = []; 
-            updateHistoryUI(); 
-            autoSave(); 
-            toggleSettings(); 
-        }
+        function fullReset() { if(confirm("This will wipe all players, stars, and bracket progress. Continue?")) { localStorage.clear(); location.reload(); } }
 
-        function fullReset() { 
-            localStorage.clear(); 
-            location.reload(); 
-        }
-
-        window.onload = loadData;
+        window.onload = () => {
+            const n = localStorage.getItem('mlbb_names_v10');
+            const s = localStorage.getItem('mlbb_state_v10');
+            if(n) document.getElementById('nameInput').value = n;
+            if(s) {
+                state = JSON.parse(s);
+                renderSquadInputs();
+                renderSetup();
+                updateHistory();
+                renderBracket();
+            }
+        };
     </script>
 </body>
 </html>
